@@ -15,11 +15,10 @@
 #define _APPLICATION_CONFIG_H
 
 #define DEBUG	1
-#define _VAD_	1
 
 #define CONFIG_FILE_NAME				"Config.ini"
-#define PATERN_MAX_NAME_SIZE		8
-
+#define PATERN_MAX_NAME_SIZE		12
+#define AUDIO_FILE_EXTENSION		".wav"
 
 /*---------------------------------------------------------------------------------
 								DEFAULT CONFIGURATION PARAMETERS OF THE APPLICATION

@@ -14,7 +14,17 @@
 #ifndef _APPLICATION_H
 #define _APPLICATION_H
 
-#include "ApplicationConfig.h"
+#define FREERTOS
+
+#ifdef FREERTOS
+
+#define malloc(size) pvPortMalloc(size)
+#define free(ptr) pvPortFree(ptr)
+
+#endif
+
+
+
 
 
 /* Includes ------------------------------------------------------------------*/
@@ -23,74 +33,196 @@
 #include "ff.h"
 #include "arm_math.h"
 #include "float.h"
+#include "ALE_stm32f4_discovery.h"
+#include "usb_host.h"
+#include "string.h"
+#include "stdlib.h"
 #include "stdbool.h"
+#include "minIni.h"
+#include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
+#include "audio_processing.h"
+#include "ApplicationConfig.h"
+#include "recognition.h"
 
 #define osKernelSysTickFrequency   					configTICK_RATE_HZ
 #define osKernelSysTickMiliSec(milisec)	   (((uint64_t)milisec * (osKernelSysTickFrequency)) / 1000)
 
-typedef struct AppConfig_ {
 
-	uint8_t time_window;
-	uint8_t time_overlap;
 
-	uint8_t 	numtaps;
-	float32_t alpha;
-	uint8_t 	fft_len;
-	uint8_t 	mel_banks;
-	uint8_t 	ifft_len;
-	uint8_t 	lifter_legnth;
 
-	uint8_t calib_time;
-	uint8_t calib_len;
+//---------------------------------------------------------------------------------
+//																		TASKS ARGUMENTS
+//---------------------------------------------------------------------------------
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Processing task arguments
+	*/
+typedef struct{
+	osMessageQId src_msg_id;
+	char *file_path;
+	uint16_t *data;
+	ProcConf *proc_conf;
+	bool vad;
+	bool save_to_files;
+}Audio_Processing_args;
+/**
+	*\typedef
+	*	\struct
+  *	\brief File Processing task arguments
+	*/
+typedef struct{
+	osMessageQId src_msg_id;
+	char *file_name;
+	char *file_path;
+	ProcConf *proc_conf;
+	bool vad;
+	bool save_to_files;
+}File_Processing_args;
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Capture task arguments
+	*/
+typedef struct{
+	Auido_Capture_Config audio_conf;
+	uint16_t *data;
+	uint32_t data_buff_size;
+}Audio_Capture_args;
+/**
+	*\typedef
+	*	\struct
+  *	\brief Recognition task arguments
+	*/
+typedef struct{
+	char *patterns_path;
+	char *patterns_config_file_name;
+}Recognition_args;
 
-	uint8_t 	calib_thd_energy;
-	uint8_t 	calib_thd_freclow;
-	uint8_t 	calib_thd_frechigh;
-	float32_t calib_thd_sf;
-	
-	char patdir[15];
-	char patfilename[15];
-	
-} AppConfig;
-	
+
+
+
+
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief Application LEDs
+	*/
 typedef enum {
-	TRANSFER_ERROR,
-	TRANSFER_COMPLETE,
-	TRANSFER_HALF,
-} Transfer;
-
+	CALIB_LED   = OLED,
+	PATTERN_LED = GLED,
+	RECOG_LED 	= BLED,
+	EXECUTE_LED = RLED,
+}AppLEDS;
+/**
+	*\typedef
+	*	\enum
+  *	\brief Common task messages
+	*/
 typedef enum {
-	BUTTON_IRQ = 1,
-	
-	BUTTON_RELEASE = 1,
-	BUTTON_PRESS = 2,
-	BUTTON_RETAIN_1s = 3,
-} User_Button_State;
-
-typedef enum{
+	FRAME_READY,
+	END_CAPTURE,
+	FAIL,
+	BUTTON_IRQ,	
+	BUTTON_RELEASE,
+	BUTTON_PRESS,
+	CHANGE_STATE,
+	FINISH_PROCESSING,
+	KILL_THREAD,
+}Common_task_Messages;
+/**
+	*\typedef
+	*	\enum
+  *	\brief Application states
+	*/
+typedef enum {
+	CALIBRATION,
+	PATTERN_STORING,
+	RECOGNITION,
+}AppStates;
+/**
+	*	\enum
+  *	\brief Processing task messages
+	*/
+enum ProcessMsg{
+	NEXT_FRAME,
+	LAST_FRAME,
+};
+/**
+	*	\enum
+  *	\brief Recognition task states
+	*/
+enum States{
 	RECORD_AUDIO,
 	RECOGNIZED,
-} States;
+};
 
-#define	BUFFER_READY	0
 
+
+typedef struct {
+	bool 			vad;
+	bool			by_frame;
+	bool			save_to_files;
+	AppStates maintask;
+
+	Auido_Capture_Config audio_capture_conf;
+	ProcConf	proc_conf;	
+	CalibConf	calib_conf;
+	
+	char patdir[13];
+	char patfilename[13];
+}AppConfig;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Capture task arguments
+	*/
+typedef struct {
+	char pat_name[PATERN_MAX_NAME_SIZE];		/*< Nombre del Patron */
+	uint8_t	pat_actv_num;										/*< Numero de activación */
+	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
+}Patterns;
+/**
+	*	\struct
+  *	\brief Vector Cuantization
+	*/
 struct VC {
-	float32_t Energy;
+//	float32_t Energy;
 	float32_t MFCC[LIFTER_LEGNTH];
 };
 
-typedef struct Patterns_ {
-	char PatName[PATERN_MAX_NAME_SIZE];		/*< Nombre del Patron */
-	uint8_t	PatActvNum;										/*< Numero de activación */
-	struct VC* Atrib;											/*< Puntero al listado de atributos */
-} Patterns;
 
+
+
+
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Mail
+	*/
+typedef struct {
+	osMessageQId src_msg_id;
+	char *file_name;
+	char *file_path;
+}Mail;
+/**
+	*\typedef
+	*	\ENUM
+  *	\brief Audio Capture STATES
+	*/
 typedef enum{
-	LEFT = 0,
-	MIDDLE = 1,
-	BOTTOM = 2,
-	DONTCARE = 3,
-}path;
+	START_CAPTURE,
+	RESUME_CAPTURE,
+	STOP_CAPTURE,
+	PAUSE_CAPTURE,
+	BUFFER_READY,
+	WAIT_FOR_MAIL,
+	KILL_CAPTURE,
+}Capture_states;
+
 //---------------------------------------------------------------------------------
 //															GENERAL FUNCTIONS
 //---------------------------------------------------------------------------------
@@ -99,49 +231,73 @@ void Error_Handler(void);
 void Configure_Application (void);
 void setEnvVar (void);
 uint8_t readConfigFile (const char *filename, AppConfig *Conf);
-uint8_t readPaternsConfigFile (const char *filename, Patterns *Conf);
-uint8_t LoadPatterns (const char *filename, struct VC* ptr);
-
+uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num);
+uint8_t loadPattern (Patterns *pat);
+/* [OUT] File object to create */
+/* [IN]  File name to be opened */
+FRESULT open_append (FIL* fp, const char* path);
 
 //---------------------------------------------------------------------------------
 //																	APPLICATIONS TASKS 
 //---------------------------------------------------------------------------------
+/**
+  * @brief  
+  * @param  
+  * @retval
+  */
 void Main_Thread 			(void const * pvParameters);
-void AudioRecord	 		(void const * pvParameters);
-void Keyboard 				(void const * pvParameters);
-void ProcessAudioFile	(void const * pvParameters);
-void Recognize 				(void const * pvParameters);
-#ifdef _VAD_
+/**
+  * @brief  PatternStoring Task
+	* @param  
+  * @retval 
+  */
+void PatternStoring		(void const * pvParameters);
+/**
+  * @brief  Recognitiond Task
+	* @param  
+  * @retval 
+  */
+void Recognition			(void const * pvParameters);
+/**
+	* @brief  Calibration
+	* @param  
+	* @retval 
+	*/
 void Calibration	 		(void const * pvParameters);
-#endif
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void Keyboard 				(void const * pvParameters);
+/**
+	* @brief	Procesa el archivo de Audio que se pasa por eveneto y almacena en un nuevo archivo los MFCC indicando también a que Nº de frame corresponde
+	* @param	Recives folders name where the audio file si located (folders name and audio file name must be equal).
+	*/
+void fileProcessing		(void const * pvParameters);
+/**
+	* @brief  Audio Capture Task
+	* @param  
+	* @retval 
+	*/
+void AudioCapture 		(void const * pvParameters);
+/**
+	* @brief	Procesa el archivo de Audio que se pasa por eveneto y almacena en un nuevo archivo los MFCC indicando también a que Nº de frame corresponde
+	* @param	Recives folders name where the audio file si located (folders name and audio file name must be equal).
+	*/
+void audioProcessing	(void const * pvParameters);
+
 //---------------------------------------------------------------------------------
 //																INTERRUPTION FUNCTIONS
 //---------------------------------------------------------------------------------
 void User_Button_EXTI (void);
 
 
-//---------------------------------------------------------------------------------
-//																	AUDIO FUNCTIONS
-//---------------------------------------------------------------------------------
-#ifdef _VAD_
-void 			Calib 					(float32_t *Energy, float32_t *Frecmax, float32_t *SpecFlat);
-uint8_t 	VAD_MFCC_float	(float32_t *MFCC, uint16_t *Frame, float32_t *HamWin, float32_t *Lifter);
-#endif
-void 			Hamming_float 	(float32_t *Hamming, uint32_t LEN);
-void 			Lifter_float 		(float32_t *Lifter, uint32_t L);
-uint8_t 	MFCC_float 			(float32_t *MFCC, uint16_t *Frame, float32_t *HamWin, float32_t *Lifter);
-void 			Error						(void);
-void 			arm_diff_f32 		(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
-void			cumsum 					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
-void			sumlog					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
-float32_t dtw 						(const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path);
-float32_t dist 						(float32_t *pSrcA, float32_t *pSrcB, uint16_t blockSize);
+
 //---------------------------------------------------------------------------------
 //																		TEST TASKS
 //---------------------------------------------------------------------------------
 
-void Process_and_Save (void const *pvParameters);
-void Calibration_and_Save (void);
 
 
 
@@ -168,16 +324,12 @@ typedef struct {
 }WAVE_FormatTypeDef;
 
 
-typedef struct {
-  int32_t offset;
-  uint32_t fptr;
-}Audio_BufferTypeDef;
-
-FRESULT 	New_Wave_File 						(char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile, uint8_t *pHeader,uint32_t *byteswritten);
+FRESULT 	newWavFile 								(char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile, uint8_t *pHeader,uint32_t *byteswritten);
 uint32_t	WaveProcess_EncInit				(WAVE_FormatTypeDef* WaveFormat, uint8_t* pHeader);
 uint32_t	WaveProcess_HeaderInit		(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct);
 uint32_t	WaveProcess_HeaderUpdate	(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t DataSize);
 char *		updateFilename 						(char *Filename);
+
 
 
 #endif  // _APPLICATION_H

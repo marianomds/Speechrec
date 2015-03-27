@@ -46,7 +46,7 @@ ApplicationTypeDef Appli_state = APPLICATION_IDLE;
 * -- Insert your variables declaration here --
 */ 
 /* USER CODE BEGIN 0 */
-extern osMessageQId AppliEvent;
+extern osMessageQId appli_event;
 /* USER CODE END 0 */
 
 /*
@@ -94,11 +94,11 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 			break;
 			
 		case HOST_USER_DISCONNECTION:
-			osMessagePut(AppliEvent,APPLICATION_DISCONNECT,0);
+			osMessagePut(appli_event,APPLICATION_DISCONNECT,0);
 			break;
 			
 		case HOST_USER_CLASS_ACTIVE:
-			osMessagePut(AppliEvent,APPLICATION_START,0);
+			osMessagePut(appli_event,APPLICATION_START,0);
 			break;
 
 		case HOST_USER_CONNECTION:

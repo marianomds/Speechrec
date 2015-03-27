@@ -824,10 +824,11 @@ extern struct os_mailQ_cb *os_mailQ_cb_##name \
 extern osMailQDef_t os_mailQ_def_##name
 #else                            // define the object
 #define osMailQDef(name, queue_sz, type) \
-struct os_mailQ_cb *os_mailQ_cb_##name \
+struct os_mailQ_cb *os_mailQ_cb_##name; \
 osMailQDef_t os_mailQ_def_##name =  \
 { (queue_sz), sizeof (type), (&os_mailQ_cb_##name) }
 #endif
+
 
 /**
   * @brief Access a Mail Queue Definition

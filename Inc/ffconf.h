@@ -196,7 +196,7 @@
 /      ff_req_grant(), ff_rel_grant(), ff_del_syncobj() and ff_cre_syncobj()
 /      function must be added to the project. */
 
-#define _FS_LOCK    20     /* 0:Disable or >=1:Enable */
+#define _FS_LOCK    0     /* 0:Disable or >=1:Enable */
 /* To enable file lock control feature, set _FS_LOCK to 1 or greater.
    The value defines how many files can be opened simultaneously. */
 
