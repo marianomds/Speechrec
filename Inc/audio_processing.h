@@ -118,7 +118,7 @@ typedef struct {
 	* @param[out]	MFCC: 
 	* @param[out]	MFCC_size: 
   */
-void		initProcessing				(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_size);
+void		initProcessing				(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_size, Proc_var *saving_var);
 /**
   * @brief  De-Initialized Processing
   */

@@ -58,7 +58,7 @@
 	extern float32_t MelBank [256*20];
 	extern arm_matrix_instance_f32	MelFilt;
 	
-	arm_matrix_instance_f32 				STFTMtx, MelWinMtx;
+	arm_matrix_instance_f32 				MagFFTMtx, MelWinMtx;
 	arm_fir_instance_f32 						FirInst;	
 	arm_rfft_fast_instance_f32 			RFFTinst, DCTinst;
 	
@@ -68,7 +68,7 @@
 //						USER FUNCTIONS
 //---------------------------------------
 
-void initProcessing(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_size){
+void initProcessing(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_size, Proc_var *saving_var){
 	
 	// Copio la configuración de procesamiento
 	memcpy(&proc_conf,configuration,sizeof(ProcConf));
@@ -98,12 +98,30 @@ void initProcessing(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_si
 		Error_Handler();
 	
 	// Los coeficientes tienen que estar almacenados en tiempo invertido (leer documentación)
-	Pre_enfasis_Coeef[1] = -proc_conf.alpha;
-	Pre_enfasis_Coeef[0]= 1;
+	Pre_enfasis_Coeef[0] = -proc_conf.alpha;
+	Pre_enfasis_Coeef[1]= 1;
 	
 	if( (pState = pvPortMalloc( (proc_conf.numtaps + proc_conf.frame_len - 1) * sizeof(*pState) ) ) == NULL )
 		Error_Handler();
 	arm_fir_init_f32 (&FirInst, proc_conf.numtaps, Pre_enfasis_Coeef, pState, proc_conf.frame_len);
+	
+	// Instance FFT
+	if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf.fft_len))
+		Error_Handler();
+	
+	// Instance IFFT - DCT
+	if(arm_rfft_fast_init_f32 (&DCTinst, proc_conf.ifft_len) == ARM_MATH_ARGUMENT_ERROR)
+		Error_Handler();
+	
+	// Alloco memoria para var1 que la uso como auxiliar
+	if( (var1 = pvPortMalloc( proc_conf.frame_len * sizeof(*var1) ) ) == NULL )
+		Error_Handler();
+	
+	if(saving_var != NULL)
+	{
+		if( (var2 = pvPortMalloc( proc_conf.frame_len * sizeof(*var1) ) ) == NULL )
+		Error_Handler();
+	}
 }
 void deinitProcessing(float32_t *MFCC){
 	// Libero memoria
@@ -140,6 +158,9 @@ void freeProcVariables (Proc_var *var){
 
 void MFCC_float (uint16_t *frame, float32_t *MFCC, bool vad, Proc_var *saving_var) {
 
+	// Muevo los datos de FRAME_OVERLAP al principio del buffer
+	memcpy(&buff[0], &buff[proc_conf.frame_net], proc_conf.frame_overlap * sizeof(*buff));
+	
 	// Copio los nuevos datos de frame (FRAME_NET)
 	memcpy(&buff[proc_conf.frame_overlap], frame, proc_conf.frame_net * sizeof(*buff));
 	
@@ -150,9 +171,6 @@ void MFCC_float (uint16_t *frame, float32_t *MFCC, bool vad, Proc_var *saving_va
 		secondProcStage (MFCC, saving_var);
 	else
 		memset(MFCC, 0, proc_conf.lifter_legnth * sizeof(*MFCC));
-	
-	// Muevo los datos de FRAME_OVERLAP al principio del buffer
-	memcpy(&buff[0], &buff[proc_conf.frame_net], proc_conf.frame_overlap * sizeof(*buff));
 }
 /**
   * @brief  Get from frame VAD variables
@@ -354,9 +372,9 @@ void firstProcStage (bool vad, Proc_var *saving_var) {
 	//	}
 		
 		/* Se calcula la STFT */
-		if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf.fft_len))		Error_Handler();
-		arm_rfft_fast_f32(&RFFTinst,saving_var->WinSig,saving_var->STFTWin,0);
-		var2[1]=0;																									//Borro la componente de máxima frec
+		arm_copy_f32 (saving_var->WinSig, var1, proc_conf.frame_len);
+		arm_rfft_fast_f32(&RFFTinst,var1,saving_var->STFTWin,0);
+		saving_var->STFTWin[1]=0;																									//Borro la componente de máxima frec
 
 		/* Calculo el módulo de la FFT */
 		arm_cmplx_mag_squared_f32  (saving_var->STFTWin, saving_var->MagFFT, proc_conf.fft_len/2);
@@ -404,7 +422,6 @@ void firstProcStage (bool vad, Proc_var *saving_var) {
 	//	}
 		
 		/* Se calcula la STFT */
-		if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf.fft_len))		Error_Handler();
 		arm_rfft_fast_f32(&RFFTinst,var1,var2,0);
 		var2[1]=0;																									//Borro la componente de máxima frec
 
@@ -435,19 +452,17 @@ void secondProcStage (float32_t *MFCC, Proc_var *saving_var) {
 	if(saving_var != NULL)
 	{
 		/* Se pasa el espectro por los filtros del banco de Mel y se obtienen los coeficientes */
-		arm_mat_init_f32 (&STFTMtx,   proc_conf.fft_len/2, 1, saving_var->STFTWin);												// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
-		arm_mat_init_f32 (&MelWinMtx, proc_conf.mel_banks, 1, saving_var->MelWin);													// Se crea una matriz para almacenar el resultado
-		if(arm_mat_mult_f32(&MelFilt, &STFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)								// MelFilt[MEL_BANKS,proc_conf.fft_len] * MagFFTMtx[proc_conf.fft_len,1] = MelWinMtx [MEL_BANKS,1]
+		arm_mat_init_f32 (&MagFFTMtx,   proc_conf.fft_len/2, 1, saving_var->MagFFT);				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
+		arm_mat_init_f32 (&MelWinMtx, proc_conf.mel_banks, 1, saving_var->MelWin);				// Se crea una matriz para almacenar el resultado
+		if(arm_mat_mult_f32(&MelFilt, &MagFFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)		// MelFilt[MEL_BANKS,proc_conf.fft_len] * MagFFTMtx[proc_conf.fft_len,1] = MelWinMtx [MEL_BANKS,1]
 			Error_Handler();
 		
 		/* Se obtienen los valores logaritmicos de los coeficientes y le hago zero-padding */
-		arm_fill_f32 	(0,var1,proc_conf.ifft_len);
+		arm_fill_f32 	(0,saving_var->LogWin,proc_conf.ifft_len);
 		for (i=0; i<proc_conf.mel_banks; i++)
 			saving_var->LogWin[i*2+2] = log10f(saving_var->MelWin[i]);
 		
 		/* Se Anti-transforma aplicando la DCT-II ==> hago la anti-transformada real */
-		if(arm_rfft_fast_init_f32 (&DCTinst, proc_conf.ifft_len) == ARM_MATH_ARGUMENT_ERROR)
-			Error_Handler();
 		arm_rfft_fast_f32(&DCTinst,saving_var->LogWin,saving_var->CepWin,1);
 
 		/* Se pasa la señal por un filtro en el campo Cepstral */
@@ -456,9 +471,9 @@ void secondProcStage (float32_t *MFCC, Proc_var *saving_var) {
 	else
 	{
 		/* Se pasa el espectro por los filtros del banco de Mel y se obtienen los coeficientes */
-		arm_mat_init_f32 (&STFTMtx,   proc_conf.fft_len/2, 1, var1);																				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
+		arm_mat_init_f32 (&MagFFTMtx,   proc_conf.fft_len/2, 1, var1);																				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
 		arm_mat_init_f32 (&MelWinMtx, proc_conf.mel_banks, 1, var2);																				// Se crea una matriz para almacenar el resultado
-		if(arm_mat_mult_f32(&MelFilt, &STFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)	Error_Handler();			// MelFilt[MEL_BANKS,proc_conf.fft_len] * MagFFTMtx[proc_conf.fft_len,1] = MelWinMtx [MEL_BANKS,1]
+		if(arm_mat_mult_f32(&MelFilt, &MagFFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)	Error_Handler();			// MelFilt[MEL_BANKS,proc_conf.fft_len] * MagFFTMtx[proc_conf.fft_len,1] = MelWinMtx [MEL_BANKS,1]
 		
 		
 		/* Se obtienen los valores logaritmicos de los coeficientes y le hago zero-padding */
@@ -468,7 +483,6 @@ void secondProcStage (float32_t *MFCC, Proc_var *saving_var) {
 		
 		
 		/* Se Anti-transforma aplicando la DCT-II ==> hago la anti-transformada real */
-		if(arm_rfft_fast_init_f32 (&DCTinst, proc_conf.ifft_len) == ARM_MATH_ARGUMENT_ERROR)	Error_Handler();
 		arm_rfft_fast_f32(&DCTinst,var1,var2,1);
 		
 		/* Se pasa la señal por un filtro en el campo Cepstral */

@@ -556,7 +556,7 @@ void Recognition (void const *pvParameters) {
 							args_file->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);	// Allocate memory
 							strcat(strcpy(args_file->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
 							
-							args_file->src_msg_id = pattern_storring_msg;				// Set Message ID
+							args_file->src_msg_id = recognition_msg;				// Set Message ID
 							args_file->proc_conf = &appconf.proc_conf;					// Processing Configuration
 							args_file->vad = appconf.vad;												// VAD
 							args_file->save_to_files = appconf.save_to_files;		// Save to files
@@ -620,17 +620,20 @@ void Recognition (void const *pvParameters) {
 						{
 							// load pattern
 							if( !loadPattern (&pat[i]) )
+							{
+								dist[i] = FLT_MAX;
 								continue;
+							}
 							
 							// Get distance
 							dist[i] = dtw_reduce (&pat[i].pattern_mtx, &utterance_mtx, NULL);
 							
-//							// Check if distance is shorter
-//							if( dist <  min_distance)
-//							{
-//								min_distance = dist;
-//								pat_reco = i;
-//							}
+							// Check if distance is shorter
+							if( dist[i] <  min_distance)
+							{
+								min_distance = dist[i];
+								pat_reco = i;
+							}
 							
 							// Free memory
 							vPortFree(pat[i].pattern_mtx.pData);
@@ -642,13 +645,14 @@ void Recognition (void const *pvParameters) {
 						if (f_chdir ("..") != FR_OK)								Error_Handler();
 
 						// Record in file wich pattern was spoken
-//						if ( open_append (&result,"Spoken") != FR_OK)		Error_Handler();				// Load result file
-//						if (pat_reco != NULL) //min_distance != FLT_MAX)
-//							f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
-//						else
-//							f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
-//						f_close(&result);
+						if ( open_append (&result,"Spoken") != FR_OK)		Error_Handler();				// Load result file
+						if (pat_reco != NULL) //min_distance != FLT_MAX)
+							f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
+						else
+							f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
+						f_close(&result);
 
+						// Save distances
 						f_open(&result,"Dist.bin",FA_WRITE | FA_OPEN_ALWAYS);				// Load result file
 						for(int i=0 ; i<pat_num ; i++)
 							f_write(&result,&dist[i],sizeof(float32_t),&bytesread);
@@ -735,7 +739,7 @@ void audioProcessing (void const *pvParameters) {
 		LED_On(BLED);
 		
 		// Init processing
-		initProcessing(args->proc_conf, &MFCC, &MFCC_size);
+		initProcessing(args->proc_conf, &MFCC, &MFCC_size, NULL);
 
 		// Go to file path
 		if (f_chdir (args->file_path) != FR_OK)
@@ -856,7 +860,7 @@ void fileProcessing (void const *pvParameters) {
 		frame = pvPortMalloc(appconf.proc_conf.frame_net * sizeof(*frame));
 
 		// Init processing
-		initProcessing(args->proc_conf, &MFCC, &MFCC_size);
+		initProcessing(args->proc_conf, &MFCC, &MFCC_size, &save_vars);
 
 		// Go to file path
 		if (f_chdir (args->file_path) != FR_OK)
@@ -1245,12 +1249,12 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->proc_conf.frame_overlap	= (uint16_t)	ini_getl("SPConf", "FRAME_OVERLAP", FRAME_OVERLAP,	filename);
 	config->proc_conf.frame_net			= config->proc_conf.frame_len - config->proc_conf.frame_overlap;
 
-	config->proc_conf.numtaps				= (uint16_t)		ini_getl("SPConf", "NUMTAPS",					NUMTAPS,				filename);
-	config->proc_conf.alpha					= 							ini_getf("SPConf", "ALPHA",(float32_t)ALPHA,					filename);
-	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 				FFT_LEN,				filename);
-	config->proc_conf.mel_banks			= (uint16_t)		ini_getl("SPConf", "MEL_BANKS",				MEL_BANKS,			filename);
-	config->proc_conf.ifft_len			= (uint16_t)		ini_getl("SPConf", "IFFT_LEN", 				IFFT_LEN,				filename);
-	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",		LIFTER_LEGNTH,	filename);
+	config->proc_conf.numtaps				= (uint16_t)		ini_getl("SPConf", "NUMTAPS",				NUMTAPS,				filename);
+	config->proc_conf.alpha					= (float32_t)		ini_getf("SPConf", "ALPHA",					ALPHA,					filename);
+	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 			FFT_LEN,				filename);
+	config->proc_conf.mel_banks			= (uint16_t)		ini_getl("SPConf", "MEL_BANKS",			MEL_BANKS,			filename);
+	config->proc_conf.ifft_len			= (uint16_t)		ini_getl("SPConf", "IFFT_LEN", 			IFFT_LEN,				filename);
+	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",	LIFTER_LEGNTH,	filename);
 	
 	// Read Calibration configuration
 	config->calib_conf.calib_time					= (uint8_t)		ini_getl("CalConf", "CALIB_TIME", 				CALIB_TIME,					filename);
