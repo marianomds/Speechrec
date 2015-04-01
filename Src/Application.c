@@ -49,8 +49,8 @@ void Main_Thread (void const *pvParameters) {
 	// Task variables
 	osThreadId current_task_ID  = NULL;
 	osThreadId audio_task_ID  = NULL;
-	Recognition_args *reco_args  = NULL;
-	Audio_Capture_args *audio_cap_args  = NULL;
+	Recognition_args reco_args = {NULL};
+	Audio_Capture_args audio_cap_args = {NULL};
 	bool appstarted = false;
 	
 	//TODO: Titilar led
@@ -84,12 +84,11 @@ void Main_Thread (void const *pvParameters) {
 						if( (audio = pvPortMalloc(appconf.proc_conf.frame_net*sizeof(*audio)) ) == NULL )		Error_Handler();
 												
 						// Create Audio Capture Task
-						if( (audio_cap_args = pvPortMalloc(sizeof(*audio_cap_args))) == NULL )							Error_Handler();
-						audio_cap_args->audio_conf = appconf.audio_capture_conf;
-						audio_cap_args->data	= audio;
-						audio_cap_args->data_buff_size = appconf.proc_conf.frame_net;
+						audio_cap_args.audio_conf = appconf.audio_capture_conf;
+						audio_cap_args.data	= audio;
+						audio_cap_args.data_buff_size = appconf.proc_conf.frame_net;
 						osThreadDef(AudioCaptureTask,		AudioCapture, 		osPriorityHigh,	1, configMINIMAL_STACK_SIZE*10);
-						audio_task_ID = osThreadCreate (osThread(AudioCaptureTask), audio_cap_args);
+						audio_task_ID = osThreadCreate (osThread(AudioCaptureTask), &audio_cap_args);
 					
 						/* If VAD was configured*/
 						if(appconf.vad)
@@ -122,20 +121,13 @@ void Main_Thread (void const *pvParameters) {
 						// Send KILL message to Auido Capture Task
 						osMessagePut (audio_capture_msg, KILL_CAPTURE, 0);
 						
-						// Release memory
-						vPortFree(audio);								// Libero el buffer de audio
-						vPortFree(audio_cap_args);			// Libero los argumentos de la tarea de audio						
-						
 						// Kill message queue
 						msgID = NULL;
-						
-						// Release memory if necesary
-						if( reco_args != NULL)
-						{
-							vPortFree(reco_args->patterns_path);
-							vPortFree(reco_args->patterns_config_file_name);
-							vPortFree(reco_args);
-						}
+
+						// Release memory
+						vPortFree(audio);																		audio = NULL;
+						vPortFree(reco_args.patterns_path);									reco_args.patterns_path = NULL;
+						vPortFree(reco_args.patterns_config_file_name);			reco_args.patterns_config_file_name = NULL;
 						
 						// Desmonto el FileSystem del USB
 						f_mount(NULL, (TCHAR const*)"", 0);
@@ -163,7 +155,7 @@ void Main_Thread (void const *pvParameters) {
 				}
 				case CHANGE_STATE:
 				{
-					// Send kill to taskID if necesary
+					// Send kill to running task if necesary
 					if (msgID != NULL)
 					{
 						osMessagePut(*msgID,KILL_THREAD,0);
@@ -171,14 +163,9 @@ void Main_Thread (void const *pvParameters) {
 						current_task_ID = NULL;
 					}
 					
-					// Release memory if necesary
-					if( reco_args != NULL)
-					{
-						vPortFree(reco_args->patterns_path);
-						vPortFree(reco_args->patterns_config_file_name);
-						vPortFree(reco_args);
-					}
-					
+					// Release memory
+					vPortFree(reco_args.patterns_path);									reco_args.patterns_path = NULL;
+					vPortFree(reco_args.patterns_config_file_name);			reco_args.patterns_config_file_name = NULL;
 					
 					// Set new task
 					switch (appconf.maintask)
@@ -204,15 +191,14 @@ void Main_Thread (void const *pvParameters) {
 						case RECOGNITION:
 						{
 							// Set task arguments to pass
-							if( (reco_args = pvPortMalloc(sizeof(*reco_args))) == NULL )																				Error_Handler();
-							if( (reco_args->patterns_path  = pvPortMalloc(strlen(appconf.patdir))) == NULL )										Error_Handler();
-							if( (reco_args->patterns_config_file_name = pvPortMalloc(strlen(appconf.patfilename))) == NULL )		Error_Handler();
-							strcpy(reco_args->patterns_path, appconf.patdir);
-							strcpy(reco_args->patterns_config_file_name, appconf.patfilename);
+							if( (reco_args.patterns_path  = pvPortMalloc(strlen(appconf.patdir))) == NULL )										Error_Handler();
+							if( (reco_args.patterns_config_file_name = pvPortMalloc(strlen(appconf.patfilename))) == NULL )		Error_Handler();
+							strcpy(reco_args.patterns_path, appconf.patdir);
+							strcpy(reco_args.patterns_config_file_name, appconf.patfilename);
 							
 							/* Create Tasks*/
 							osThreadDef(RecognitionTask, 		Recognition, 		osPriorityNormal, 1, configMINIMAL_STACK_SIZE*8);
-							current_task_ID = osThreadCreate (osThread(RecognitionTask), reco_args);
+							current_task_ID = osThreadCreate (osThread(RecognitionTask), &reco_args);
 							msgID = &recognition_msg;
 
 							break;
@@ -448,7 +434,7 @@ void Recognition (void const *pvParameters) {
 	uint32_t utterance_size;
 	float32_t *utterance_data;
 	arm_matrix_instance_f32 utterance_mtx;
-	float32_t *dist, min_distance;
+	float32_t *dist;
 	uint32_t pat_reco, bytesread;
 	FIL result;
 	
@@ -463,6 +449,11 @@ void Recognition (void const *pvParameters) {
 	if (f_chdir (args->patterns_path) != FR_OK)																			Error_Handler();		// Go to file path
 	if (!readPaternsConfigFile (args->patterns_config_file_name, &pat, &pat_num))		Error_Handler();		// Read Patterns File
 	if (f_chdir ("..") != FR_OK)																										Error_Handler();		// Go back to original directory
+	
+	//PARA PROBAR AHORA, DESPUES BORRAR
+//	processing = true;
+//	osMessagePut(recognition_msg,FINISH_PROCESSING,0);
+	
 	
 	/* START TASK */
 	for (;;)
@@ -603,37 +594,32 @@ void Recognition (void const *pvParameters) {
 						utterance_data = pvPortMalloc(utterance_size);
 						if(f_read (&utterance_file, utterance_data, utterance_size, &bytesread) != FR_OK)	Error_Handler();		// Read data
 						f_close(&utterance_file);																																							// Close file
-						arm_mat_init_f32 (&utterance_mtx, utterance_size / appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, utterance_data);
+						arm_mat_init_f32 (&utterance_mtx, utterance_size / sizeof(*utterance_data) / appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, utterance_data);
 						if (f_chdir ("..") != FR_OK)																											Error_Handler();		// Go back to original directory					 
 						
 						
-						// Allocate memroy for distance
-						dist = pvPortMalloc(pat_num);
+						// Allocate memroy for distance, and initializ
+						dist = pvPortMalloc(pat_num * sizeof(*dist));
+						for(int i=0; i < pat_num ; i++)
+							dist[i] = FLT_MAX;
 						
 						// Go to file path
 						if (f_chdir (args->patterns_path) != FR_OK)							Error_Handler();
 								
 						// Search for minimun distance
-						min_distance = FLT_MAX;
-						pat_reco = NULL;
+						pat_reco = pat_num-1;
 						for(int i=0; i < pat_num ; i++)
 						{
 							// load pattern
 							if( !loadPattern (&pat[i]) )
-							{
-								dist[i] = FLT_MAX;
 								continue;
-							}
 							
 							// Get distance
 							dist[i] = dtw_reduce (&pat[i].pattern_mtx, &utterance_mtx, NULL);
 							
 							// Check if distance is shorter
-							if( dist[i] <  min_distance)
-							{
-								min_distance = dist[i];
+							if( dist[i] <  dist[pat_reco])
 								pat_reco = i;
-							}
 							
 							// Free memory
 							vPortFree(pat[i].pattern_mtx.pData);
@@ -646,7 +632,7 @@ void Recognition (void const *pvParameters) {
 
 						// Record in file wich pattern was spoken
 						if ( open_append (&result,"Spoken") != FR_OK)		Error_Handler();				// Load result file
-						if (pat_reco != NULL) //min_distance != FLT_MAX)
+						if (dist[pat_reco] != FLT_MAX)
 							f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
 						else
 							f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
@@ -1315,6 +1301,7 @@ uint8_t loadPattern (Patterns *pat) {
 	uint8_t output = 0;
 	struct VC *ptr;
 	uint32_t file_size;
+	uint32_t VC_length;
 	
 	// Abro la carpeta donde estan los patrones
 	if (f_chdir (pat->pat_name) == FR_OK)
@@ -1324,6 +1311,7 @@ uint8_t loadPattern (Patterns *pat) {
 		{
 			// Me fijo el tamaño del archivo
 			file_size = f_size (&File);
+			VC_length = file_size / sizeof(float32_t);
 			
 			// Aloco la memoria necesaria para almacenar en memoria todos los Vectores de Características
 			if( ( ptr = (struct VC *) pvPortMalloc(file_size) ) != NULL )
@@ -1331,7 +1319,7 @@ uint8_t loadPattern (Patterns *pat) {
 				if(f_read (&File, ptr, file_size, &bytesread) == FR_OK)
 				{
 					output = 1;
-					arm_mat_init_f32 (&pat->pattern_mtx, file_size/ appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, (float32_t *) ptr);
+					arm_mat_init_f32 (&pat->pattern_mtx, VC_length/ appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, (float32_t *) ptr);
 				}
 			
 			// Cierro el archivo
