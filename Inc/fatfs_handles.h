@@ -1,12 +1,12 @@
 /**
   ******************************************************************************
   * File Name          : fatfs_handles.h
-  * Date               : 22/09/2014 17:13:08
+  * Date               : 30/04/2015 13:42:13
   * Description        : This file provides code for the IP handles used by FATFS
   * Version			   : v0.1.0_Cube
   ******************************************************************************
   *
-  * COPYRIGHT 2014 STMicroelectronics
+  * COPYRIGHT 2015 STMicroelectronics
   *
   * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
   * You may not use this file except in compliance with the License.

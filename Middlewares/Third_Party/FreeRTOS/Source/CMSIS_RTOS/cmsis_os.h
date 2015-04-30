@@ -829,7 +829,6 @@ osMailQDef_t os_mailQ_def_##name =  \
 { (queue_sz), sizeof (type), (&os_mailQ_cb_##name) }
 #endif
 
-
 /**
   * @brief Access a Mail Queue Definition
   * @param  name  :    name of the queue.

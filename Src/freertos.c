@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * File Name          : freertos.c
-  * Date               : 22/09/2014 17:13:09
+  * Date               : 30/04/2015 13:42:14
   * Description        : Optional code that may be needed for compiling freertos applications
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -38,5 +38,16 @@
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
+
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);      
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+/* Run time stack overflow checking is performed if
+configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

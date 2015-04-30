@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * @file    stm32f4xx_it.c
-  * @date    22/09/2014 17:13:10
+  * @date    30/04/2015 13:42:15
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -48,12 +48,12 @@ extern DMA_HandleTypeDef hdma_spi2_rx;
 /******************************************************************************/
 
 /**
-* @brief This function handles USB On The Go FS global interrupt.
+* @brief This function handles DMA1 Stream3 global interrupt.
 */
-void OTG_FS_IRQHandler(void)
+void DMA1_Stream3_IRQHandler(void)
 {
-  HAL_NVIC_ClearPendingIRQ(OTG_FS_IRQn);
-  HAL_HCD_IRQHandler(&hhcd_USB_OTG_FS);
+  HAL_NVIC_ClearPendingIRQ(DMA1_Stream3_IRQn);
+  HAL_DMA_IRQHandler(&hdma_spi2_rx);
 }
 
 /**
@@ -76,12 +76,12 @@ void SysTick_Handler(void)
 }
 
 /**
-* @brief This function handles DMA1 Stream3 global interrupt.
+* @brief This function handles USB On The Go FS global interrupt.
 */
-void DMA1_Stream3_IRQHandler(void)
+void OTG_FS_IRQHandler(void)
 {
-  HAL_NVIC_ClearPendingIRQ(DMA1_Stream3_IRQn);
-  HAL_DMA_IRQHandler(&hdma_spi2_rx);
+  HAL_NVIC_ClearPendingIRQ(OTG_FS_IRQn);
+  HAL_HCD_IRQHandler(&hhcd_USB_OTG_FS);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

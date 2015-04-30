@@ -62,7 +62,7 @@
 /**
   ******************************************************************************
   * File Name          : FreeRTOSConfig.h
-  * Date               : 22/09/2014 17:13:09
+  * Date               : 30/04/2015 13:42:14
   ******************************************************************************
   */
 
@@ -94,14 +94,14 @@
 #define configTICK_RATE_HZ                ((portTickType)1000)
 #define configMAX_PRIORITIES              ((unsigned portBASE_TYPE)7)
 #define configMINIMAL_STACK_SIZE          ((unsigned short)128)
-#define configTOTAL_HEAP_SIZE             ((size_t)80*1024)
+#define configTOTAL_HEAP_SIZE             ((size_t)81920)
 #define configMAX_TASK_NAME_LEN           (16)
 #define configUSE_TRACE_FACILITY          1
 #define configUSE_16_BIT_TICKS            0
 #define configIDLE_SHOULD_YIELD           1
 #define configUSE_MUTEXES                 1
 #define configQUEUE_REGISTRY_SIZE         8
-#define configCHECK_FOR_STACK_OVERFLOW    0
+#define configCHECK_FOR_STACK_OVERFLOW    1
 #define configUSE_RECURSIVE_MUTEXES       1
 #define configUSE_MALLOC_FAILED_HOOK      0
 #define configUSE_APPLICATION_TASK_TAG    0

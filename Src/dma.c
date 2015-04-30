@@ -1,12 +1,12 @@
 /**
   ******************************************************************************
   * File Name          : dma.c
-  * Date               : 22/09/2014 17:13:08
+  * Date               : 30/04/2015 13:42:12
   * Description        : This file provides code for the configuration
   *                      of all the requested memory to memory DMA transfers.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:

@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * @file            : usbh_conf.c
-  * @date            : 22/09/2014 17:13:10 
+  * @date            : 30/04/2015 13:42:15 
   * @version         : v1.0_Cube
   * @brief           : This file implements the board support package for the USB host library
   ******************************************************************************
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -149,7 +149,7 @@ USBH_StatusTypeDef  USBH_LL_Init (USBH_HandleTypeDef *phost)
   phost->pData = &hhcd_USB_OTG_FS;
 
   hhcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hhcd_USB_OTG_FS.Init.Host_channels = 11;
+  hhcd_USB_OTG_FS.Init.Host_channels = 15;
   hhcd_USB_OTG_FS.Init.speed = HCD_SPEED_FULL;
   hhcd_USB_OTG_FS.Init.dma_enable = DISABLE;
   hhcd_USB_OTG_FS.Init.phy_itface = HCD_PHY_EMBEDDED;
