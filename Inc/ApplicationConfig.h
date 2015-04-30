@@ -46,17 +46,17 @@
 #define IFFT_LEN											64			// Tiene que ser mayor a 2*MEL_BANKS
 #define LIFTER_LEGNTH									13
 
+#define THD_ENERGY										2
+#define THD_FRECLOW										500
+#define THD_FRECHIGH									3500
+#define THD_SF												0.5f
+
 #define PDM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_DECIMATOR*AUDIO_IN_CHANNEL_NBR/8
 #define PCM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_CHANNEL_NBR
 #define EXTEND_BUFF										32 // FRAME_LEN/PCM_BUFF_SIZE
 
 #define CALIB_TIME										10 //segundos
 #define CALIB_LEN 										CALIB_TIME*AUDIO_IN_FREQ/FRAME_LEN
-
-#define CALIB_THD_ENERGY							2
-#define CALIB_THD_FRECLOW							500
-#define CALIB_THD_FRECHIGH						3500
-#define CALIB_THD_SF									0.5f
 
 #define PAT_DIR												"Pat"
 #define PAT_CONF_FILE									"Pat.ini"

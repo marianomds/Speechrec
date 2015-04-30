@@ -28,6 +28,8 @@ PDMFilter_InitStruct *Filter;
 osMessageQId msgQId;
 uint32_t msg_val;
 
+extern int8_t test;
+
 //------------------------------------------------------------------------------
 //											PUBLIC AUDIO DRIVER CONTROL FUNCTIONS
 //------------------------------------------------------------------------------
@@ -120,10 +122,9 @@ void PDMDecoder_Init(uint32_t AudioFreq, uint32_t ChnlNbr, PDMFilter_InitStruct 
     Filter[i].Fs = AudioFreq;
     Filter[i].Out_MicChannels = ChnlNbr;
     Filter[i].In_MicChannels = ChnlNbr; 
-    PDM_Filter_Init((PDMFilter_InitStruct *)&Filter[i]);
+    PDM_Filter_Init(&Filter[i]);
   }
 }
-
 
 uint8_t audioPDM2PCM(uint16_t *PDMBuf, uint32_t PDMsize, uint16_t *PCMBuf, uint8_t channel, uint8_t volume, PDMFilter_InitStruct *Filter){
   uint16_t AppPDM[PDMsize/2];
@@ -167,16 +168,6 @@ uint8_t audioPDM2PCM(uint16_t *PDMBuf, uint32_t PDMsize, uint16_t *PCMBuf, uint8
   return AUDIO_OK; 
 }
 
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s){
-	int i;
-	
-	for(i=extend_buff; i<extend_buff*2; i++)
-		audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
-
-	osMessagePut(msgQId,msg_val,0);
-}
-
-
 void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
   /* First Half of PDM Buffer */
 	int i;
@@ -185,8 +176,18 @@ void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 		audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[i*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
 	
 	osMessagePut(msgQId,msg_val,0);
+	test++;	// TODO de prueba, luego borrar
 }
 
+void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s){
+	int i;
+	
+	for(i=extend_buff; i<extend_buff*2; i++)
+		audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
+
+	osMessagePut(msgQId,msg_val,0);
+	test++;		// TODO de prueba, luego borrar
+}
 
 void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s){
 

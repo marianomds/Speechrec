@@ -33,11 +33,19 @@
 //	FINISH_PROCESSING,
 //};
 
-//typedef enum{
-//	NEXT_FRAME,
-//	LAST_FRAME,
-//}ProcMsg;
+typedef enum{
+	VOICE,
+	NO_VOICE,
+	PROC_FAILURE
+}ProcStatus;
 
+typedef enum{
+	CALIB_INITIATED,
+	CALIB_IN_PROCESS,
+	CALIB_FINISH,
+	CALIB_FAILURE,
+	CALIB_OK,
+}CalibStatus;
 
  typedef struct{
 	 
@@ -55,20 +63,15 @@
 	uint16_t	ifft_len;				// Tiene que ser mayor a 2*MEL_BANKS
 	uint16_t	lifter_legnth;
 	
-	uint8_t		thd_e;
-	uint8_t		thd_fl;
-	uint8_t		thd_fh;
-	uint8_t		thd_sf;
+	float32_t	thd_e;
+	float32_t	thd_fl;
+	float32_t	thd_fh;
+	float32_t	thd_sf;
 }ProcConf;
  
 typedef struct{
-	uint32_t	calib_time;
+	uint16_t	calib_time;
 	uint32_t	calib_len;
-
-	uint8_t 	calib_thd_energy;
-	uint8_t 	calib_thd_freclow;
-	uint8_t 	calib_thd_frechigh;
-	float32_t calib_thd_sf;
 }CalibConf;
  
 typedef struct{
@@ -86,7 +89,7 @@ typedef struct{
 	float32_t *MelWin;			// Espectro pasado por los filtros de Mel
 	float32_t *LogWin;			// Logaritmo del espectro filtrado
 	float32_t *CepWin;			// Señal cepstral
-	VADVar		vad;
+//	VADVar		vad;
 }Proc_var;
 
 typedef struct {
@@ -111,28 +114,23 @@ typedef struct {
 //---------------------------------------
 //						USER FUNCTIONS
 //---------------------------------------
+
+
+void initBasics		(ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers);
+void finishBasics	(void);
+
 /**
 	*	Initialized Processing.
   * @brief  Initialized Processing.
-	* @param[in]	configuration: 
-	* @param[out]	MFCC: 
-	* @param[out]	MFCC_size: 
+	* @param[in]	configuration: processing configuration information
+	* @param[in]	vad:	if VAD will be use or not 
+	* @param[in]	save_vars: if it should save processing variables
   */
-void		initProcessing				(ProcConf *configuration, float32_t **MFCC, uint32_t *MFCC_size, Proc_var *saving_var);
+void		initProcessing				(float32_t **MFCC, uint32_t *MFCC_size, ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers);
 /**
   * @brief  De-Initialized Processing
   */
-void		deinitProcessing			(float32_t *MFCC);
-/**
-	* @brief  Allocate Heap memory for Processing variables needed to save it to files
-	* @param[in] var	Pointer to a Proc_var struct
-	*/
-void		allocateProcVariables	(Proc_var *var);
-/**
-	* @brief  Release Heap memory for Processing variables needed to save it to files
-	* @param[in] var	Pointer to a Proc_var struct
-	*/
-void		freeProcVariables			(Proc_var *var);
+void		finishProcessing			(void);
 /**
 	*	Computes the Mel-Frequency Cepstrum Coefficients. If VAD is set but the frame does not reach the threshold
 	*	MFCC buffer is filled with 0.
@@ -142,11 +140,13 @@ void		freeProcVariables			(Proc_var *var);
 	* @param[in]  vad: If VAD should be used or no
 	* @param[out]  saving_var: Address of the vector with the Window to apply
   */
-void		MFCC_float	(uint16_t *frame, float32_t *MFCC, bool vad, Proc_var *saving_var);
-void		VAD_float		(uint16_t *frame, VADVar *var, Proc_var *saving_var);
-void		Calibrate		(float32_t* SilEnergy, float32_t* SilFrecmax, float32_t* SilSpFlat);
+ProcStatus		MFCC_float				(uint16_t *frame);
 
+// CALIBRATION
 
+CalibStatus		initCalibration		(uint32_t *num_frames, CalibConf *calib_config, ProcConf *configuration, Proc_var *ptr_vars_buffers);
+CalibStatus		Calibrate					(uint16_t *frame, uint32_t frame_num);
+CalibStatus		endCalibration		(const bool save_calib_vars);
 //---------------------------------------
 //						HELP FUNCTIONS
 //---------------------------------------
@@ -167,7 +167,19 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad);
 //---------------------------------------	
 void			firstProcStage	(bool vad, Proc_var *saving_var);
 void			secondProcStage	(float32_t *MFCC, Proc_var *saving_var);
+/**
+  * @brief  Coefficients of the Hamming Window
+	* @param  Hamming: Address of the vector where the coefficients are going to be save
+	* @param  Length: Length of the Hamming Window
+  * @retval 
+  */
 void 			Hamming_float 	(float32_t *Hamming, uint32_t LEN);
+/**
+  * @brief  Coefficients of the Hamming Window
+	* @param  Hamming: Address of the vector where the coefficients are going to be save
+	* @param  Length: Length of the Hamming Window
+  * @retval 
+  */
 void 			Lifter_float 		(float32_t *Lifter, uint32_t L);
 
 
@@ -175,9 +187,41 @@ void 			Lifter_float 		(float32_t *Lifter, uint32_t L);
 //---------------------------------------
 //						MATH FUNCTIONS
 //---------------------------------------
+/**
+  * @brief  Calcula la derivada del vector. El vector destino debería tener tamaño blockSize-1
+  * @param	Puntero al vector de entrada
+	* @param	Puntero al vector destino 
+	* @param  Tamaño del vector de entrada
+  */
 void 			arm_diff_f32 		(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
+/**
+  * @brief  Cum sum
+  * @param	Puntero al vector de entrada
+	* @param	Puntero al vector destino 
+	* @param  Tamaño del vector de entrada
+  */
 void			cumsum 					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
+/**
+  * @brief  Cum sum
+  * @param	Puntero al vector de entrada
+	* @param	Puntero al vector destino 
+	* @param  Tamaño del vector de entrada
+  */
 void			sumlog					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
 
+
+//---------------------------------------
+//						OTHER FUNCTIONS
+//---------------------------------------
+/**
+	* @brief  Allocate Heap memory for Processing variables needed to save it to files
+	* @param[in] var	Pointer to a Proc_var struct
+	*/
+void		allocateProcVariables	(Proc_var *var);
+/**
+	* @brief  Release Heap memory for Processing variables needed to save it to files
+	* @param[in] var	Pointer to a Proc_var struct
+	*/
+void		freeProcVariables			(Proc_var *var);
 
 #endif // AUDIO_PROCESSING_H

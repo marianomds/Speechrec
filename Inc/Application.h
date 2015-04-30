@@ -137,9 +137,9 @@ typedef enum {
   *	\brief Application states
 	*/
 typedef enum {
-	CALIBRATION,
-	PATTERN_STORING,
-	RECOGNITION,
+	CALIBRATION = 0,
+	PATTERN_STORING  = 1,
+	RECOGNITION = 2,
 }AppStates;
 /**
 	*	\enum

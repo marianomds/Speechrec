@@ -90,7 +90,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 			dtw_mtx[j] = FLT_MAX;
 		
 		// Go through columns
-		for( j = max(1,i-width) ; j < min(costmtxcols,i+width) ; j++ )
+		for( j = max(1,i-width) ; j < min(costmtxcols,i+1+width) ; j++ )
 		{
 			// Get distance
 			cost = dist( &(a->pData[(j-1)*params]) , &(b->pData[(i-1)*params]) , params);
@@ -129,7 +129,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 			// Calculo la distancia a ese punto
 			dtw_mtx[idx] = cost + dtw_mtx[path_idx];
 		}
-	}		
+	}
 	
 	// Escribo la última fila
 	f_write(&dist_mtx_file, &dtw_mtx[idx_dtw_mtx_last_row], costmtxcols * sizeof(*dtw_mtx), &byteswrite);
@@ -137,11 +137,12 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	// Cierro el archivo
 	f_close(&dist_mtx_file);
 
-	// Free memory
-	vPortFree(dtw_mtx);
-
 	// Return distance value
 	result = dtw_mtx[ dtw_mtx_size - 1 ];
+	
+		// Free memory
+	vPortFree(dtw_mtx);
+
 	return result;
 }
 float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path){
