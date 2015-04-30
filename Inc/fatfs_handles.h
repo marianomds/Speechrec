@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : fatfs_handles.h
-  * Date               : 30/04/2015 13:42:13
+  * Date               : 30/04/2015 21:19:47
   * Description        : This file provides code for the IP handles used by FATFS
   * Version			   : v0.1.0_Cube
   ******************************************************************************
@@ -31,16 +31,10 @@
 #endif
 
 /*----------   -----------*/
-#define _HNAND      valueNotSetted 
- 
-/*----------   -----------*/
 #define _HSDRAM      valueNotSetted 
  
 /*----------   -----------*/
 #define _HSRAM      valueNotSetted 
- 
-/*----------   -----------*/
-#define _HSD      hsd 
  
 /*----------   -----------*/
 #define _HUSBH      hUsbHostFS 
@@ -49,7 +43,7 @@
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ FATFS_HANDLES__H_H */
+#endif /*__ FATFS_HANDLES__H__ */
 
 /**
   * @}

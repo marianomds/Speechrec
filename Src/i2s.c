@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : I2S.c
-  * Date               : 30/04/2015 13:42:14
+  * Date               : 30/04/2015 21:19:50
   * Description        : This file provides code for the configuration
   *                      of the I2S instances.
   ******************************************************************************
@@ -51,8 +51,8 @@ void MX_I2S2_Init(void)
 {
 
   hi2s2.Instance = SPI2;
-  hi2s2.Init.Mode = I2S_MODE_MASTER_RX;
-  hi2s2.Init.Standard = I2S_STANDARD_LSB;
+  hi2s2.Init.Mode = I2S_MODE_MASTER_TX;
+  hi2s2.Init.Standard = I2S_STANDARD_PHILLIPS;
   hi2s2.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
   hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_32K;
@@ -69,6 +69,9 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
   GPIO_InitTypeDef GPIO_InitStruct;
   if(hi2s->Instance==SPI2)
   {
+  /* USER CODE BEGIN SPI2_MspInit 0 */
+
+  /* USER CODE END SPI2_MspInit 0 */
     /* Peripheral clock enable */
     __SPI2_CLK_ENABLE();
   
@@ -114,6 +117,9 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
 
     __HAL_LINKDMA(hi2s,hdmarx,hdma_spi2_rx);
 
+  /* USER CODE BEGIN SPI2_MspInit 1 */
+
+  /* USER CODE END SPI2_MspInit 1 */
   }
 }
 
@@ -122,6 +128,9 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 
   if(hi2s->Instance==SPI2)
   {
+  /* USER CODE BEGIN SPI2_MspDeInit 0 */
+
+  /* USER CODE END SPI2_MspDeInit 0 */
     /* Peripheral clock disable */
     __SPI2_CLK_DISABLE();
   
@@ -136,8 +145,15 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 
     /* Peripheral DMA DeInit*/
     HAL_DMA_DeInit(hi2s->hdmarx);
+  /* USER CODE BEGIN SPI2_MspDeInit 1 */
+
+  /* USER CODE END SPI2_MspDeInit 1 */
   }
 } 
+
+/* USER CODE BEGIN 1 */
+
+/* USER CODE END 1 */
 
 /**
   * @}

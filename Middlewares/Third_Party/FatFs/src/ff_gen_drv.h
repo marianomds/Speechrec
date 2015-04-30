@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    ff_gen_drv.h 
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    22-April-2014
+  * @version V1.2.1
+  * @date    20-November-2014
   * @brief   Header for ff_gen_drv.c module.
   ******************************************************************************
   * @attention
@@ -39,16 +39,16 @@
 
 /* Exported types ------------------------------------------------------------*/
 
-   /** 
+/** 
   * @brief  Disk IO Driver structure definition  
   */ 
 typedef struct
 {
   DSTATUS (*disk_initialize) (void);                     /*!< Initialize Disk Drive                     */
   DSTATUS (*disk_status)     (void);                     /*!< Get Disk Status                           */
-  DRESULT (*disk_read)       (BYTE*, DWORD, BYTE);       /*!< Read Sector(s)                            */
+  DRESULT (*disk_read)       (BYTE*, DWORD, UINT);       /*!< Read Sector(s)                            */
 #if _USE_WRITE == 1 
-  DRESULT (*disk_write)      (const BYTE*, DWORD, BYTE); /*!< Write Sector(s) when _USE_WRITE = 0       */
+  DRESULT (*disk_write)      (const BYTE*, DWORD, UINT); /*!< Write Sector(s) when _USE_WRITE = 0       */
 #endif /* _USE_WRITE == 1 */
 #if _USE_IOCTL == 1  
   DRESULT (*disk_ioctl)      (BYTE, void*);              /*!< I/O control operation when _USE_IOCTL = 1 */

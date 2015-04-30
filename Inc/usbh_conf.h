@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file           : usbh_conf.h
-  * @date           : 30/04/2015 13:42:15
+  * @date           : 30/04/2015 21:19:51
   * @version        : v1.0_Cube
   * @brief          : Header for usbh_conf file.
   ******************************************************************************
@@ -60,7 +60,7 @@
 #define USBH_MAX_NUM_CONFIGURATION      1 
  
 /*----------   -----------*/
-#define USBH_KEEP_CFG_DESCRIPTOR      0 
+#define USBH_KEEP_CFG_DESCRIPTOR      1 
  
 /*----------   -----------*/
 #define USBH_MAX_NUM_SUPPORTED_CLASS      1 

@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file    USBH_conf.h
+  * @file    usbh_conf_template.h
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
-  * @brief   General low level driver configuration
+  * @version V3.2.0
+  * @date    04-November-2014
+  * @brief   Header file for usbh_conf_template.c
   ******************************************************************************
   * @attention
   *
@@ -26,15 +26,18 @@
   */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USBH_CONF__H__
-#define __USBH_CONF__H__
+#ifndef __USBH_CONF_TEMPLATE_H
+#define __USBH_CONF_TEMPLATE_H
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* Includes ------------------------------------------------------------------*/
 
 /** @addtogroup USBH_OTG_DRIVER
   * @{
@@ -136,8 +139,11 @@
   * @}
   */ 
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif //__USBH_CONF__H__
+#endif /* __USBH_CONF_TEMPLATE_H */
 
 
 /**

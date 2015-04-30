@@ -48,6 +48,7 @@
   * @brief This is the list of modules to be used in the HAL driver 
   */
 #define HAL_MODULE_ENABLED  
+
 //#define HAL_ADC_MODULE_ENABLED   
 //#define HAL_CAN_MODULE_ENABLED   
 //#define HAL_CRC_MODULE_ENABLED   
@@ -79,6 +80,11 @@
 //#define HAL_WWDG_MODULE_ENABLED   
 //#define HAL_PCD_MODULE_ENABLED   
 #define HAL_HCD_MODULE_ENABLED
+//#define HAL_QSPI_MODULE_ENABLED   
+//#define HAL_QSPI_MODULE_ENABLED   
+//#define HAL_CEC_MODULE_ENABLED   
+//#define HAL_FMPI2C_MODULE_ENABLED   
+//#define HAL_SPDIFRX_MODULE_ENABLED   
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
@@ -113,7 +119,7 @@
   * @brief Internal Low Speed oscillator (LSI) value.
   */
 #if !defined  (LSI_VALUE) 
- #define LSI_VALUE  ((uint32_t)40000)    
+ #define LSI_VALUE  ((uint32_t)32000)    
 #endif /* LSI_VALUE */                      /*!< Value of the Internal Low Speed oscillator in Hz
                                              The real value may vary depending on the variations
                                              in voltage and temperature.  */
@@ -142,7 +148,7 @@
   */     
   
 #define  VDD_VALUE					  ((uint32_t)3300) /*!< Value of VDD in mv */           
-#define  TICK_INT_PRIORITY            ((uint32_t)0)    /*!< tick interrupt priority */            
+#define  TICK_INT_PRIORITY            ((uint32_t)0)   /*!< tick interrupt priority */            
 #define  USE_RTOS                     0     
 #define  PREFETCH_ENABLE              1
 #define  INSTRUCTION_CACHE_ENABLE     1
@@ -373,6 +379,22 @@
 #ifdef HAL_HCD_MODULE_ENABLED
  #include "stm32f4xx_hal_hcd.h"
 #endif /* HAL_HCD_MODULE_ENABLED */
+
+#ifdef HAL_QSPI_MODULE_ENABLED
+ #include "stm32f4xx_hal_qspi.h"
+#endif /* HAL_QSPI_MODULE_ENABLED */
+
+#ifdef HAL_CEC_MODULE_ENABLED
+ #include "stm32f4xx_hal_cec.h"
+#endif /* HAL_CEC_MODULE_ENABLED */
+
+#ifdef HAL_FMPI2C_MODULE_ENABLED
+ #include "stm32f4xx_hal_fmpi2c.h"
+#endif /* HAL_FMPI2C_MODULE_ENABLED */
+
+#ifdef HAL_SPDIFRX_MODULE_ENABLED
+ #include "stm32f4xx_hal_spdifrx.h"
+#endif /* HAL_SPDIFRX_MODULE_ENABLED */
    
 /* Exported macro ------------------------------------------------------------*/
 #ifdef  USE_FULL_ASSERT

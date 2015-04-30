@@ -44,9 +44,6 @@
 #include "ApplicationConfig.h"
 #include "recognition.h"
 
-#define osKernelSysTickFrequency   					configTICK_RATE_HZ
-#define osKernelSysTickMiliSec(milisec)	   (((uint64_t)milisec * (osKernelSysTickFrequency)) / 1000)
-
 
 
 

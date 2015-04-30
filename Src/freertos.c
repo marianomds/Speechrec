@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
   * File Name          : freertos.c
-  * Date               : 30/04/2015 13:42:14
-  * Description        : Optional code that may be needed for compiling freertos applications
+  * Date               : 30/04/2015 21:19:50
+  * Description        : Code for freertos applications
   ******************************************************************************
   *
   * COPYRIGHT(c) 2015 STMicroelectronics
@@ -35,19 +35,94 @@
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
 #include "task.h"
-/* USER CODE BEGIN 0 */
+#include "cmsis_os.h"
 
-/* USER CODE END 0 */
+/* USER CODE BEGIN Includes */     
 
-void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);      
+/* USER CODE END Includes */
+
+/* Variables -----------------------------------------------------------------*/
+osThreadId defaultTaskHandle;
+
+/* USER CODE BEGIN Variables */
+
+/* USER CODE END Variables */
+
+/* Function prototypes -------------------------------------------------------*/
+void StartDefaultTask(void const * argument);
+
+extern void MX_FATFS_Init(void);
+extern void MX_USB_HOST_Init(void);
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* USER CODE BEGIN FunctionPrototypes */
+
+/* USER CODE END FunctionPrototypes */
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 
 /* USER CODE BEGIN 4 */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
-/* Run time stack overflow checking is performed if
-configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
-called if a stack overflow is detected. */
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
 }
 /* USER CODE END 4 */
+
+/* Init FreeRTOS */
+
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+       
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+}
+
+/* StartDefaultTask function */
+void StartDefaultTask(void const * argument)
+{
+  /* init code for FATFS */
+  MX_FATFS_Init();
+
+  /* init code for USB_HOST */
+  MX_USB_HOST_Init();
+
+  /* USER CODE BEGIN StartDefaultTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Application */
+     
+/* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

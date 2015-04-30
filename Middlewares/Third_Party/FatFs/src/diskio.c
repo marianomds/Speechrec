@@ -14,8 +14,8 @@
   ******************************************************************************
   * @file    diskio.c 
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    22-April-2014
+  * @version V1.2.1
+  * @date    20-November-2014
   * @brief   FatFs low level disk I/O module.
   ******************************************************************************
   * @attention
@@ -85,7 +85,7 @@ DSTATUS disk_status(BYTE pdrv)
   * @param  count: Number of sectors to read (1..128)
   * @retval DRESULT: Operation result
   */
-DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, BYTE count)
+DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res;
  
@@ -102,7 +102,7 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, BYTE count)
   * @retval DRESULT: Operation result
   */
 #if _USE_WRITE == 1
-DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, BYTE count)
+DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res;
   

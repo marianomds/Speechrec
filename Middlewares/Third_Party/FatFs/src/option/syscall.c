@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------*/
-/* Sample code of OS dependent controls for FatFs R0.10                   */
-/* (C)ChaN, 2013                                                          */
+/* Sample code of OS dependent controls for FatFs R0.10b                   */
+/* (C)ChaN, 2014                                                          */
 /*------------------------------------------------------------------------*/
 
 #include <stdlib.h>		/* ANSI memory controls */

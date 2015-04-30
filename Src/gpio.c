@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : gpio.c
-  * Date               : 30/04/2015 13:42:11
+  * Date               : 30/04/2015 21:19:42
   * Description        : This file provides code for the configuration
   *                      of all used GPIO pins.
   ******************************************************************************
@@ -153,8 +153,6 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  /* Sets the priority grouping field */
-  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
   HAL_NVIC_SetPriority(EXTI0_IRQn, 15, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 

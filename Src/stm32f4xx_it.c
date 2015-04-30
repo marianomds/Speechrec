@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    stm32f4xx_it.c
-  * @date    30/04/2015 13:42:15
+  * @date    30/04/2015 21:19:52
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
@@ -35,11 +35,14 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_it.h"
+#include "cmsis_os.h"
+
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
- 
 extern void xPortSysTickHandler(void);
-
 extern HCD_HandleTypeDef hhcd_USB_OTG_FS;
 extern DMA_HandleTypeDef hdma_spi2_rx;
 
@@ -48,12 +51,39 @@ extern DMA_HandleTypeDef hdma_spi2_rx;
 /******************************************************************************/
 
 /**
+* @brief This function handles System tick timer.
+*/
+void SysTick_Handler(void)
+{
+  /* USER CODE BEGIN SysTick_IRQn 0 */
+
+  /* USER CODE END SysTick_IRQn 0 */
+  HAL_IncTick();
+  osSystickHandler();
+  /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  /* USER CODE END SysTick_IRQn 1 */
+}
+
+/******************************************************************************/
+/* STM32F4xx Peripheral Interrupt Handlers                                    */
+/* Add here the Interrupt Handlers for the used peripherals.                  */
+/* For the available peripheral interrupt handler names,                      */
+/* please refer to the startup file (startup_stm32f4xx.s).                    */
+/******************************************************************************/
+
+/**
 * @brief This function handles DMA1 Stream3 global interrupt.
 */
 void DMA1_Stream3_IRQHandler(void)
 {
-  HAL_NVIC_ClearPendingIRQ(DMA1_Stream3_IRQn);
+  /* USER CODE BEGIN DMA1_Stream3_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream3_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi2_rx);
+  /* USER CODE BEGIN DMA1_Stream3_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream3_IRQn 1 */
 }
 
 /**
@@ -61,18 +91,13 @@ void DMA1_Stream3_IRQHandler(void)
 */
 void EXTI0_IRQHandler(void)
 {
-  HAL_NVIC_ClearPendingIRQ(EXTI0_IRQn);
-  
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-}
+  /* USER CODE BEGIN EXTI0_IRQn 0 */
 
-/**
-* @brief This function handles System tick timer.
-*/
-void SysTick_Handler(void)
-{
-  xPortSysTickHandler();
-  HAL_IncTick();
+  /* USER CODE END EXTI0_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+  /* USER CODE BEGIN EXTI0_IRQn 1 */
+
+  /* USER CODE END EXTI0_IRQn 1 */
 }
 
 /**
@@ -80,8 +105,16 @@ void SysTick_Handler(void)
 */
 void OTG_FS_IRQHandler(void)
 {
-  HAL_NVIC_ClearPendingIRQ(OTG_FS_IRQn);
+  /* USER CODE BEGIN OTG_FS_IRQn 0 */
+
+  /* USER CODE END OTG_FS_IRQn 0 */
   HAL_HCD_IRQHandler(&hhcd_USB_OTG_FS);
+  /* USER CODE BEGIN OTG_FS_IRQn 1 */
+
+  /* USER CODE END OTG_FS_IRQn 1 */
 }
 
+/* USER CODE BEGIN 1 */
+
+/* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

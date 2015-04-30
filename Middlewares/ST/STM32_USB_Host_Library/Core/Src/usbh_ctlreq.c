@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_ctlreq.c 
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   This file implements the control requests for device enumeration
   ******************************************************************************
   * @attention
@@ -128,7 +128,7 @@ USBH_StatusTypeDef USBH_Get_DevDesc(USBH_HandleTypeDef *phost, uint8_t length)
 /**
   * @brief  USBH_Get_CfgDesc
   *         Issues Configuration Descriptor to the device. Once the response 
-  *         received, it parses the configuartion descriptor and updates the 
+  *         received, it parses the configuration descriptor and updates the 
   *         status.
   * @param  phost: Host Handle
   * @param  length: Length of the descriptor
@@ -196,7 +196,7 @@ USBH_StatusTypeDef USBH_Get_StringDesc(USBH_HandleTypeDef *phost,
   *         it parses the descriptor and updates the status.
   * @param  phost: Host Handle
   * @param  req_type: Descriptor type
-  * @param  value_idx: wValue for the GetDescriptr request
+  * @param  value_idx: Value for the GetDescriptr request
   * @param  buff: Buffer to store the descriptor
   * @param  length: Length of the descriptor
   * @retval USBH Status
@@ -325,7 +325,7 @@ USBH_StatusTypeDef USBH_ClrFeature(USBH_HandleTypeDef *phost,
 /**
   * @brief  USBH_ParseDevDesc 
   *         This function Parses the device descriptor
-  * @param  dev_desc: device_descriptor destinaton address 
+  * @param  dev_desc: device_descriptor destination address 
   * @param  buf: Buffer where the source descriptor is available
   * @param  length: Length of the descriptor
   * @retval None
@@ -405,7 +405,7 @@ static void USBH_ParseCfgDesc (USBH_CfgDescTypeDef* cfg_desc,
         pep = (USBH_EpDescTypeDef *)0;        
         while ((ep_ix < pif->bNumEndpoints) && (ptr < cfg_desc->wTotalLength))
         {
-          pdesc = USBH_GetNextDesc((void* )pdesc, &ptr);
+          pdesc = USBH_GetNextDesc((uint8_t*) pdesc, &ptr);
           if (pdesc->bDescriptorType   == USB_DESC_TYPE_ENDPOINT) 
           {  
             pep = &cfg_desc->Itf_Desc[if_ix].Ep_Desc[ep_ix];
@@ -503,7 +503,7 @@ static void USBH_ParseStringDesc (uint8_t* psrc,
   * @brief  USBH_GetNextDesc 
   *         This function return the next descriptor header
   * @param  buf: Buffer where the cfg descriptor is available
-  * @param  ptr: data popinter inside the cfg descriptor
+  * @param  ptr: data pointer inside the cfg descriptor
   * @retval next header
   */
 USBH_DescHeader_t  *USBH_GetNextDesc (uint8_t   *pbuf, uint16_t  *ptr)
@@ -660,7 +660,7 @@ static USBH_StatusTypeDef USBH_HandleControl (USBH_HandleTypeDef *phost)
     
     URB_Status = USBH_LL_GetURBState(phost , phost->Control.pipe_in); 
     
-    /* check is DATA packet transfered successfully */
+    /* check is DATA packet transferred successfully */
     if  (URB_Status == USBH_URB_DONE)
     { 
       phost->Control.state = CTRL_STATUS_OUT;

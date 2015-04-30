@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_def.h
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   Definitions used in the USB host library
   ******************************************************************************
   * @attention
@@ -23,7 +23,18 @@
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
+ 
+/* Define to prevent recursive  ----------------------------------------------*/
+#ifndef  USBH_DEF_H
+#define  USBH_DEF_H
+
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include "usbh_conf.h"
 
 /** @addtogroup USBH_LIB
   * @{
@@ -38,13 +49,8 @@
   * @{
   */ 
 
-#ifndef  USBH_DEF_H
-#define  USBH_DEF_H
-
-#include "usbh_conf.h"
-
 #ifndef NULL
-#define NULL ((void *)0)
+#define NULL  0
 #endif
 
 #ifndef FALSE
@@ -52,7 +58,7 @@
 #endif
 
 #ifndef TRUE
-#define TRUE 1
+#define TRUE  1
 #endif
 
 
@@ -474,7 +480,11 @@ typedef struct _USBH_HandleTypeDef
   #endif /* __packed */
 #endif /* __GNUC__ */
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* USBH_DEF_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

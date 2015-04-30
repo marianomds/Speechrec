@@ -2,14 +2,14 @@
   ******************************************************************************
   * @file    stm32f4_discovery_accelerometer.h
   * @author  MCD Application Team
-  * @version V2.0.2
-  * @date    26-June-2014
+  * @version V2.0.4
+  * @date    02-March-2015
   * @brief   This file contains all the functions prototypes for the 
   *          stm32f4_discovery_accelerometer.c firmware driver.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -48,8 +48,8 @@
 #include "stm32f4_discovery.h"
    
 /* Include Accelerometer component drivers */
-#include "..\Components\lis302dl\lis302dl.h"   
-#include "..\Components\lis3dsh\lis3dsh.h"   
+#include "../Components/lis302dl/lis302dl.h"   
+#include "../Components/lis3dsh/lis3dsh.h"   
 
 /** @addtogroup BSP
   * @{

@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_msc_bot.h
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   Header file for usbh_msc_bot.c
   ******************************************************************************
   * @attention
@@ -26,8 +26,12 @@
   */ 
 
 /* Define to prevent recursive  ----------------------------------------------*/
-#ifndef __USBH_MSC_BOT_H__
-#define __USBH_MSC_BOT_H__
+#ifndef __USBH_MSC_BOT_H
+#define __USBH_MSC_BOT_H
+
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_core.h"
@@ -46,7 +50,7 @@
   */
   
 /** @defgroup USBH_MSC_BOT
-  * @brief This file is the Header file for usbh_msc_core.c
+  * @brief This file is the Header file for usbh_msc_bot.c
   * @{
   */ 
 
@@ -172,7 +176,7 @@ BOT_HandleTypeDef;
 #define USB_REQ_GET_MAX_LUN              0xFE
 
 #define MAX_BULK_STALL_COUNT_LIMIT       0x04   /* If STALL is seen on Bulk 
-                                         Endpoint continously, this means 
+                                         Endpoint continuously, this means 
                                          that device and Host has phase error
                                          Hence a Reset is needed */
 
@@ -211,7 +215,11 @@ USBH_StatusTypeDef USBH_MSC_BOT_Error(USBH_HandleTypeDef *phost, uint8_t lun);
   * @}
   */ 
 
-#endif  //__USBH_MSC_BOT_H__
+#ifdef __cplusplus
+}
+#endif
+
+#endif  /* __USBH_MSC_BOT_H__ */
 
 
 /**

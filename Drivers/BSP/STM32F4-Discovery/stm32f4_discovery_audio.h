@@ -2,14 +2,14 @@
   ******************************************************************************
   * @file    stm32f4_discovery_audio.h
   * @author  MCD Application Team
-  * @version V2.0.2
-  * @date    26-June-2014
+  * @version V2.0.4
+  * @date    02-March-2015
   * @brief   This file contains the common defines and functions prototypes for
   *          stm32f4_discovery_audio.c driver.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -46,10 +46,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 /* Include audio component Driver */
-#include "..\Components\cs43l22\cs43l22.h"
+#include "../Components/cs43l22/cs43l22.h"
 
 #include "stm32f4_discovery.h"
-#include "..\..\..\Middlewares\ST\STM32_Audio\Addons\PDM\pdm_filter.h"
+#include "../../../Middlewares/ST/STM32_Audio/Addons/PDM/pdm_filter.h"
 
 /** @addtogroup BSP
   * @{
