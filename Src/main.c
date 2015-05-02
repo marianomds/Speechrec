@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 30/04/2015 21:19:53
+  * Date               : 03/05/2015 11:52:57
   * Description        : Main program body
   ******************************************************************************
   *
@@ -99,11 +99,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+  /* USER CODE BEGIN 3 */
+		
+		
+		
+	/* USER CODE END 3 */
+  }
+  
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-
-  }
+		
+		
+		
   /* USER CODE END 3 */
 
 }

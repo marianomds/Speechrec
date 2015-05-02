@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : I2S.c
-  * Date               : 30/04/2015 21:19:50
+  * Date               : 03/05/2015 11:52:55
   * Description        : This file provides code for the configuration
   *                      of the I2S instances.
   ******************************************************************************
@@ -51,8 +51,8 @@ void MX_I2S2_Init(void)
 {
 
   hi2s2.Instance = SPI2;
-  hi2s2.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s2.Init.Standard = I2S_STANDARD_PHILLIPS;
+  hi2s2.Init.Mode = I2S_MODE_MASTER_RX;
+  hi2s2.Init.Standard = I2S_STANDARD_LSB;
   hi2s2.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
   hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_32K;

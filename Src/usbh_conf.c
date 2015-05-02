@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file            : usbh_conf.c
-  * @date            : 30/04/2015 21:19:51 
+  * @date            : 03/05/2015 11:52:56 
   * @version         : v1.0_Cube
   * @brief           : This file implements the board support package for the USB host library
   ******************************************************************************
@@ -390,6 +390,7 @@ USBH_StatusTypeDef  USBH_LL_DriverVBUS (USBH_HandleTypeDef *phost, uint8_t state
     /* Drive high Charge pump */
     /* USER CODE BEGIN 1 */ 
     /* ToDo: Add IOE driver control */
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
     /* USER CODE END 1 */ 
   }
   else
@@ -397,6 +398,7 @@ USBH_StatusTypeDef  USBH_LL_DriverVBUS (USBH_HandleTypeDef *phost, uint8_t state
     /* Drive low Charge pump */
     /* USER CODE BEGIN 2 */
     /* ToDo: Add IOE driver control */
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
     /* USER CODE END 2 */
   }
 

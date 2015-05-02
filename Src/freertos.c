@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : freertos.c
-  * Date               : 30/04/2015 21:19:50
+  * Date               : 03/05/2015 11:52:55
   * Description        : Code for freertos applications
   ******************************************************************************
   *
@@ -38,7 +38,7 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */     
-
+#include "Application.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -74,7 +74,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-       
+	Configure_Application();
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -116,7 +116,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osThreadTerminate(osThreadGetId());
   }
   /* USER CODE END StartDefaultTask */
 }

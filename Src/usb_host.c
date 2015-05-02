@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
   * @file            : USB_HOST
-  * @date            : 30/04/2015 21:19:51 
+  * @date            : 03/05/2015 11:52:55 
   * @version         : v1.0_Cube
   * @brief           :  This file implements the USB Host 
   ******************************************************************************
@@ -46,7 +46,7 @@ ApplicationTypeDef Appli_state = APPLICATION_IDLE;
 * -- Insert your variables declaration here --
 */ 
 /* USER CODE BEGIN 0 */
-
+extern osMessageQId appli_event;
 /* USER CODE END 0 */
 
 /*
@@ -95,6 +95,7 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
     
   case HOST_USER_DISCONNECTION:
   Appli_state = APPLICATION_DISCONNECT;
+	osMessagePut(appli_event,APPLICATION_DISCONNECT,0);
   break;
     
   case HOST_USER_CLASS_ACTIVE:
@@ -103,6 +104,7 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 
   case HOST_USER_CONNECTION:
   Appli_state = APPLICATION_START;
+	osMessagePut(appli_event,APPLICATION_START,0);
   break;
 
   default:
