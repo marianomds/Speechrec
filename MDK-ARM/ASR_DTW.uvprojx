@@ -643,6 +643,11 @@
               <FileType>1</FileType>
               <FilePath>..\Middlewares\Third_Party\FatFs\src\ff_gen_drv.c</FilePath>
             </File>
+            <File>
+              <FileName>ccsbcs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\Third_Party\FatFs\src\option\ccsbcs.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -36,11 +36,11 @@ Por priemra y única vez:
 			    
 			  case HOST_USER_CLASS_ACTIVE:
 			  Appli_state = APPLICATION_READY;
+				osMessagePut(appli_event,APPLICATION_START,0);
 			  break;
 
 			  case HOST_USER_CONNECTION:
 			  Appli_state = APPLICATION_START;
-				osMessagePut(appli_event,APPLICATION_START,0);
 			  break;
 
 			  default:

@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : fatfs_handles.h
-  * Date               : 03/05/2015 11:52:53
+  * Date               : 03/05/2015 13:56:07
   * Description        : This file provides code for the IP handles used by FATFS
   * Version			   : v0.1.0_Cube
   ******************************************************************************

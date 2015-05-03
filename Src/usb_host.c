@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
   * @file            : USB_HOST
-  * @date            : 03/05/2015 11:52:55 
+  * @date            : 03/05/2015 13:56:10 
   * @version         : v1.0_Cube
   * @brief           :  This file implements the USB Host 
   ******************************************************************************
@@ -100,11 +100,11 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
     
   case HOST_USER_CLASS_ACTIVE:
   Appli_state = APPLICATION_READY;
+	osMessagePut(appli_event,APPLICATION_START,0);
   break;
 
   case HOST_USER_CONNECTION:
   Appli_state = APPLICATION_START;
-	osMessagePut(appli_event,APPLICATION_START,0);
   break;
 
   default:

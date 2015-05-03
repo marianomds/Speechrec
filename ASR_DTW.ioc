@@ -1,5 +1,5 @@
 #MicroXplorer Configuration settings - do not modify
-#Sun May 03 11:52:51 ART 2015
+#Sun May 03 13:56:05 ART 2015
 Dma.Request0=SPI2_RX
 Dma.RequestsNb=1
 Dma.SPI2_RX.0.Channel=DMA_CHANNEL_0
@@ -16,7 +16,7 @@ Dma.SPI2_RX.0.RequestParameters=Instance,Channel,Direction,PeriphInc,MemInc,Peri
 FATFS.IPParameters=_USE_LFN,_FS_RPATH,_FS_LOCK
 FATFS._FS_LOCK=20
 FATFS._FS_RPATH=2
-FATFS._USE_LFN=0
+FATFS._USE_LFN=3
 FREERTOS.IPParameters=configCHECK_FOR_STACK_OVERFLOW,Tasks01,configTOTAL_HEAP_SIZE
 FREERTOS.Tasks01=defaultTask,0,128,StartDefaultTask
 FREERTOS.configCHECK_FOR_STACK_OVERFLOW=1
