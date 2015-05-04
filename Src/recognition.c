@@ -72,6 +72,9 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	// Allocate memeory for matrices used for calculation	
 	if( (dtw_mtx = pvPortMalloc( reduce_rows * costmtxcols * sizeof(*dtw_mtx) ) ) == NULL)					Error_Handler();
 		
+	// Initialize dist measurement
+	init_dist(params);
+	
 	// Start at (0,0) and initialized everithing in inf. I put costmtxcols, because it will be moved
 	dtw_mtx[costmtxcols] = 0;
 	for( i=costmtxcols+1 ; i < reduce_rows * costmtxcols ; i++ )
@@ -93,7 +96,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 		for( j = max(1,i-width) ; j < min(costmtxcols,i+1+width) ; j++ )
 		{
 			// Get distance
-			cost = dist( &(a->pData[(j-1)*params]) , &(b->pData[(i-1)*params]) , params);
+			cost = dist( &(a->pData[(j-1)*params]) , &(b->pData[(i-1)*params]));
 			
 			// Calculate indexes
 			idx 					=								idx_dtw_mtx_last_row + 	j		;
@@ -137,10 +140,13 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	// Cierro el archivo
 	f_close(&dist_mtx_file);
 
+	// De-init dist measurement
+	deinit_dist();
+	
 	// Return distance value
 	result = dtw_mtx[ dtw_mtx_size - 1 ];
 	
-		// Free memory
+	// Free memory
 	vPortFree(dtw_mtx);
 
 	return result;
@@ -165,9 +171,12 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 	uint16_t costmtxrows = b->numRows;
 	uint16_t params      = b->numCols; // == a->numCols;
 	
-	// Allocate memeory for matrices used for calculation	
+	// Allocate mememory for matrices used for calculation	
 	if( (dtw_mtx = pvPortMalloc( costmtxrows * costmtxcols * sizeof(*dtw_mtx) ) ) == NULL)					Error_Handler();
 	if( (whole_path = pvPortMalloc( costmtxrows * costmtxcols * sizeof(*whole_path) ) ) == NULL);		Error_Handler();
+	
+	// Initialize dist measurement
+	init_dist(params);
 	
 	// Initialized everithing in inf
 	for( i=0 ; i < costmtxrows ; i++ )
@@ -183,7 +192,7 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 		for( j = max(1,i-width) ; j < min(costmtxcols,i+width) ; j++ )
 		{
 			// Get distance
-			cost = dist( &(a->pData[i*params]) , &(b->pData[j*params]) , params);
+			cost = dist( &(a->pData[i*params]) , &(b->pData[j*params]));
 			
 			// Calculate indexes
 			idx 					=		i		*	costmtxcols + 	j		;
@@ -229,6 +238,9 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 			path[i] = whole_path[ path[i-1] ];
 	}
 	
+	// De-init dist measurement
+	deinit_dist();
+	
 	// Free memory
 	vPortFree(dtw_mtx);
 	vPortFree(whole_path);
@@ -237,30 +249,37 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 	return dtw_mtx[costmtxrows*costmtxcols];
 }
 
-float32_t dist (float32_t *pSrcA, float32_t *pSrcB, uint16_t blockSize){
-	float32_t *pDst,power,result;
-	
+
+//---------------------------------------
+//-						Distance Measure					-
+//---------------------------------------
+float32_t *pDst;
+uint32_t dist_blockSize;
+void init_dist (uint32_t blockSize){
 	// Allocate memory
 	pDst = pvPortMalloc(blockSize * sizeof(*pDst));
+}
+void deinit_dist (void){
+	// Free Memory
+	vPortFree(pDst);;
+}
+float32_t dist (float32_t *pSrcA, float32_t *pSrcB){
+	float32_t *pDst,power,result;
 	
 	// Calculo la distancia euclidia
-	arm_sub_f32 (pSrcA, pSrcB, pDst, blockSize);		// pDst[n] = pSrcA[n] - pSrcB[n]
-	arm_power_f32	(pDst, blockSize, &power); 				// pDst[1]^2 + pDst[2]^2 + ... + pDst[n]^2
-	arm_sqrt_f32 	(power,&result);									// sqrt(power)
-	
-	// Free Memory
-	vPortFree(pDst);
+	arm_sub_f32 (pSrcA, pSrcB, pDst, dist_blockSize);		// pDst[n] = pSrcA[n] - pSrcB[n]
+	arm_power_f32	(pDst, dist_blockSize, &power); 			// pDst[1]^2 + pDst[2]^2 + ... + pDst[n]^2
+	arm_sqrt_f32 	(power,&result);											// sqrt(power)
 	
 	return result;
 }
-/*Function to find minimum of x and y*/
-int min(int x, int y)
-{
+
+//---------------------------------------
+//-				Math Support Functions				-
+//---------------------------------------
+int min(int x, int y) {
   return y ^ ((x ^ y) & -(x < y));
 }
- 
-/*Function to find maximum of x and y*/
-int max(int x, int y)
-{
+int max(int x, int y) {
   return x ^ ((x ^ y) & -(x < y));
 }

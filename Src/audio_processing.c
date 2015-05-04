@@ -63,6 +63,7 @@
 		float32_t *SilSpFlat  = NULL;
 		
 		float32_t SilEnergyMean;
+		uint32_t	SilFmaxMean;
 		float32_t SilSpFlatMean;
 	//	float32_t SilZeroCrossMean;
 
@@ -71,6 +72,7 @@
 	//	float32_t SilZeroCrossDev;
 
 		float32_t THD_E;
+		uint32_t	THD_FMX;
 		float32_t THD_SF;
 
 	
@@ -118,7 +120,7 @@ ProcStatus MFCC_float (uint16_t *frame) {
 	firstProcStage (use_vad, vars_buffers);
 		
 	/* Check if it is a Voiced Frame */
-	if( !use_vad || (Energy > proc_conf.thd_e   &&   proc_conf.thd_fl < Frecmax && Frecmax< proc_conf.thd_fh) || SpFlat > proc_conf.thd_sf)
+	if( !use_vad || (Energy > THD_E   &&  Frecmax< THD_FMX) || SpFlat > THD_SF)
 		secondProcStage (MFCC_buff, vars_buffers);
 	else
 		return NO_VOICE;
@@ -176,6 +178,7 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 
 	// Calculate Mean of Features
 	arm_mean_f32 (SilEnergy, calib_conf.calib_len, &SilEnergyMean);
+	arm_mean_q31 ((q31_t*)SilFrecmax, calib_conf.calib_len,(q31_t*) &SilFmaxMean);
 	arm_mean_f32 (SilSpFlat, calib_conf.calib_len, &SilSpFlatMean);
 
 	// Calculate Deviation of Features
@@ -183,8 +186,9 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 	arm_std_f32 (SilSpFlat, calib_conf.calib_len, &SilSpFlatDev);
 
 	// Set Thresholds
-	THD_E  = (float32_t) SilEnergyMean * proc_conf.thd_e * SilEnergyDev;
-	THD_SF = (float32_t) abs(SilSpFlatMean) * proc_conf.thd_sf * SilSpFlatDev;
+	THD_E  = (float32_t) SilEnergyMean + calib_conf.thd_scl_eng * SilEnergyDev;
+	THD_FMX = SilFmaxMean > calib_conf.thd_min_fmax ? SilFmaxMean : calib_conf.thd_min_fmax;
+	THD_SF = (float32_t) abs(SilSpFlatMean) + calib_conf.thd_scl_sf * SilSpFlatDev;
 
 	if(save_calib_vars)
 	{
@@ -207,14 +211,15 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 		
 		// Guardo la Frecuencia Máxima
 		if(f_open(&CalibFile, "CLB_FMX.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilFmaxMean, sizeof(SilFmaxMean),	(void*)&byteswritten) != FR_OK) Error_Handler();
 		if(f_write(&CalibFile, SilFrecmax, calib_conf.calib_len * sizeof(*SilFrecmax),	(void*)&byteswritten) != FR_OK) Error_Handler();
 		f_close(&CalibFile);
 		
 		// Guardo los thresholds
 		if(f_open(&CalibFile, "CLB_THD.bin", FA_CREATE_NEW | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_E, 	sizeof(THD_E), 	(void*)&byteswritten) != FR_OK) Error_Handler();
-//		if(f_write(&CalibFile, &THD_FMX, 	sizeof(THD_FMX), 	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_SF, sizeof(THD_SF),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_E, 		sizeof(THD_E), 		(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_FMX,	sizeof(THD_FMX),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_SF, 	sizeof(THD_SF),		(void*)&byteswritten) != FR_OK) Error_Handler();
 		f_close(&CalibFile);
 	}
 	

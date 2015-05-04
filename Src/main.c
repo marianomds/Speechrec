@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 22/09/2014 17:13:11
+  * Date               : 03/05/2015 13:56:12
   * Description        : Main program body
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -35,33 +35,39 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
-#include "ff.h"
-#include "ff_gen_drv.h"
-#include "usbh_diskio.h" /* defines USBH_Driver as external */
 #include "dma.h"
+#include "fatfs.h"
 #include "i2s.h"
 #include "usb_host.h"
 #include "gpio.h"
 
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
 /* Private variables ---------------------------------------------------------*/
 
-uint8_t USBH_DriverNum;      /* FatFS USBH part */
-char USBH_Path[4];           /* USBH logical drive path */
+/* USER CODE BEGIN PV */
 
-/* USER CODE BEGIN 0 */
-
-#include "Application.h"
-
-/* USER CODE END 0 */
+/* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void StartThread(void const * argument);
+void MX_FREERTOS_Init(void);
+
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
 
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -72,36 +78,40 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* System interrupt init*/
-  /* Sets the priority grouping field */
-  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_I2S2_Init();
 
   /* USER CODE BEGIN 2 */
-	
+
   /* USER CODE END 2 */
 
-  /* Code generated for FreeRTOS */
-  /* Create Start thread */
-  osThreadDef(USER_Thread, StartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-  osThreadCreate (osThread(USER_Thread), NULL);
+  /* Call init function for freertos objects (in freertos.c) */
+  MX_FREERTOS_Init();
 
   /* Start scheduler */
-  osKernelStart(NULL, NULL);
-
+  osKernelStart();
+  
   /* We should never get here as control is now taken by the scheduler */
 
-  /* USER CODE BEGIN 3 */
   /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
+  /* USER CODE BEGIN 3 */
 		
+		
+		
+	/* USER CODE END 3 */
   }
+  
+  /* USER CODE END WHILE */
+
+  /* USER CODE BEGIN 3 */
+		
+		
+		
   /* USER CODE END 3 */
 
 }
@@ -111,9 +121,9 @@ int main(void)
 void SystemClock_Config(void)
 {
 
+  RCC_OscInitTypeDef RCC_OscInitStruct;
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
-  RCC_OscInitTypeDef RCC_OscInitStruct;
 
   __PWR_CLK_ENABLE();
 
@@ -148,29 +158,6 @@ void SystemClock_Config(void)
 
 /* USER CODE END 4 */
 
-static void StartThread(void const * argument) {
-
-    /*## FatFS: Link the USBH disk I/O driver ###############################*/
-  USBH_DriverNum = FATFS_LinkDriver(&USBH_Driver, USBH_Path);
-          
-                     
-  /* init code for USB_HOST */
-  MX_USB_HOST_Init();
-
-  /* USER CODE BEGIN 5 */
-
-  /* Infinite loop */
-  for(;;)
-  {
-		Configure_Application();
-		osThreadTerminate(osThreadGetId());
-  }
-
-  /* USER CODE END 5 */ 
-
-}
- 
-
 #ifdef USE_FULL_ASSERT
 
 /**
@@ -183,8 +170,8 @@ static void StartThread(void const * argument) {
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-/* User can add his own implementation to report the file name and line number,
-ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line number,
+    ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 
 }

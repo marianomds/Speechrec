@@ -2,9 +2,9 @@
   ******************************************************************************
   * @file    usbh_msc.h
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
-  * @brief   This file contains all the prototypes for the usbh_msc_core.c
+  * @version V3.2.0
+  * @date    04-November-2014
+  * @brief   This file contains all the prototypes for the usbh_msc.c
   ******************************************************************************
   * @attention
   *
@@ -29,6 +29,10 @@
 #ifndef __USBH_MSC_H
 #define __USBH_MSC_H
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_core.h"
 #include "usbh_msc_bot.h"
@@ -47,7 +51,7 @@
   */
   
 /** @defgroup USBH_MSC_CORE
-  * @brief This file is the Header file for usbh_msc_core.c
+  * @brief This file is the Header file for usbh_msc.c
   * @{
   */ 
 
@@ -197,6 +201,10 @@ USBH_StatusTypeDef USBH_MSC_Write(USBH_HandleTypeDef *phost,
 /**
   * @}
   */ 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* __USBH_MSC_H */
 

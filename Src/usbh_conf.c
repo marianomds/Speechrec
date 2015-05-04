@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * @file            : usbh_conf.c
-  * @date            : 22/09/2014 17:13:10 
+  * @date            : 03/05/2015 13:56:10 
   * @version         : v1.0_Cube
   * @brief           : This file implements the board support package for the USB host library
   ******************************************************************************
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -32,8 +32,6 @@
   ******************************************************************************
 */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx.h"
-#include "stm32f4xx_hal.h"
 #include "usbh_core.h"
 
 HCD_HandleTypeDef hhcd_USB_OTG_FS;
@@ -48,6 +46,9 @@ void HAL_HCD_MspInit(HCD_HandleTypeDef* hhcd)
   GPIO_InitTypeDef GPIO_InitStruct;
   if(hhcd->Instance==USB_OTG_FS)
   {
+  /* USER CODE BEGIN USB_OTG_FS_MspInit 0 */
+
+  /* USER CODE END USB_OTG_FS_MspInit 0 */
     /* Peripheral clock enable */
     __USB_OTG_FS_CLK_ENABLE();
   
@@ -62,11 +63,11 @@ void HAL_HCD_MspInit(HCD_HandleTypeDef* hhcd)
     GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* Peripheral interrupt init*/
-    /* Sets the priority grouping field */
-    HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
     HAL_NVIC_SetPriority(OTG_FS_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+  /* USER CODE BEGIN USB_OTG_FS_MspInit 1 */
+
+  /* USER CODE END USB_OTG_FS_MspInit 1 */
   }
 }
 
@@ -74,6 +75,9 @@ void HAL_HCD_MspDeInit(HCD_HandleTypeDef* hhcd)
 {
   if(hhcd->Instance==USB_OTG_FS)
   {
+  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 0 */
+
+  /* USER CODE END USB_OTG_FS_MspDeInit 0 */
     /* Peripheral clock disable */
     __USB_OTG_FS_CLK_DISABLE();
   
@@ -85,6 +89,10 @@ void HAL_HCD_MspDeInit(HCD_HandleTypeDef* hhcd)
 
     /* Peripheral interrupt Deinit*/
     HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 1 */
+
+  /* USER CODE END USB_OTG_FS_MspDeInit 1 */
   }
 }
 
@@ -135,10 +143,9 @@ void HAL_HCD_HC_NotifyURBChange_Callback(HCD_HandleTypeDef *hhcd, uint8_t chnum,
 *******************************************************************************/
 /**
   * @brief  USBH_LL_Init 
-  *         Initialize the HOST portion of the driver.
-  * @param  phost: Selected device
-  * @param  base_address: OTG base address
-  * @retval Status
+  *         Initialize the Low Level portion of the Host driver.
+  * @param  phost: Host handle
+  * @retval USBH Status
   */
 USBH_StatusTypeDef  USBH_LL_Init (USBH_HandleTypeDef *phost)
 {
@@ -149,14 +156,11 @@ USBH_StatusTypeDef  USBH_LL_Init (USBH_HandleTypeDef *phost)
   phost->pData = &hhcd_USB_OTG_FS;
 
   hhcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hhcd_USB_OTG_FS.Init.Host_channels = 11;
+  hhcd_USB_OTG_FS.Init.Host_channels = 8;
   hhcd_USB_OTG_FS.Init.speed = HCD_SPEED_FULL;
   hhcd_USB_OTG_FS.Init.dma_enable = DISABLE;
   hhcd_USB_OTG_FS.Init.phy_itface = HCD_PHY_EMBEDDED;
   hhcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
-  hhcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
-  hhcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
-  hhcd_USB_OTG_FS.Init.use_external_vbus = DISABLE;
   HAL_HCD_Init(&hhcd_USB_OTG_FS);
 
   USBH_LL_SetTimer (phost, HAL_HCD_GetCurrentFrame(&hhcd_USB_OTG_FS));
@@ -165,10 +169,10 @@ USBH_StatusTypeDef  USBH_LL_Init (USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_DeInit 
+  *         De-Initialize the Low Level portion of the Host driver.
+  * @param  phost: Host handle
+  * @retval USBH Status
   */
 USBH_StatusTypeDef  USBH_LL_DeInit (USBH_HandleTypeDef *phost)
 {
@@ -177,10 +181,10 @@ USBH_StatusTypeDef  USBH_LL_DeInit (USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_Start 
+  *         Start the Low Level portion of the Host driver.
+  * @param  phost: Host handle
+  * @retval USBH Status
   */
 USBH_StatusTypeDef  USBH_LL_Start(USBH_HandleTypeDef *phost)
 {
@@ -189,10 +193,10 @@ USBH_StatusTypeDef  USBH_LL_Start(USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_Stop 
+  *         Stop the Low Level portion of the Host driver.
+  * @param  phost: Host handle
+  * @retval USBH Status
   */
 USBH_StatusTypeDef  USBH_LL_Stop (USBH_HandleTypeDef *phost)
 {
@@ -201,10 +205,10 @@ USBH_StatusTypeDef  USBH_LL_Stop (USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_GetSpeed 
+  *         Return the USB Host Speed from the Low Level Driver.
+  * @param  phost: Host handle
+  * @retval USBH Speeds
   */
 USBH_SpeedTypeDef USBH_LL_GetSpeed  (USBH_HandleTypeDef *phost)
 {
@@ -232,10 +236,10 @@ USBH_SpeedTypeDef USBH_LL_GetSpeed  (USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_ResetPort 
+  *         Reset the Host Port of the Low Level Driver.
+  * @param  phost: Host handle
+  * @retval USBH Status
   */
 USBH_StatusTypeDef USBH_LL_ResetPort (USBH_HandleTypeDef *phost) 
 {
@@ -244,10 +248,11 @@ USBH_StatusTypeDef USBH_LL_ResetPort (USBH_HandleTypeDef *phost)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_GetLastXferSize 
+  *         Return the last transfered packet size.
+  * @param  phost: Host handle
+  * @param  pipe: Pipe index   
+  * @retval Packet Size
   */
 uint32_t USBH_LL_GetLastXferSize  (USBH_HandleTypeDef *phost, uint8_t pipe)  
 {
@@ -255,10 +260,16 @@ uint32_t USBH_LL_GetLastXferSize  (USBH_HandleTypeDef *phost, uint8_t pipe)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_OpenPipe 
+  *         Open a pipe of the Low Level Driver.
+  * @param  phost: Host handle
+  * @param  pipe_num: Pipe index
+  * @param  epnum: Endpoint Number
+  * @param  dev_address: Device USB address
+  * @param  speed: Device Speed 
+  * @param  ep_type: Endpoint Type
+  * @param  mps: Endpoint Max Packet Size                 
+  * @retval USBH Status
   */
 USBH_StatusTypeDef   USBH_LL_OpenPipe    (USBH_HandleTypeDef *phost, 
                                       uint8_t pipe_num,
@@ -279,10 +290,11 @@ USBH_StatusTypeDef   USBH_LL_OpenPipe    (USBH_HandleTypeDef *phost,
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_ClosePipe 
+  *         Close a pipe of the Low Level Driver.
+  * @param  phost: Host handle
+  * @param  pipe_num: Pipe index               
+  * @retval USBH Status
   */
 USBH_StatusTypeDef   USBH_LL_ClosePipe   (USBH_HandleTypeDef *phost, uint8_t pipe)   
 {
@@ -291,9 +303,31 @@ USBH_StatusTypeDef   USBH_LL_ClosePipe   (USBH_HandleTypeDef *phost, uint8_t pip
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
+  * @brief  USBH_LL_SubmitURB 
+  *         Submit a new URB to the low level driver.
+  * @param  phost: Host handle
+  * @param  pipe: Pipe index    
+  *         This parameter can be a value from 1 to 15
+  * @param  direction : Channel number
+  *          This parameter can be one of the these values:
+  *           0 : Output 
+  *           1 : Input
+  * @param  ep_type : Endpoint Type
+  *          This parameter can be one of the these values:
+  *            @arg EP_TYPE_CTRL: Control type
+  *            @arg EP_TYPE_ISOC: Isochrounous type
+  *            @arg EP_TYPE_BULK: Bulk type
+  *            @arg EP_TYPE_INTR: Interrupt type
+  * @param  token : Endpoint Type
+  *          This parameter can be one of the these values:
+  *            @arg 0: PID_SETUP
+  *            @arg 1: PID_DATA
+  * @param  pbuff : pointer to URB data
+  * @param  length : Length of URB data
+  * @param  do_ping : activate do ping protocol (for high speed only)
+  *          This parameter can be one of the these values:
+  *           0 : do ping inactive 
+  *           1 : do ping active 
   * @retval Status
   */
 
@@ -318,10 +352,19 @@ USBH_StatusTypeDef   USBH_LL_SubmitURB  (USBH_HandleTypeDef *phost,
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_LL_GetURBState 
+  *         Get a URB state from the low level driver.
+  * @param  phost: Host handle
+  * @param  pipe: Pipe index
+  *         This parameter can be a value from 1 to 15
+  * @retval URB state
+  *          This parameter can be one of the these values:
+  *            @arg URB_IDLE
+  *            @arg URB_DONE
+  *            @arg URB_NOTREADY
+  *            @arg URB_NYET 
+  *            @arg URB_ERROR  
+  *            @arg URB_STALL      
   */
 USBH_URBStateTypeDef  USBH_LL_GetURBState (USBH_HandleTypeDef *phost, uint8_t pipe) 
 {
@@ -329,9 +372,13 @@ USBH_URBStateTypeDef  USBH_LL_GetURBState (USBH_HandleTypeDef *phost, uint8_t pi
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
+  * @brief  USBH_LL_DriverVBUS 
+  *         Drive VBUS.
+  * @param  phost: Host handle
+  * @param  state : VBUS state
+  *          This parameter can be one of the these values:
+  *           0 : VBUS Active 
+  *           1 : VBUS Inactive
   * @retval Status
   */
 USBH_StatusTypeDef  USBH_LL_DriverVBUS (USBH_HandleTypeDef *phost, uint8_t state)
@@ -361,9 +408,11 @@ USBH_StatusTypeDef  USBH_LL_DriverVBUS (USBH_HandleTypeDef *phost, uint8_t state
 
 /**
   * @brief  USBH_LL_SetToggle 
-  *         Initialize the HOST portion of the driver.
-  * @param  phost: Selected device
-  * @param  base_address: OTG base address
+  *         Set toggle for a pipe.
+  * @param  phost: Host handle
+  * @param  pipe: Pipe index
+  * @param  pipe_num: Pipe index     
+  * @param  toggle: toggle (0/1)
   * @retval Status
   */
 USBH_StatusTypeDef   USBH_LL_SetToggle   (USBH_HandleTypeDef *phost, uint8_t pipe, uint8_t toggle)   
@@ -385,10 +434,10 @@ USBH_StatusTypeDef   USBH_LL_SetToggle   (USBH_HandleTypeDef *phost, uint8_t pip
 
 /**
   * @brief  USBH_LL_GetToggle 
-  *         Initialize the HOST portion of the driver.
-  * @param  phost: Selected device
-  * @param  base_address: OTG base address
-  * @retval Status
+  *         Return the current toggle of a pipe.
+  * @param  phost: Host handle
+  * @param  pipe: Pipe index
+  * @retval toggle (0/1)
   */
 uint8_t  USBH_LL_GetToggle   (USBH_HandleTypeDef *phost, uint8_t pipe)   
 {
@@ -408,10 +457,10 @@ uint8_t  USBH_LL_GetToggle   (USBH_HandleTypeDef *phost, uint8_t pipe)
 }
 
 /**
-  * @brief   
-  * @param  
-  * @param  
-  * @retval Status
+  * @brief  USBH_Delay 
+  *         Delay routine for the USB Host Library
+  * @param  Delay: Delay in ms
+  * @retval None
   */
 void  USBH_Delay (uint32_t Delay)
 {

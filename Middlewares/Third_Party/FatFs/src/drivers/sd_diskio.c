@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    sd_diskio.c
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    22-April-2014
+  * @version V1.2.1
+  * @date    20-November-2014
   * @brief   SD Disk I/O driver
   ******************************************************************************
   * @attention
@@ -41,9 +41,9 @@ static volatile DSTATUS Stat = STA_NOINIT;
 /* Private function prototypes -----------------------------------------------*/
 DSTATUS SD_initialize (void);
 DSTATUS SD_status (void);
-DRESULT SD_read (BYTE*, DWORD, BYTE);
+DRESULT SD_read (BYTE*, DWORD, UINT);
 #if _USE_WRITE == 1
-  DRESULT SD_write (const BYTE*, DWORD, BYTE);
+  DRESULT SD_write (const BYTE*, DWORD, UINT);
 #endif /* _USE_WRITE == 1 */
 #if _USE_IOCTL == 1
   DRESULT SD_ioctl (BYTE, void*);
@@ -107,7 +107,7 @@ DSTATUS SD_status(void)
   * @param  count: Number of sectors to read (1..128)
   * @retval DRESULT: Operation result
   */
-DRESULT SD_read(BYTE *buff, DWORD sector, BYTE count)
+DRESULT SD_read(BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_OK;
   
@@ -130,7 +130,7 @@ DRESULT SD_read(BYTE *buff, DWORD sector, BYTE count)
   * @retval DRESULT: Operation result
   */
 #if _USE_WRITE == 1
-DRESULT SD_write(const BYTE *buff, DWORD sector, BYTE count)
+DRESULT SD_write(const BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_OK;
   

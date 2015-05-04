@@ -1,12 +1,12 @@
 /**
   ******************************************************************************
   * File Name          : I2S.c
-  * Date               : 22/09/2014 17:13:09
+  * Date               : 03/05/2015 13:56:09
   * Description        : This file provides code for the configuration
   *                      of the I2S instances.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -69,6 +69,9 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
   GPIO_InitTypeDef GPIO_InitStruct;
   if(hi2s->Instance==SPI2)
   {
+  /* USER CODE BEGIN SPI2_MspInit 0 */
+
+  /* USER CODE END SPI2_MspInit 0 */
     /* Peripheral clock enable */
     __SPI2_CLK_ENABLE();
   
@@ -114,6 +117,9 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
 
     __HAL_LINKDMA(hi2s,hdmarx,hdma_spi2_rx);
 
+  /* USER CODE BEGIN SPI2_MspInit 1 */
+
+  /* USER CODE END SPI2_MspInit 1 */
   }
 }
 
@@ -122,6 +128,9 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 
   if(hi2s->Instance==SPI2)
   {
+  /* USER CODE BEGIN SPI2_MspDeInit 0 */
+
+  /* USER CODE END SPI2_MspDeInit 0 */
     /* Peripheral clock disable */
     __SPI2_CLK_DISABLE();
   
@@ -136,8 +145,15 @@ void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
 
     /* Peripheral DMA DeInit*/
     HAL_DMA_DeInit(hi2s->hdmarx);
+  /* USER CODE BEGIN SPI2_MspDeInit 1 */
+
+  /* USER CODE END SPI2_MspDeInit 1 */
   }
 } 
+
+/* USER CODE BEGIN 1 */
+
+/* USER CODE END 1 */
 
 /**
   * @}

@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_core.c 
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   This file implements the functions for the core state machine process
   *          the enumeration and the control transfer process
   ******************************************************************************
@@ -39,7 +39,7 @@
   */
 
 /** @defgroup USBH_CORE 
-  * @brief TThis file handles the basic enumaration when a device is connected 
+  * @brief This file handles the basic enumeration when a device is connected 
   *          to the host.
   * @{
   */ 
@@ -204,7 +204,7 @@ USBH_StatusTypeDef  USBH_RegisterClass(USBH_HandleTypeDef *phost, USBH_ClassType
   {
     if(phost->ClassNumber < USBH_MAX_NUM_SUPPORTED_CLASS)
     {
-      /* link the class tgo the USB Host handle */
+      /* link the class to the USB Host handle */
       phost->pClass[phost->ClassNumber++] = pclass;
       status = USBH_OK;
     }
@@ -299,7 +299,7 @@ uint8_t  USBH_FindInterface(USBH_HandleTypeDef *phost, uint8_t Class, uint8_t Su
   *         Find the interface index for a specific class interface and alternate setting number.
   * @param  phost: Host Handle
   * @param  interface_number: interface number
-  * @param  alt_settings    : alaternate setting number
+  * @param  alt_settings    : alternate setting number
   * @retval interface index in the configuration structure
   * @note : (1)interface index 0xFF means interface index not found
   */
@@ -551,8 +551,7 @@ USBH_StatusTypeDef  USBH_Process(USBH_HandleTypeDef *phost)
     break;    
     
   case HOST_CLASS_REQUEST:  
-    /* process class standard contol requests state machine */ 
-    
+    /* process class standard control requests state machine */
     if(phost->pActiveClass != NULL)
     {
       status = phost->pActiveClass->Requests(phost);
@@ -829,7 +828,6 @@ USBH_StatusTypeDef  USBH_LL_Connect  (USBH_HandleTypeDef *phost)
   if(phost->gState == HOST_IDLE )
   {
     phost->device.is_connected = 1;
-    phost->gState = HOST_IDLE ;
     
     if(phost->pUser != NULL)
     {    
@@ -849,7 +847,7 @@ USBH_StatusTypeDef  USBH_LL_Connect  (USBH_HandleTypeDef *phost)
 
 /**
   * @brief  USBH_LL_Disconnect 
-  *         Handle USB Host disconnexion event
+  *         Handle USB Host disconnection event
   * @param  phost: Host Handle
   * @retval USBH_Status
   */

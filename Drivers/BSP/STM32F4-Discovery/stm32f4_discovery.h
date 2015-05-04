@@ -2,14 +2,14 @@
   ******************************************************************************
   * @file    stm32f4_discovery.h
   * @author  MCD Application Team
-  * @version V2.0.2
-  * @date    26-June-2014
+  * @version V2.0.4
+  * @date    02-March-2015
   * @brief   This file contains definitions for STM32F4-Discovery Kit's Leds and 
   *          push-button hardware resources.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -65,13 +65,9 @@
 typedef enum 
 {
   LED4 = 0,
-	GLED = 0,
   LED3 = 1,
-	OLED = 1,
   LED5 = 2,
-	RLED = 2,
-  LED6 = 3,
-	BLED = 3,
+  LED6 = 3
 } Led_TypeDef;
 
 typedef enum 
@@ -124,14 +120,17 @@ typedef enum
 #define LED6_GPIO_CLK_ENABLE()           __GPIOD_CLK_ENABLE()  
 #define LED6_GPIO_CLK_DISABLE()          __GPIOD_CLK_DISABLE()  
 
+#define LEDx_GPIO_CLK_ENABLE(__INDEX__) do{if((__INDEX__) == 0) LED4_GPIO_CLK_ENABLE(); else \
+                                           if((__INDEX__) == 1) LED3_GPIO_CLK_ENABLE(); else \
+                                           if((__INDEX__) == 2) LED5_GPIO_CLK_ENABLE(); else \
+                                           if((__INDEX__) == 3) LED6_GPIO_CLK_ENABLE(); \
+                                           }while(0)
 
-#define LEDx_GPIO_CLK_ENABLE(__INDEX__)   (((__INDEX__) == 0) ? LED4_GPIO_CLK_ENABLE() :\
-                                           ((__INDEX__) == 1) ? LED3_GPIO_CLK_ENABLE() :\
-                                           ((__INDEX__) == 2) ? LED5_GPIO_CLK_ENABLE() : LED6_GPIO_CLK_ENABLE())
-
-#define LEDx_GPIO_CLK_DISABLE(__INDEX__)  (((__INDEX__) == 0) ? LED4_GPIO_CLK_DISABLE() :\
-                                           ((__INDEX__) == 1) ? LED3_GPIO_CLK_DISABLE() :\
-                                           ((__INDEX__) == 2) ? LED5_GPIO_CLK_DISABLE() : LED6_GPIO_CLK_DISABLE())
+#define LEDx_GPIO_CLK_DISABLE(__INDEX__) do{if((__INDEX__) == 0) LED4_GPIO_CLK_DISABLE(); else \
+                                            if((__INDEX__) == 1) LED3_GPIO_CLK_DISABLE(); else \
+                                            if((__INDEX__) == 2) LED5_GPIO_CLK_DISABLE(); else \
+                                            if((__INDEX__) == 3) LED6_GPIO_CLK_DISABLE(); \
+                                            }while(0)
 /**
   * @}
   */ 
@@ -139,7 +138,7 @@ typedef enum
 /** @addtogroup STM32F4_DISCOVERY_LOW_LEVEL_BUTTON
   * @{
   */  
-#define BUTTONn                          1  
+#define BUTTONn                          1 
 
 /**
  * @brief Wakeup push-button
@@ -150,10 +149,11 @@ typedef enum
 #define KEY_BUTTON_GPIO_CLK_DISABLE() __GPIOA_CLK_DISABLE()
 #define KEY_BUTTON_EXTI_IRQn          EXTI0_IRQn 
 
+#define BUTTONx_GPIO_CLK_ENABLE(__INDEX__)    do{if((__INDEX__) == 0) KEY_BUTTON_GPIO_CLK_ENABLE(); \
+                                                }while(0)
 
-#define BUTTONx_GPIO_CLK_ENABLE(__INDEX__)    (KEY_BUTTON_GPIO_CLK_ENABLE())
-
-#define BUTTONx_GPIO_CLK_DISABLE(__INDEX__)    (KEY_BUTTON_GPIO_CLK_DISABLE())
+#define BUTTONx_GPIO_CLK_DISABLE(__INDEX__)    do{if((__INDEX__) == 0) KEY_BUTTON_GPIO_CLK_DISABLE(); \
+                                                 }while(0)
 /**
   * @}
   */ 
@@ -183,9 +183,9 @@ typedef enum
 
 /*############################# I2C1 #########################################*/
 /* I2C clock speed configuration (in Hz) */
-#ifndef I2C_SPEED
- #define I2C_SPEED                            100000
-#endif /* I2C_SPEED */
+#ifndef BSP_I2C_SPEED
+ #define BSP_I2C_SPEED                            100000
+#endif /* BSP_I2C_SPEED */
 
 /* I2C peripheral configuration defines (control interface of the audio codec) */
 #define DISCOVERY_I2Cx                            I2C1

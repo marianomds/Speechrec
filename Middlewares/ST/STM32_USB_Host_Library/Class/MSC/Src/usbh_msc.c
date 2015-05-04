@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_msc.c
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   This file implements the MSC class driver functions
   *          ===================================================================      
   *                                MSC Class  Description
@@ -164,7 +164,7 @@ static USBH_StatusTypeDef USBH_MSC_InterfaceInit (USBH_HandleTypeDef *phost)
     USBH_SelectInterface (phost, interface);
     
     phost->pActiveClass->pData = (MSC_HandleTypeDef *)USBH_malloc (sizeof(MSC_HandleTypeDef));
-    MSC_Handle =  phost->pActiveClass->pData;
+    MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
     
     if(phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[0].bEndpointAddress & 0x80)
     {
@@ -234,7 +234,7 @@ static USBH_StatusTypeDef USBH_MSC_InterfaceInit (USBH_HandleTypeDef *phost)
   */
 USBH_StatusTypeDef USBH_MSC_InterfaceDeInit (USBH_HandleTypeDef *phost)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
 
   if ( MSC_Handle->OutPipe)
   {
@@ -268,7 +268,7 @@ USBH_StatusTypeDef USBH_MSC_InterfaceDeInit (USBH_HandleTypeDef *phost)
   */
 static USBH_StatusTypeDef USBH_MSC_ClassRequest(USBH_HandleTypeDef *phost)
 {   
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;  
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;  
   USBH_StatusTypeDef status = USBH_BUSY;
   uint8_t i;
   
@@ -278,7 +278,17 @@ static USBH_StatusTypeDef USBH_MSC_ClassRequest(USBH_HandleTypeDef *phost)
   case MSC_REQ_IDLE:
   case MSC_REQ_GET_MAX_LUN:   
     /* Issue GetMaxLUN request */
-    if(USBH_MSC_BOT_REQ_GetMaxLUN(phost, (uint8_t *)&MSC_Handle->max_lun) == USBH_OK )
+    status = USBH_MSC_BOT_REQ_GetMaxLUN(phost, (uint8_t *)&MSC_Handle->max_lun);
+    
+    /* When devices do not support the GetMaxLun request, this should
+       be considred as only one logical unit is supported */
+    if(status == USBH_NOT_SUPPORTED)
+    {
+      MSC_Handle->max_lun = 0;
+      status = USBH_OK;
+    }
+    
+    if(status == USBH_OK)
     {
       MSC_Handle->max_lun = (uint8_t )(MSC_Handle->max_lun) + 1;
       USBH_UsrLog ("Number of supported LUN: %lu", (int32_t)(MSC_Handle->max_lun));
@@ -288,7 +298,6 @@ static USBH_StatusTypeDef USBH_MSC_ClassRequest(USBH_HandleTypeDef *phost)
         MSC_Handle->unit[i].prev_ready_state = USBH_FAIL;
         MSC_Handle->unit[i].state_changed = 0;
       }
-      status = USBH_OK;
     }
     break;
     
@@ -315,7 +324,7 @@ static USBH_StatusTypeDef USBH_MSC_ClassRequest(USBH_HandleTypeDef *phost)
   */
 static USBH_StatusTypeDef USBH_MSC_Process(USBH_HandleTypeDef *phost)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   USBH_StatusTypeDef error = USBH_BUSY ;
   USBH_StatusTypeDef scsi_status = USBH_BUSY ;  
   USBH_StatusTypeDef ready_status = USBH_BUSY ;
@@ -513,7 +522,7 @@ static USBH_StatusTypeDef USBH_MSC_SOFProcess(USBH_HandleTypeDef *phost)
   */
 static USBH_StatusTypeDef USBH_MSC_RdWrProcess(USBH_HandleTypeDef *phost, uint8_t lun)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   USBH_StatusTypeDef error = USBH_BUSY ;
   USBH_StatusTypeDef scsi_status = USBH_BUSY ;  
   
@@ -607,7 +616,7 @@ static USBH_StatusTypeDef USBH_MSC_RdWrProcess(USBH_HandleTypeDef *phost, uint8_
   */
 uint8_t  USBH_MSC_IsReady (USBH_HandleTypeDef *phost)
 {
-    MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;  
+    MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;  
     
   if(phost->gState == HOST_CLASS)
   {
@@ -627,7 +636,7 @@ uint8_t  USBH_MSC_IsReady (USBH_HandleTypeDef *phost)
   */
 int8_t  USBH_MSC_GetMaxLUN (USBH_HandleTypeDef *phost)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;    
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;    
   
   if ((phost->gState != HOST_CLASS) && (MSC_Handle->state == MSC_IDLE))
   {
@@ -645,7 +654,7 @@ int8_t  USBH_MSC_GetMaxLUN (USBH_HandleTypeDef *phost)
   */
 uint8_t  USBH_MSC_UnitIsReady (USBH_HandleTypeDef *phost, uint8_t lun)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;  
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;  
   
   if(phost->gState == HOST_CLASS)
   {
@@ -666,7 +675,7 @@ uint8_t  USBH_MSC_UnitIsReady (USBH_HandleTypeDef *phost, uint8_t lun)
   */
 USBH_StatusTypeDef USBH_MSC_GetLUNInfo(USBH_HandleTypeDef *phost, uint8_t lun, MSC_LUNTypeDef *info)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;    
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;    
   if(phost->gState == HOST_CLASS)
   {
     USBH_memcpy(info,&MSC_Handle->unit[lun], sizeof(MSC_LUNTypeDef));
@@ -695,7 +704,7 @@ USBH_StatusTypeDef USBH_MSC_Read(USBH_HandleTypeDef *phost,
                                      uint32_t length)
 {
   uint32_t timeout;
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;   
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;   
   
   if ((phost->device.is_connected == 0) || 
       (phost->gState != HOST_CLASS) || 
@@ -742,7 +751,7 @@ USBH_StatusTypeDef USBH_MSC_Write(USBH_HandleTypeDef *phost,
                                      uint32_t length)
 {
   uint32_t timeout;
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;   
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;   
   
   if ((phost->device.is_connected == 0) || 
       (phost->gState != HOST_CLASS) || 

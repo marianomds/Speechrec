@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    sdram_diskio.c
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    22-April-2014
+  * @version V1.2.1
+  * @date    20-November-2014
   * @brief   SDRAM Disk I/O driver
   ******************************************************************************
   * @attention
@@ -41,9 +41,9 @@ static volatile DSTATUS Stat = STA_NOINIT;
 /* Private function prototypes -----------------------------------------------*/
 DSTATUS SDRAMDISK_initialize (void);
 DSTATUS SDRAMDISK_status (void);
-DRESULT SDRAMDISK_read (BYTE*, DWORD, BYTE);
+DRESULT SDRAMDISK_read (BYTE*, DWORD, UINT);
 #if _USE_WRITE == 1
-  DRESULT SDRAMDISK_write (const BYTE*, DWORD, BYTE);
+  DRESULT SDRAMDISK_write (const BYTE*, DWORD, UINT);
 #endif /* _USE_WRITE == 1 */
 #if _USE_IOCTL == 1
   DRESULT SDRAMDISK_ioctl (BYTE, void*);
@@ -101,7 +101,7 @@ DSTATUS SDRAMDISK_status(void)
   * @param  count: Number of sectors to read (1..128)
   * @retval DRESULT: Operation result
   */
-DRESULT SDRAMDISK_read(BYTE *buff, DWORD sector, BYTE count)
+DRESULT SDRAMDISK_read(BYTE *buff, DWORD sector, UINT count)
 {
   uint32_t *pSrcBuffer = (uint32_t *)buff;
   uint32_t BufferSize = (BLOCK_SIZE * count)/4; 
@@ -123,7 +123,7 @@ DRESULT SDRAMDISK_read(BYTE *buff, DWORD sector, BYTE count)
   * @retval DRESULT: Operation result
   */
 #if _USE_WRITE == 1
-DRESULT SDRAMDISK_write(const BYTE *buff, DWORD sector, BYTE count)
+DRESULT SDRAMDISK_write(const BYTE *buff, DWORD sector, UINT count)
 { 
   uint32_t *pDstBuffer = (uint32_t *)buff;
   uint32_t BufferSize = (BLOCK_SIZE * count)/4 + count; 

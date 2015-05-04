@@ -2,14 +2,14 @@
   ******************************************************************************
   * @file    stm32f4_discovery_audio.c
   * @author  MCD Application Team
-  * @version V2.0.2
-  * @date    26-June-2014
+  * @version V2.0.4
+  * @date    02-March-2015
   * @brief   This file provides the Audio driver for the STM32F4-Discovery 
   *          board.  
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -157,6 +157,10 @@ b) RECORD A FILE:
 /** @defgroup STM32F4_DISCOVERY_AUDIO_Private_Defines
   * @{
   */ 
+/* These PLL parameters are valid when the f(VCO clock) = 1Mhz */
+const uint32_t I2SFreq[8] = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000};
+const uint32_t I2SPLLN[8] = {256, 429, 213, 429, 426, 271, 258, 344};
+const uint32_t I2SPLLR[8] = {5, 4, 4, 4, 4, 6, 3, 1};
 /**
   * @}
   */ 
@@ -214,28 +218,36 @@ uint8_t BSP_AUDIO_OUT_Init(uint16_t OutputDevice, uint8_t Volume, uint32_t Audio
   uint8_t ret = AUDIO_ERROR;
   uint32_t deviceid = 0x00;
   RCC_PeriphCLKInitTypeDef rccclkinit;
-
+  uint8_t index = 0, freqindex = 0xFF;
+  
+  for(index = 0; index < 8; index++)
+  {
+    if(I2SFreq[index] == AudioFreq)
+    {
+      freqindex = index;
+    }
+  }
   /* Enable PLLI2S clock */
   HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
   /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
-  if ((AudioFreq & 0x7) == 0)
+  if ((freqindex & 0x7) == 0)
   {
-    /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
-    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
-    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
+    /* I2S clock config 
+    PLLI2S_VCO = f(VCO clock) = f(PLLI2S clock input) × (PLLI2SN/PLLM)
+    I2SCLK = f(PLLI2S clock output) = f(VCO clock) / PLLI2SR */
     rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    rccclkinit.PLLI2S.PLLI2SN = 192;
-    rccclkinit.PLLI2S.PLLI2SR = 6;
+    rccclkinit.PLLI2S.PLLI2SN = I2SPLLN[freqindex];
+    rccclkinit.PLLI2S.PLLI2SR = I2SPLLR[freqindex];
     HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
   }
-  else
+  else 
   {
-    /* Other Frequency (11.025/22.500/44.100) */
-    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 290 Mhz */
-    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 290/2 = 145 Mhz */
+    /* I2S clock config 
+    PLLI2S_VCO = f(VCO clock) = f(PLLI2S clock input) × (PLLI2SN/PLLM)
+    I2SCLK = f(PLLI2S clock output) = f(VCO clock) / PLLI2SR */
     rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    rccclkinit.PLLI2S.PLLI2SN = 290;
-    rccclkinit.PLLI2S.PLLI2SR = 2;
+    rccclkinit.PLLI2S.PLLI2SN = 258;
+    rccclkinit.PLLI2S.PLLI2SR = 3;
     HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
   }
 

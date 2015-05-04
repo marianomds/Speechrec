@@ -1,12 +1,12 @@
 /**
   ******************************************************************************
   * File Name          : dma.h
-  * Date               : 22/09/2014 17:13:08
+  * Date               : 03/05/2015 13:56:06
   * Description        : This file contains all the function prototypes for
   *                      the dma.c file
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:

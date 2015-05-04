@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * @file           : usbh_conf.h
-  * @date           : 22/09/2014 17:13:10
+  * @date           : 03/05/2015 13:56:10
   * @version        : v1.0_Cube
   * @brief          : Header for usbh_conf file.
   ******************************************************************************
-  * COPYRIGHT(c) 2014 STMicroelectronics
+  * COPYRIGHT(c) 2015 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -60,7 +60,7 @@
 #define USBH_MAX_NUM_CONFIGURATION      1 
  
 /*----------   -----------*/
-#define USBH_KEEP_CFG_DESCRIPTOR      0 
+#define USBH_KEEP_CFG_DESCRIPTOR      1 
  
 /*----------   -----------*/
 #define USBH_MAX_NUM_SUPPORTED_CLASS      1 

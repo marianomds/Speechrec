@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    ff_gen_drv.c 
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    22-April-2014
+  * @version V1.2.1
+  * @date    20-November-2014
   * @brief   FatFs generic low level driver.
   ******************************************************************************
   * @attention
@@ -31,7 +31,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-Disk_drvTypeDef  disk = {0};
+Disk_drvTypeDef disk = {{0},{0},0};
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -48,6 +48,7 @@ uint8_t FATFS_LinkDriver(Diskio_drvTypeDef *drv, char *path)
 {
   uint8_t ret = 1;
   uint8_t DiskNum = 0;
+  
   if(disk.nbr <= _VOLUMES)
   {
     disk.is_initialized[disk.nbr] = 0;
@@ -59,6 +60,7 @@ uint8_t FATFS_LinkDriver(Diskio_drvTypeDef *drv, char *path)
     path[3] = 0;
     ret = 0;
   }
+  
   return ret;
 }
 

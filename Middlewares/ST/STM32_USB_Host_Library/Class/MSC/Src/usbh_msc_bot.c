@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbh_msc_bot.c 
   * @author  MCD Application Team
-  * @version V3.1.0
-  * @date    19-June-2014
+  * @version V3.2.0
+  * @date    04-November-2014
   * @brief   This file includes the BOT protocol related functions
   ******************************************************************************
   * @attention
@@ -151,7 +151,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_REQ_GetMaxLUN(USBH_HandleTypeDef *phost, uint8_t
 USBH_StatusTypeDef USBH_MSC_BOT_Init(USBH_HandleTypeDef *phost)
 {
   
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   
   MSC_Handle->hbot.cbw.field.Signature = BOT_CBW_SIGNATURE;
   MSC_Handle->hbot.cbw.field.Tag = BOT_CBW_TAG;
@@ -176,7 +176,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_Process (USBH_HandleTypeDef *phost, uint8_t lun)
   USBH_StatusTypeDef   error  = USBH_BUSY;  
   BOT_CSWStatusTypeDef CSW_Status = BOT_CSW_CMD_FAILED;
   USBH_URBStateTypeDef URB_Status = USBH_URB_IDLE;
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   uint8_t toggle = 0;
   
   switch (MSC_Handle->hbot.state)
@@ -256,7 +256,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_Process (USBH_HandleTypeDef *phost, uint8_t lun)
     
     if(URB_Status == USBH_URB_DONE) 
     {
-      /* Adjudt Data pointer and data length */
+      /* Adjust Data pointer and data length */
       if(MSC_Handle->hbot.cbw.field.DataTransferLength > MSC_Handle->InEpSize)
       {
           MSC_Handle->hbot.pbuf += MSC_Handle->InEpSize;
@@ -321,7 +321,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_Process (USBH_HandleTypeDef *phost, uint8_t lun)
     
     if(URB_Status == USBH_URB_DONE)
     {
-      /* Adjudt Data pointer and data length */
+      /* Adjust Data pointer and data length */
       if(MSC_Handle->hbot.cbw.field.DataTransferLength > MSC_Handle->OutEpSize)
       {
           MSC_Handle->hbot.pbuf += MSC_Handle->OutEpSize;
@@ -353,7 +353,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_Process (USBH_HandleTypeDef *phost, uint8_t lun)
     
     else if(URB_Status == USBH_URB_NOTREADY)
     {
-      /* Re-send same data */      
+      /* Resend same data */      
       MSC_Handle->hbot.state  = BOT_DATA_OUT;
 #if (USBH_USE_OS == 1)
     osMessagePut ( phost->os_event, USBH_URB_EVENT, 0);
@@ -475,7 +475,7 @@ USBH_StatusTypeDef USBH_MSC_BOT_Process (USBH_HandleTypeDef *phost, uint8_t lun)
 static USBH_StatusTypeDef USBH_MSC_BOT_Abort(USBH_HandleTypeDef *phost, uint8_t lun, uint8_t dir)
 {
   USBH_StatusTypeDef status = USBH_FAIL;
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   
   switch (dir)
   {
@@ -513,10 +513,10 @@ static USBH_StatusTypeDef USBH_MSC_BOT_Abort(USBH_HandleTypeDef *phost, uint8_t 
 
 static BOT_CSWStatusTypeDef USBH_MSC_DecodeCSW(USBH_HandleTypeDef *phost)
 {
-  MSC_HandleTypeDef *MSC_Handle =  phost->pActiveClass->pData;
+  MSC_HandleTypeDef *MSC_Handle =  (MSC_HandleTypeDef *) phost->pActiveClass->pData;
   BOT_CSWStatusTypeDef status = BOT_CSW_CMD_FAILED;
   
-    /*Checking if the transfer length is diffrent than 13*/    
+    /*Checking if the transfer length is different than 13*/    
     if(USBH_LL_GetLastXferSize(phost, MSC_Handle->InPipe) != BOT_CSW_LENGTH)
     {
       /*(4) Hi > Dn (Host expects to receive data from the device,
