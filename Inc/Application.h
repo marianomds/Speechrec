@@ -155,13 +155,16 @@ enum States{
 	RECOGNIZED,
 };
 
+typedef struct {
+	bool			debug;
+	bool			save_proc_vars;
+	bool			save_vad_vars;
+}DebugConfig;
 
 
 typedef struct {
-	bool 			vad;
-	bool			by_frame;
-	bool			save_to_files;
 	AppStates maintask;
+	bool 			vad;
 
 	Auido_Capture_Config audio_capture_conf;
 	ProcConf	proc_conf;	
@@ -169,7 +172,10 @@ typedef struct {
 	
 	char patdir[13];
 	char patfilename[13];
+	
+	DebugConfig		debug_conf;
 }AppConfig;
+
 
 /**
 	*\typedef

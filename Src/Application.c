@@ -32,6 +32,7 @@ osMessageQId audio_processing_msg;
 osMessageQId audio_capture_msg;
 osMailQId audio_capture_mail;
 
+uint32_t tick_start ,elapsed_time;
 
 AppConfig appconf;	/* Configuration structure */
 uint16_t *audio;
@@ -265,10 +266,18 @@ void PatternStoring (void const *pvParameters) {
 
 					//Send mail to Audio Capture Task to start
 					mail = osMailAlloc(audio_capture_mail, osWaitForever); 															// Allocate memory
-					mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory
-					strcpy(mail->file_path, file_name);																									// Set file_path
-					mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
-					strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
+					if (appconf.debug_conf.debug)
+					{
+						mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory for file_path
+						strcpy(mail->file_path, file_name);																									// Set file_path
+						mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory for file_name
+						strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name with extension		
+					}
+					else
+					{
+						mail->file_path = NULL;
+						mail->file_name = NULL;
+					}
 					mail->src_msg_id = pattern_storring_msg;																						// Set Message ID
 					osMessagePut(audio_capture_msg, START_CAPTURE, osWaitForever);											// Send Message to Audio Capture Task
 					osMailPut(audio_capture_mail, mail);																								// Send Mail
@@ -276,16 +285,16 @@ void PatternStoring (void const *pvParameters) {
 					// Set recording state
 					recording = true;
 
-					if(appconf.by_frame)
+					if(!appconf.debug_conf.debug)
 					{
 						// Create arguments for passing to Audio Processing Task
-						args_audio.file_path = pvPortMalloc(strlen(file_name)+1);			// Allocate memory
-						strcpy(args_audio.file_path, file_name);											// Set file_path
-						args_audio.src_msg_id = pattern_storring_msg;									// Set Message ID
-						args_audio.data = audio;																			// Audio buffer
-						args_audio.proc_conf = &appconf.proc_conf;										// Processing configuration
-						args_audio.vad  = appconf.vad;																// Set VAD variable
-						args_audio.save_to_files  = appconf.save_to_files;						// Set if it should save to files
+						args_audio.file_path = pvPortMalloc(strlen(file_name)+1);				// Allocate memory
+						strcpy(args_audio.file_path, file_name);												// Set file_path
+						args_audio.src_msg_id = pattern_storring_msg;										// Set Message ID
+						args_audio.data = audio;																				// Audio buffer
+						args_audio.proc_conf = &appconf.proc_conf;											// Processing configuration
+						args_audio.vad  = appconf.vad;																	// Set VAD variable
+						args_audio.save_to_files  = false;															// Set if it should save to files
 						
 						//Create Audio Processing Task
 						osThreadDef(ProcessTask, audioProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
@@ -308,7 +317,7 @@ void PatternStoring (void const *pvParameters) {
 				
 				case FRAME_READY:
 				{		
-					if(recording && appconf.by_frame)
+					if(recording && !appconf.debug_conf.debug)
 						// Send Message to Audio Processing Task
 						osMessagePut(audio_processing_msg, NEXT_FRAME, 0);
 					
@@ -319,7 +328,7 @@ void PatternStoring (void const *pvParameters) {
 				{
 					if(recording)
 					{
-						if(appconf.by_frame)
+						if(!appconf.debug_conf.debug)
 							// Send Message to Audio Processing Task
 							osMessagePut(audio_processing_msg, LAST_FRAME, 0);
 						else
@@ -333,10 +342,10 @@ void PatternStoring (void const *pvParameters) {
 							args_file.file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
 							strcat(strcpy(args_file.file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
 							
-							args_file.src_msg_id = pattern_storring_msg;				// Set Message ID
-							args_file.proc_conf = &appconf.proc_conf;						// Processing Configuration
-							args_file.vad = appconf.vad;												// VAD
-							args_file.save_to_files = appconf.save_to_files;		// Save to files
+							args_file.src_msg_id = pattern_storring_msg;										// Set Message ID
+							args_file.proc_conf = &appconf.proc_conf;												// Processing Configuration
+							args_file.vad = appconf.vad;																		// VAD
+							args_file.save_to_files = appconf.debug_conf.save_proc_vars;		// Save to files
 							
 							//Create Audio Processing Task
 							osThreadDef(ProcessTask, fileProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
@@ -368,7 +377,7 @@ void PatternStoring (void const *pvParameters) {
 					// Send Message to Processing Task
 					if(processing)
 					{
-						if(appconf.by_frame)
+						if(!appconf.debug_conf.debug)
 							osMessagePut (audio_processing_msg, KILL_THREAD, 0);
 						else
 							osMessagePut (file_processing_msg, KILL_THREAD, 0);
@@ -461,10 +470,18 @@ void Recognition (void const *pvParameters) {
 					
 					//Send mail to Audio Capture Task to start
 					mail = osMailAlloc(audio_capture_mail, osWaitForever); 																// Allocate memory
-					mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory
-					strcpy(mail->file_path, file_name);																									// Set file_path
-					mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
-					strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
+					if (appconf.debug_conf.debug)
+					{
+						mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory for file_path
+						strcpy(mail->file_path, file_name);																									// Set file_path
+						mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory for file_name
+						strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name with extension		
+					}
+					else
+					{
+						mail->file_path = NULL;
+						mail->file_name = NULL;
+					}
 					mail->src_msg_id = recognition_msg;																									// Set Message ID
 					osMessagePut(audio_capture_msg, START_CAPTURE, osWaitForever);												// Send Message to Audio Capture Task
 					osMailPut(audio_capture_mail, mail);																									// Send Mail
@@ -472,16 +489,16 @@ void Recognition (void const *pvParameters) {
 					// Set recording state
 					recording = true;
 
-					if(appconf.by_frame)
+					if(!appconf.debug_conf.debug)
 					{
 						// Create arguments for passing to Audio Processing Task
-						args_audio.file_path = pvPortMalloc(strlen(file_name)+1);		// Allocate memory
+						args_audio.file_path = pvPortMalloc(strlen(file_name)+1);			// Allocate memory
 						strcpy(args_audio.file_path, file_name);											// Set file_path
 						args_audio.src_msg_id = recognition_msg;											// Set Message ID
 						args_audio.data = audio;																			// Audio buffer
 						args_audio.proc_conf = &appconf.proc_conf;										// Processing configuration
 						args_audio.vad  = appconf.vad;																// Set VAD variable
-						args_audio.save_to_files  = appconf.save_to_files;						// Set if it should save to files
+						args_audio.save_to_files  = false;														// Set if it should save to files
 						
 						//Create Audio Processing Task
 						osThreadDef(ProcessTask, audioProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
@@ -504,7 +521,7 @@ void Recognition (void const *pvParameters) {
 				
 				case FRAME_READY:
 				{
-					if(recording && appconf.by_frame)
+					if(recording && !appconf.debug_conf.debug)
 						// Send Message to Audio Processing Task
 						osMessagePut(audio_processing_msg, NEXT_FRAME, 0);
 					break;
@@ -514,7 +531,7 @@ void Recognition (void const *pvParameters) {
 				{
 					if(recording)
 					{
-						if(appconf.by_frame)
+						if(!appconf.debug_conf.debug)
 							osMessagePut(audio_processing_msg, LAST_FRAME, 0);			// Send Message to Audio Processing Task
 						else
 						{
@@ -527,10 +544,10 @@ void Recognition (void const *pvParameters) {
 							args_file.file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
 							strcat(strcpy(args_file.file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
 							
-							args_file.src_msg_id = recognition_msg;				// Set Message ID
-							args_file.proc_conf = &appconf.proc_conf;					// Processing Configuration
-							args_file.vad = appconf.vad;												// VAD
-							args_file.save_to_files = appconf.save_to_files;		// Save to files
+							args_file.src_msg_id = recognition_msg;													// Set Message ID
+							args_file.proc_conf = &appconf.proc_conf;												// Processing Configuration
+							args_file.vad = appconf.vad;																		// VAD
+							args_file.save_to_files = appconf.debug_conf.save_proc_vars;		// Save to files
 							
 							//Create Audio Processing Task
 							osThreadDef(ProcessTask, fileProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
@@ -633,7 +650,7 @@ void Recognition (void const *pvParameters) {
 					// Send Message to Processing Task
 					if(processing)
 					{
-						if(appconf.by_frame)
+						if(!appconf.debug_conf.debug)
 							osMessagePut (audio_processing_msg, KILL_THREAD, 0);
 						else
 							osMessagePut (file_processing_msg, KILL_THREAD, 0);
@@ -679,24 +696,16 @@ void Calibration (void const * pvParameters) {
 	bool processing = true;					// If Audio Processing Task is still processing then true
 	CalibStatus calib_status = CALIB_INITIATED;
 	
-	//Wave File variables
-//	WAVE_FormatTypeDef WaveFormat;					// Wave Header structre
-//	FIL WavFile;                   					// File object
-//  uint32_t byteswritten;     							// File write/read counts
-//  uint8_t pHeader [44];										// Header del Wave File
-//	uint32_t filesize = 0;									// Size of the Wave File
-	
 	
 	// Create Calibration Message Queue
 	osMessageQDef(calibration_msg,10,uint32_t);
 	calibration_msg = osMessageCreate(osMessageQ(calibration_msg),NULL);
 	
 	// Init Calibration configuration
-	if(!appconf.by_frame && appconf.save_to_files)
+	if(appconf.debug_conf.debug && appconf.debug_conf.save_proc_vars)
 		calib_status = initCalibration	(&calib_length, &appconf.calib_conf, &appconf.proc_conf, &ptr_vars_buffers);
 	else
 		calib_status = initCalibration	(&calib_length, &appconf.calib_conf, &appconf.proc_conf, NULL);
-	
 	
 	// Check if filename exist, otherwise update
 	for(; f_stat(file_name,NULL)!= FR_NO_FILE; updateFilename(file_name));
@@ -706,19 +715,21 @@ void Calibration (void const * pvParameters) {
 		
 	//Send mail to Audio Capture Task to start
 	mail = osMailAlloc(audio_capture_mail, osWaitForever); 															// Allocate memory
-	mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory for file_path
-	strcpy(mail->file_path, file_name);																									// Set file_path
-	mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory for file_name
-	strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name with extension
+	if (appconf.debug_conf.debug)
+	{
+		mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory for file_path
+		strcpy(mail->file_path, file_name);																									// Set file_path
+		mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory for file_name
+		strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name with extension		
+	}
+	else
+	{
+		mail->file_path = NULL;
+		mail->file_name = NULL;
+	}
 	mail->src_msg_id = calibration_msg;																									// Set Message ID
 	osMessagePut(audio_capture_msg, START_CAPTURE, osWaitForever);											// Send message to Audio Capture Task to start
 	osMailPut(audio_capture_mail, mail);																								// Send Mail
-	
-//	osMessagePut(calibration_msg, END_CAPTURE, osWaitForever);		// BORRAR ESTA LINEA DE ABAJO
-	// Create New Wave File
-//	if(newWavFile("atest.wav",&WaveFormat,&WavFile,pHeader,&filesize) != FR_OK)
-//		Error_Handler();
-	
 	
 	// Turn-on LED
 	LED_On((Led_TypeDef)CALIB_LED);
@@ -733,36 +744,13 @@ void Calibration (void const * pvParameters) {
 			{
 				case FRAME_READY:
 				{
-					if(appconf.by_frame)
-					{
-						if (calib_status == CALIB_INITIATED || calib_status == CALIB_IN_PROCESS)
-						{
-						calib_status =	Calibrate(audio,frame_num++);			// Process frame
-	//						frame_num++;
-	//						
-	//						/* write buffer in file */
-	//						if(f_write(&WavFile, audio, appconf.proc_conf.frame_net*sizeof(*audio), (void*)&byteswritten) != FR_OK)
-	//						{
-	//							f_close(&WavFile);
-	//							Error_Handler();
-	//						}
-	//						filesize += byteswritten;
-	//						
-	//						if ( f_printf(&log_file, "frame_num: %d\t", frame_num) == -1)  Error_Handler();		//TODO de prueba
-	//						if ( f_printf(&log_file, "test: %d\n", --test) == -1)  Error_Handler();		//TODO de prueba
-
-	//						if( frame_num == appconf.calib_conf.calib_len-2 )		// TODO BORRAR
-	//							calib_status = CALIB_FINISH;											// TODO BORRAR
-						}
-					}
-					else
-					{
-						if (frame_num++ < appconf.calib_conf.calib_len)
-							calib_status = CALIB_FINISH;
-					}
-
-					if (calib_status == CALIB_FINISH)
-						osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);		// Send Finish Message to Audio Capture Task
+					// Process frame
+					if(!appconf.debug_conf.debug && calib_status != CALIB_FINISH)
+						calib_status =	Calibrate(audio,frame_num);
+					
+					// Send Finish Message to Audio Capture Task
+					if (++frame_num >= appconf.calib_conf.calib_len)
+						osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
 
 					break;
 				}
@@ -773,23 +761,7 @@ void Calibration (void const * pvParameters) {
 						Error_Handler();
 						
 					// Process frame
-					if(appconf.by_frame)
-					{
-//					calib_status =	Calibrate(audio,frame_num++);			// Process frame
-						frame_num++;
-						
-//						/* write buffer in file */
-//						if(f_write(&WavFile, audio, appconf.proc_conf.frame_net*sizeof(*audio), (void*)&byteswritten) != FR_OK)
-//						{
-//							f_close(&WavFile);
-//							Error_Handler();
-//						}
-//						filesize += byteswritten;
-//						
-//						if ( f_printf(&log_file, "frame_num: %d\t", frame_num) == -1)  Error_Handler();		//TODO de prueba
-//						if ( f_printf(&log_file, "test: %d\n", --test) == -1)  Error_Handler();		//TODO de prueba
-					}
-					else
+					if(appconf.debug_conf.debug)
 					{						
 						// Open audio file
 						char *file_aux = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
@@ -799,7 +771,7 @@ void Calibration (void const * pvParameters) {
 						vPortFree(file_aux);
 						
 						// Open files to save
-						if(appconf.save_to_files)
+						if(appconf.debug_conf.save_proc_vars)
 						{
 							files = pvPortMalloc(sizeof(Proc_files));
 							Open_proc_files (files, true);
@@ -826,7 +798,7 @@ void Calibration (void const * pvParameters) {
 							Calibrate(frame, frame_num);
 							
 							// Save to files
-							if(appconf.save_to_files)
+							if(appconf.debug_conf.save_proc_vars)
 								Append_proc_files (files, &ptr_vars_buffers, true);
 							
 							// Check if it should end
@@ -836,14 +808,12 @@ void Calibration (void const * pvParameters) {
 						
 						// Cierro los archivos
 						f_close(&WaveFile);
-						if(appconf.save_to_files)
+						if(appconf.debug_conf.save_proc_vars)
 							Close_proc_files (files, true);
-					}
-					
-					
+					}					
 					
 					//End calibration
-//					endCalibration(appconf.save_to_files);
+					endCalibration(appconf.debug_conf.debug & appconf.debug_conf.save_vad_vars);
 					
 					// Set processing state to false
 					processing = false;
@@ -855,21 +825,13 @@ void Calibration (void const * pvParameters) {
 					// Finish Thread
 					osMessagePut(calibration_msg, KILL_THREAD, 0);
 					
-					// Update Wave File Header and close it
-//					WaveProcess_HeaderUpdate(pHeader, &WaveFormat, filesize);
-//					f_lseek(&WavFile, 0);				
-//					f_write(&WavFile, pHeader, 44, (void*)&byteswritten);
-//					f_close(&WavFile);
-					
-					f_close(&log_file);	//TODO de prueba
-					
 					break;
 				}
 				case KILL_THREAD:
 				{
 					if (processing)						
 						//End calibration
-						endCalibration(appconf.save_to_files);
+						endCalibration(false);
 
 					// Free memory
 					vPortFree(frame);
@@ -1165,7 +1127,7 @@ void AudioCapture (void const * pvParameters) {
 			parent_msg_id = mail->src_msg_id;
 
 			// Check if it should save audio to file or not
-			if (mail->file_name == NULL && mail->file_path == NULL)
+			if (mail->file_name == NULL || mail->file_path == NULL)
 				save_to_file = false;
 			else
 				save_to_file = true;
@@ -1231,7 +1193,7 @@ void AudioCapture (void const * pvParameters) {
 						{
 						// Pause Audio Record
 						audioStop();
-
+							
 						if(save_to_file)
 						{
 							// Update Wave File Header and close it
@@ -1381,10 +1343,13 @@ void setEnvVar (void){
 uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	
 	// Read System configuration
-	config->vad						= ini_getbool	("System", "VAD", 	true,		filename);
-	config->by_frame			= ini_getbool	("System", "PROC_BY_FRAME",	true,	filename);
-	config->save_to_files	= ini_getbool	("System", "SAVE_TO_FILES",	false,	filename);
-	config->maintask			= (AppStates) ini_getl	("System", "MAIN_TASK", PATTERN_STORING,	filename);
+	config->maintask	= (AppStates) ini_getl	("System", "MAIN_TASK", PATTERN_STORING,	filename);
+	config->vad				= ini_getbool	("System", "VAD", 	true,		filename);
+	
+	// Read Debug configuration
+	config->debug_conf.debug					= ini_getbool	("Debug", "Debug",	false,	filename);	
+	config->debug_conf.save_proc_vars	= ini_getbool	("Debug", "save_proc_vars",	false,	filename);	
+	config->debug_conf.save_vad_vars	= ini_getbool	("Debug", "save_vad_vars",	false,	filename);	
 	
 	// Read Auido configuration
 	config->audio_capture_conf.audio_freq						= (uint16_t)	ini_getl("AudioConf", "FREQ",						AUDIO_IN_FREQ,					filename);
@@ -1417,8 +1382,8 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,	filename);
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
-
-
+	
+	
 	// Read Patterns configuration
 	ini_gets("PatConf", "PAT_DIR", 				PAT_DIR, 				config->patdir, 			sizeof(config->patdir), 			filename);
 	ini_gets("PatConf", "PAT_CONF_FILE",	PAT_CONF_FILE,	config->patfilename,	sizeof(config->patfilename),	filename);
@@ -1738,3 +1703,16 @@ FRESULT open_append (FIL* fp, const char* path) {
 	return fr;
 }
 
+
+
+//tick_start = osKernelSysTick();
+//elapsed_time = osKernelSysTick() - tick_start;
+//f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );
+//f_close(&log_file);
+
+//FIL nosirve;
+//f_open(&nosirve,"noSirve.txt", FA_CREATE_ALWAYS | FA_WRITE);
+//f_printf(&nosirve, "Esto es una mierda");
+//f_close(&nosirve);	//TODO de prueba
+
+//	osMessagePut(calibration_msg, END_CAPTURE, osWaitForever);		// BORRAR ESTA LINEA DE ABAJO
