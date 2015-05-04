@@ -46,10 +46,9 @@
 #define IFFT_LEN											64			// Tiene que ser mayor a 2*MEL_BANKS
 #define LIFTER_LEGNTH									13
 
-#define THD_ENERGY										2
-#define THD_FRECLOW										500
-#define THD_FRECHIGH									3500
-#define THD_SF												0.5f
+#define THD_Scl_ENERGY								2
+#define THD_Scl_SF										0.5f
+#define THD_min_FMAX									4000
 
 #define PDM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_DECIMATOR*AUDIO_IN_CHANNEL_NBR/8
 #define PCM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_CHANNEL_NBR

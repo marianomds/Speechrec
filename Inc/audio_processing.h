@@ -63,15 +63,14 @@ typedef enum{
 	uint16_t	ifft_len;				// Tiene que ser mayor a 2*MEL_BANKS
 	uint16_t	lifter_legnth;
 	
-	float32_t	thd_e;
-	float32_t	thd_fl;
-	float32_t	thd_fh;
-	float32_t	thd_sf;
 }ProcConf;
  
 typedef struct{
 	uint16_t	calib_time;
 	uint32_t	calib_len;
+	float32_t	thd_scl_eng;
+	uint32_t	thd_min_fmax;
+	float32_t	thd_scl_sf;
 }CalibConf;
  
 typedef struct{

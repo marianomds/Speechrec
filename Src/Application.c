@@ -1411,14 +1411,13 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->proc_conf.ifft_len			= (uint16_t)		ini_getl("SPConf", "IFFT_LEN", 			IFFT_LEN,				filename);
 	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",	LIFTER_LEGNTH,	filename);
 	
-	config->proc_conf.thd_e					= (float32_t)	ini_getf("SPConf", "THD_ENERGY", 	THD_ENERGY,		filename);
-	config->proc_conf.thd_fl				= (float32_t)	ini_getf("SPConf", "THD_FRECLOW", THD_FRECLOW,	filename);
-	config->proc_conf.thd_fh				= (float32_t)	ini_getf("SPConf", "THD_FRECHIGH",THD_FRECHIGH,	filename);
-	config->proc_conf.thd_sf				= (float32_t)	ini_getf("SPConf", "THD_SF",			THD_SF,				filename);
-	
 	// Read Calibration configuration
-	config->calib_conf.calib_time					= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", CALIB_TIME, filename);
-	config->calib_conf.calib_len					= (uint32_t)	floorf((config->calib_conf.calib_time * config->audio_capture_conf.audio_freq ) / config->proc_conf.frame_net * 1.0);
+	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", CALIB_TIME, filename);
+	config->calib_conf.calib_len		= (uint32_t)	floorf((config->calib_conf.calib_time * config->audio_capture_conf.audio_freq ) / config->proc_conf.frame_net * 1.0);
+	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
+	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,	filename);
+	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
+
 
 	// Read Patterns configuration
 	ini_gets("PatConf", "PAT_DIR", 				PAT_DIR, 				config->patdir, 			sizeof(config->patdir), 			filename);
