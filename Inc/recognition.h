@@ -74,15 +74,41 @@ enum Path{
   */
 float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path);
 float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path);
+
+/**
+  * @brief  Inicializa la función distancia
+  * @param	[in] Tamaño de los vectores a comparar
+  */
+void init_dist (uint32_t blockSize);
+/**
+  * @brief  De-inicializa la función de distancia
+  */
+void deinit_dist (void);
 /**
   * @brief  Calcula la distancia entre dos elementos
   * @param	[in] points to the first input vector 
 	* @param	[in] points to the second input vector 
 	* @retval resultado
   */
-float32_t dist (float32_t *pSrcA, float32_t *pSrcB, uint16_t blockSize);
+float32_t dist (float32_t *pSrcA, float32_t *pSrcB);
 
+
+//---------------------------------------
+//-				Math Support Functions				-
+//---------------------------------------
+/**
+	* @brief Function to find minimum of x and y
+	* @param x value
+	* @param y value
+	* @retval minimun value
+	*/ 
 int min(int x, int y);
+/**
+	* @brief Function to find maximum of x and y
+	* @param x value
+	* @param y value
+	* @retval maximum value
+	*/ 
 int max(int x, int y);
 
 #endif // RECOGNITION_H
