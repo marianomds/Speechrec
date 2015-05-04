@@ -67,7 +67,7 @@ void Main_Thread (void const *pvParameters) {
 		{
 			switch (event.value.v) {
 				
-				case APPLICATION_START:
+				case APPLICATION_READY:
 				{
 					if (!appstarted)
 					{

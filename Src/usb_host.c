@@ -95,12 +95,10 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
     
   case HOST_USER_DISCONNECTION:
   Appli_state = APPLICATION_DISCONNECT;
-	osMessagePut(appli_event,APPLICATION_DISCONNECT,0);
   break;
     
   case HOST_USER_CLASS_ACTIVE:
   Appli_state = APPLICATION_READY;
-	osMessagePut(appli_event,APPLICATION_START,0);
   break;
 
   case HOST_USER_CONNECTION:
@@ -110,6 +108,8 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
   default:
   break; 
   }
+	
+	osMessagePut(appli_event,Appli_state,0);
   /* USER CODE END 2 */
 }
 
