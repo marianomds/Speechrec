@@ -13,6 +13,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "recognition.h"
+#include "misc.h"
+#include "float.h"
+#include "ff.h"
+#include "error_handler.h"
+
 
 char dist_file_name[] = "DMtx_00.bin";
 
@@ -274,12 +279,3 @@ float32_t dist (float32_t *pSrcA, float32_t *pSrcB){
 	return result;
 }
 
-//---------------------------------------
-//-				Math Support Functions				-
-//---------------------------------------
-int min(int x, int y) {
-  return y ^ ((x ^ y) & -(x < y));
-}
-int max(int x, int y) {
-  return x ^ ((x ^ y) & -(x < y));
-}

@@ -13,6 +13,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "audio_processing.h"
+#include "misc.h"
+#include "error_handler.h"
 
 
 //---------------------------------------
@@ -120,7 +122,7 @@ ProcStatus MFCC_float (uint16_t *frame) {
 	firstProcStage (use_vad, vars_buffers);
 		
 	/* Check if it is a Voiced Frame */
-	if( !use_vad || (Energy > THD_E   &&  Frecmax< THD_FMX) || SpFlat > THD_SF)
+	if( !use_vad || (Energy > THD_E   &&  Frecmax < THD_FMX) || SpFlat > THD_SF)
 		secondProcStage (MFCC_buff, vars_buffers);
 	else
 		return NO_VOICE;
@@ -186,9 +188,9 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 	arm_std_f32 (SilSpFlat, calib_conf.calib_len, &SilSpFlatDev);
 
 	// Set Thresholds
-	THD_E  = (float32_t) SilEnergyMean + calib_conf.thd_scl_eng * SilEnergyDev;
+	THD_E   = SilEnergyMean + calib_conf.thd_scl_eng * SilEnergyDev;
 	THD_FMX = SilFmaxMean > calib_conf.thd_min_fmax ? SilFmaxMean : calib_conf.thd_min_fmax;
-	THD_SF = (float32_t) abs(SilSpFlatMean) + calib_conf.thd_scl_sf * SilSpFlatDev;
+	THD_SF  = fabs(SilSpFlatMean) + calib_conf.thd_scl_sf * SilSpFlatDev;
 
 	if(save_calib_vars)
 	{
@@ -467,92 +469,6 @@ void Lifter_float (float32_t *Lifter, uint32_t length) {
 
 
 
-//---------------------------------------
-//						MATH FUNCTIONS
-//---------------------------------------
-void arm_diff_f32 (float32_t *pSrc, float32_t *pDst, uint32_t blockSize) {
-	// pDst[n] = pSrc[n] - pSrc[n-1]
-		arm_sub_f32 (pSrc, &pSrc[1], pDst, blockSize-1);
-		arm_negate_f32 (pDst, pDst, blockSize-1);
-}
-void cumsum (float32_t *pSrc, float32_t *pDst, uint32_t blockSize) {
-	
-	float32_t sum = 0.0f;                          /* accumulator */
-  uint32_t blkCnt;                               /* loop counter */
-
-  /*loop Unrolling */
-  blkCnt = blockSize >> 2u;
-
-  /* First part of the processing with loop unrolling.  Compute 4 outputs at a time.    
-   ** a second loop below computes the remaining 1 to 3 samples. */
-  while(blkCnt > 0u)
-  {
-    /* C = A[0] * A[0] + A[1] * A[1] + A[2] * A[2] + ... + A[blockSize-1] * A[blockSize-1] */
-    /* Compute the cumsum and then store the result in a temporary variable, sum. */
-    sum += *pSrc++;
-    sum += *pSrc++;
-		sum += *pSrc++;
-		sum += *pSrc++;
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* If the blockSize is not a multiple of 4, compute any remaining output samples here.    
-   ** No loop unrolling is used. */
-  blkCnt = blockSize % 0x4u;
-
-  while(blkCnt > 0u)
-  {
-    /* C = A[0] * A[0] + A[1] * A[1] + A[2] * A[2] + ... + A[blockSize-1] * A[blockSize-1] */
-    /* compute the cumsum and then store the result in a temporary variable, sum. */
-    sum += *pSrc++;
-
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* Store the result to the destination */
-  *pDst = sum;
-}
-void sumlog (float32_t *pSrc, float32_t *pDst, uint32_t blockSize) {
-	
-	float32_t sum = 0.0f;                          /* accumulator */
-  uint32_t blkCnt;                               /* loop counter */
-
-  /*loop Unrolling */
-  blkCnt = blockSize >> 2u;
-
-  /* First part of the processing with loop unrolling.  Compute 4 outputs at a time.    
-   ** a second loop below computes the remaining 1 to 3 samples. */
-  while(blkCnt > 0u)
-  {
-    /* C = A[0] * A[0] + A[1] * A[1] + A[2] * A[2] + ... + A[blockSize-1] * A[blockSize-1] */
-    /* Compute the cumsum and then store the result in a temporary variable, sum. */
-    sum += logf(*pSrc++);
-    sum += logf(*pSrc++);
-		sum += logf(*pSrc++);
-		sum += logf(*pSrc++);
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* If the blockSize is not a multiple of 4, compute any remaining output samples here.    
-   ** No loop unrolling is used. */
-  blkCnt = blockSize % 0x4u;
-
-  while(blkCnt > 0u)
-  {
-    /* C = A[0] * A[0] + A[1] * A[1] + A[2] * A[2] + ... + A[blockSize-1] * A[blockSize-1] */
-    /* compute the cumsum and then store the result in a temporary variable, sum. */
-    sum += logf(*pSrc++);
-
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* Store the result to the destination */
-  *pDst = sum;
-}
 //---------------------------------------
 //					MISCELLANEOUS FUNCTIONS
 //---------------------------------------

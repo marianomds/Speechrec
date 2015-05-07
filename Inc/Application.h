@@ -28,22 +28,13 @@
 
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "cmsis_os.h"
-#include "ff.h"
+#include "ApplicationConfig.h"
 #include "arm_math.h"
-#include "float.h"
-#include "ALE_stm32f4_discovery.h"
-#include "usb_host.h"
-#include "string.h"
-#include "stdlib.h"
+#include "cmsis_os.h"
 #include "stdbool.h"
-#include "minIni.h"
 #include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
 #include "audio_processing.h"
-#include "ApplicationConfig.h"
-#include "recognition.h"
-
+#include "ff.h"
 
 
 
@@ -238,7 +229,7 @@ uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *p
 uint8_t loadPattern (Patterns *pat);
 /* [OUT] File object to create */
 /* [IN]  File name to be opened */
-FRESULT open_append (FIL* fp, const char* path);
+
 
 //---------------------------------------------------------------------------------
 //																	APPLICATIONS TASKS 
@@ -323,15 +314,42 @@ typedef struct {
   uint16_t   BitPerSample;  /* 34 */  
   uint32_t   SubChunk2ID;   /* 36 */   
   uint32_t   SubChunk2Size; /* 40 */    
-
+	uint8_t		 pHeader[44];		
 }WAVE_FormatTypeDef;
 
+/**
+  * @brief  Create a new Wave File
+	* @param  WaveFormat: Pointer to a structure type WAVE_FormatTypeDef
+  * @param  WavFile: 
+	* @param	Filename:
+  * @param  pHeader: Pointer to the Wave file header to be written.  
+  * @retval pointer to the Filename string
+  */
+FRESULT 	newWavFile 		(char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile);
+FRESULT 	closeWavFile 	(FIL *WavFile, WAVE_FormatTypeDef* WaveFormat, uint32_t audio_size);
+/**
+  * @brief  Encoder initialization.
+	* @param  WaveFormat: Pointer to a structure type WAVE_FormatTypeDef
+  * @param  Freq: Sampling frequency.
+  * @param  pHeader: Pointer to the Wave file header to be written.  
+  * @retval 0 if success, !0 else.
+  */
+uint32_t	WaveProcess_EncInit				(WAVE_FormatTypeDef* WaveFormat);
+/**
+  * @brief  Initialize the Wave header file
+  * @param  pHeader: Header Buffer to be filled
+  * @param  pWaveFormatStruct: Pointer to the Wave structure to be filled.
+  * @retval 0 if passed, !0 if failed.
+  */
+uint32_t	WaveProcess_HeaderInit		(WAVE_FormatTypeDef* pWaveFormatStruct);
+/**
+  * @brief  Initialize the Wave header file
+  * @param  pHeader: Header Buffer to be filled
+  * @param  pWaveFormatStruct: Pointer to the Wave structure to be filled.
+  * @retval 0 if passed, !0 if failed.
+  */
+uint32_t	WaveProcess_HeaderUpdate	(WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t adudio_size);
 
-FRESULT 	newWavFile 								(char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile, uint8_t *pHeader,uint32_t *byteswritten);
-uint32_t	WaveProcess_EncInit				(WAVE_FormatTypeDef* WaveFormat, uint8_t* pHeader);
-uint32_t	WaveProcess_HeaderInit		(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct);
-uint32_t	WaveProcess_HeaderUpdate	(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t DataSize);
-char *		updateFilename 						(char *Filename);
 
 
 

@@ -15,18 +15,7 @@
 #define RECOGNITION_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "cmsis_os.h"
-#include "ff.h"
 #include "arm_math.h"
-#include "float.h"
-#include "usb_host.h"
-#include "string.h"
-#include "stdlib.h"
-#include "stdbool.h"
-#include "recognition_specific.h"
-#include "error_handler.h"
-
 
 enum Path{
 	DIAGONAL = 0,
@@ -92,23 +81,5 @@ void deinit_dist (void);
   */
 float32_t dist (float32_t *pSrcA, float32_t *pSrcB);
 
-
-//---------------------------------------
-//-				Math Support Functions				-
-//---------------------------------------
-/**
-	* @brief Function to find minimum of x and y
-	* @param x value
-	* @param y value
-	* @retval minimun value
-	*/ 
-int min(int x, int y);
-/**
-	* @brief Function to find maximum of x and y
-	* @param x value
-	* @param y value
-	* @retval maximum value
-	*/ 
-int max(int x, int y);
 
 #endif // RECOGNITION_H

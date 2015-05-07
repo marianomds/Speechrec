@@ -493,6 +493,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\stm32f4xx_hal_msp.c</FilePath>
             </File>
+            <File>
+              <FileName>misc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\misc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

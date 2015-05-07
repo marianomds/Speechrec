@@ -13,6 +13,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "Application.h"
+#include "stm32f4xx_hal.h"
+#include "ff.h"
+#include "float.h"
+#include "usb_host.h"
+#include "string.h"
+#include "stdlib.h"
+#include "minIni.h"
+#include "recognition.h"
+#include "misc.h"
 
 /* Private Variables used within Application ---------------------------------*/
 
@@ -188,30 +197,30 @@ void Main_Thread (void const *pvParameters) {
 							break;
 						}
 						
-//						case PATTERN_STORING:
-//						{
-//							/* Create Pattern_Storing Task */
-//							osThreadDef(PatternStoringTask,	PatternStoring, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
-//							current_task_ID = osThreadCreate (osThread(PatternStoringTask), NULL);
-//							msgID = &pattern_storring_msg;
+						case PATTERN_STORING:
+						{
+							/* Create Pattern_Storing Task */
+							osThreadDef(PatternStoringTask,	PatternStoring, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
+							current_task_ID = osThreadCreate (osThread(PatternStoringTask), NULL);
+							msgID = &pattern_storring_msg;
 
-//							break;
-//						}
-//						case RECOGNITION:
-//						{
-//							// Set task arguments to pass
-//							if( (reco_args.patterns_path  = pvPortMalloc(strlen(appconf.patdir))) == NULL )										Error_Handler();
-//							if( (reco_args.patterns_config_file_name = pvPortMalloc(strlen(appconf.patfilename))) == NULL )		Error_Handler();
-//							strcpy(reco_args.patterns_path, appconf.patdir);
-//							strcpy(reco_args.patterns_config_file_name, appconf.patfilename);
-//							
-//							/* Create Tasks*/
-//							osThreadDef(RecognitionTask, 		Recognition, 		osPriorityNormal, 1, configMINIMAL_STACK_SIZE*8);
-//							current_task_ID = osThreadCreate (osThread(RecognitionTask), &reco_args);
-//							msgID = &recognition_msg;
+							break;
+						}
+						case RECOGNITION:
+						{
+							// Set task arguments to pass
+							if( (reco_args.patterns_path  = pvPortMalloc(strlen(appconf.patdir))) == NULL )										Error_Handler();
+							if( (reco_args.patterns_config_file_name = pvPortMalloc(strlen(appconf.patfilename))) == NULL )		Error_Handler();
+							strcpy(reco_args.patterns_path, appconf.patdir);
+							strcpy(reco_args.patterns_config_file_name, appconf.patfilename);
+							
+							/* Create Tasks*/
+							osThreadDef(RecognitionTask, 		Recognition, 		osPriorityNormal, 1, configMINIMAL_STACK_SIZE*8);
+							current_task_ID = osThreadCreate (osThread(RecognitionTask), &reco_args);
+							msgID = &recognition_msg;
 
-//							break;
-//						}
+							break;
+						}
 						default:
 							break;
 					}
@@ -693,9 +702,10 @@ void Calibration (void const * pvParameters) {
 	Proc_files *files = NULL;
 	FIL WaveFile;
 	UINT bytesread;
-	bool processing = true;					// If Audio Processing Task is still processing then true
 	CalibStatus calib_status = CALIB_INITIATED;
 	
+	bool processing = false;					// If Audio Processing Task is still processing then true
+	bool capture = false;
 	
 	// Create Calibration Message Queue
 	osMessageQDef(calibration_msg,10,uint32_t);
@@ -731,6 +741,10 @@ void Calibration (void const * pvParameters) {
 	osMessagePut(audio_capture_msg, START_CAPTURE, osWaitForever);											// Send message to Audio Capture Task to start
 	osMailPut(audio_capture_mail, mail);																								// Send Mail
 	
+	// Starts capture and processing
+	capture = true;
+	processing = true;
+	
 	// Turn-on LED
 	LED_On((Led_TypeDef)CALIB_LED);
 	
@@ -744,13 +758,19 @@ void Calibration (void const * pvParameters) {
 			{
 				case FRAME_READY:
 				{
-					// Process frame
-					if(!appconf.debug_conf.debug && calib_status != CALIB_FINISH)
-						calib_status =	Calibrate(audio,frame_num);
-					
-					// Send Finish Message to Audio Capture Task
-					if (++frame_num >= appconf.calib_conf.calib_len)
-						osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
+					if(capture)
+					{
+						// Process frame
+						if(!appconf.debug_conf.debug && calib_status != CALIB_FINISH)
+							calib_status =	Calibrate(audio,frame_num);
+						
+						// Send Finish Message to Audio Capture Task
+						if (++frame_num == calib_length)
+						{
+							osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
+							capture = false;
+						}
+					}
 
 					break;
 				}
@@ -784,11 +804,8 @@ void Calibration (void const * pvParameters) {
 						// Allocate memory for frame buffer
 						frame = pvPortMalloc(appconf.proc_conf.frame_net * sizeof(*frame));
 						
-						// Initialized variable
-						frame_num = 0;
-						
 						// Process data until the file reachs the end
-						while(1)
+						for(frame_num = 0; frame_num < calib_length && !f_eof (&WaveFile); frame_num++)
 						{
 							// Leo un Frame del archivo
 							if(f_read (&WaveFile, frame, appconf.proc_conf.frame_net * sizeof(*frame), &bytesread) != FR_OK)
@@ -800,10 +817,6 @@ void Calibration (void const * pvParameters) {
 							// Save to files
 							if(appconf.debug_conf.save_proc_vars)
 								Append_proc_files (files, &ptr_vars_buffers, true);
-							
-							// Check if it should end
-							if (calib_length < ++frame_num || f_eof (&WaveFile))
-								break;
 						}
 						
 						// Cierro los archivos
@@ -1092,11 +1105,10 @@ void AudioCapture (void const * pvParameters) {
 	//Wave File variables
 	WAVE_FormatTypeDef WaveFormat;					// Wave Header structre
 	FIL WavFile;                   					// File object
-  uint32_t byteswritten;     							// File write/read counts
-  uint8_t pHeader [44];										// Header del Wave File
-	uint32_t filesize = 0;									// Size of the Wave File
-
+  uint32_t audio_size;										// Size of the Wave File
+	uint32_t byteswritten;     							// File write/read counts
 	
+
 	// Create Mail
 	osMailQDef(audio_capture_mail, 10, Mail);
 	audio_capture_mail = osMailCreate(osMailQ(audio_capture_mail),NULL);
@@ -1138,9 +1150,12 @@ void AudioCapture (void const * pvParameters) {
 				f_chdir (mail->file_path);
 				
 				// Create New Wave File
-				if(newWavFile(mail->file_name,&WaveFormat,&WavFile,pHeader,&filesize) != FR_OK)
+				if(newWavFile(mail->file_name,&WaveFormat,&WavFile) != FR_OK)
 					Error_Handler();
 				//TODO: Send message back saying that it has fail
+				
+				//Init filesize
+				audio_size = 0;
 				
 				// Go back to original directory
 				if (f_chdir ("..") != FR_OK)
@@ -1195,19 +1210,15 @@ void AudioCapture (void const * pvParameters) {
 						audioStop();
 							
 						if(save_to_file)
-						{
-							// Update Wave File Header and close it
-							WaveProcess_HeaderUpdate(pHeader, &WaveFormat, filesize);
-							f_lseek(&WavFile, 0);				
-							f_write(&WavFile, pHeader, 44, (void*)&byteswritten);
-							f_close(&WavFile);
-						}
+							closeWavFile(&WavFile, &WaveFormat, audio_size);
 						
 						// Send Message that finish capturing
 						osMessagePut(parent_msg_id,END_CAPTURE,0);
 						
 						// Turn off led
 						LED_Off((Led_TypeDef)EXECUTE_LED);
+						
+						f_close(&log_file);
 						
 						// Set finish variable
 						finish = true;
@@ -1219,13 +1230,17 @@ void AudioCapture (void const * pvParameters) {
 					{
 						if(save_to_file)
 						{
+							tick_start = osKernelSysTick();
 							/* write buffer in file */
 							if(f_write(&WavFile, data, data_size*sizeof(*data), (void*)&byteswritten) != FR_OK)
 							{
 								f_close(&WavFile);
 								Error_Handler();
 							}
-							filesize += byteswritten;
+							audio_size += byteswritten;
+							
+							elapsed_time = osKernelSysTick() - tick_start;
+							f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );
 						}
 						
 						// Send message back telling that the frame is ready
@@ -1381,6 +1396,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->calib_conf.calib_len		= (uint32_t)	floorf((config->calib_conf.calib_time * config->audio_capture_conf.audio_freq ) / config->proc_conf.frame_net * 1.0);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,	filename);
+	config->calib_conf.thd_min_fmax = (uint32_t)  config->calib_conf.thd_min_fmax * (config->proc_conf.fft_len/2) /(config->audio_capture_conf.audio_freq/2) * 1.0;
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
 	
 	
@@ -1483,18 +1499,12 @@ void User_Button_EXTI (void) {
 //---------------------------------------
 //						WAVE FILE FUNCTIONS
 //---------------------------------------
-/**
-  * @brief  Create a new Wave File
-	* @param  WaveFormat: Pointer to a structure type WAVE_FormatTypeDef
-  * @param  WavFile: 
-	* @param	Filename:
-  * @param  pHeader: Pointer to the Wave file header to be written.  
-  * @retval pointer to the Filename string
-  */
-FRESULT newWavFile (char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile, uint8_t *pHeader,uint32_t *byteswritten) {
+
+FRESULT newWavFile (char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile) {
 	
 	FRESULT res;
-
+	uint32_t byteswritten;
+	
 	// Open File
 	res = f_open(WavFile, Filename, FA_CREATE_ALWAYS | FA_WRITE);
 
@@ -1503,25 +1513,30 @@ FRESULT newWavFile (char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile
 		return res;
 		
 	/* Initialized Wave Header File */
-	WaveProcess_EncInit(WaveFormat, pHeader);
+	WaveProcess_EncInit(WaveFormat);
 	
 	/* Write data to the file */
-	res = f_write(WavFile, pHeader, sizeof(pHeader), (void *)byteswritten);
+	res = f_write(WavFile, WaveFormat->pHeader, 44, (void*) &byteswritten);
 	
 	/* Error when trying to write file*/
-	if((byteswritten == 0) || (res != FR_OK))
+	if(res != FR_OK)
 		f_close(WavFile);
 	
 	return res;
 }
-/**
-  * @brief  Encoder initialization.
-	* @param  WaveFormat: Pointer to a structure type WAVE_FormatTypeDef
-  * @param  Freq: Sampling frequency.
-  * @param  pHeader: Pointer to the Wave file header to be written.  
-  * @retval 0 if success, !0 else.
-  */
-uint32_t WaveProcess_EncInit(WAVE_FormatTypeDef* WaveFormat, uint8_t* pHeader) {  
+
+FRESULT closeWavFile (FIL *WavFile, WAVE_FormatTypeDef* WaveFormat, uint32_t audio_size){
+	FRESULT res;
+	uint32_t byteswritten;
+	
+	WaveProcess_HeaderUpdate(WaveFormat, audio_size);
+	f_lseek(WavFile, 0);				
+	f_write(WavFile, WaveFormat->pHeader, 44, (void*)&byteswritten);
+	res = f_close(WavFile);
+	
+	return res;
+}
+uint32_t WaveProcess_EncInit(WAVE_FormatTypeDef* WaveFormat) {  
 	/* Initialize the encoder structure */
 	WaveFormat->SampleRate = appconf.audio_capture_conf.audio_freq;        					/* Audio sampling frequency */
 	WaveFormat->NbrChannels = appconf.audio_capture_conf.audio_channel_nbr;       	/* Number of channels: 1:Mono or 2:Stereo */
@@ -1535,173 +1550,122 @@ uint32_t WaveProcess_EncInit(WAVE_FormatTypeDef* WaveFormat, uint8_t* pHeader) {
 													(WaveFormat->BitPerSample/8);   /* channels * bits/sample / 8 */
 	
 	/* Parse the Wave file header and extract required information */
-  if(WaveProcess_HeaderInit(pHeader, WaveFormat))
+  if(WaveProcess_HeaderInit(WaveFormat))
     return 1;
 	
   return 0;
 }
-
-/**
-  * @brief  Initialize the Wave header file
-  * @param  pHeader: Header Buffer to be filled
-  * @param  pWaveFormatStruct: Pointer to the Wave structure to be filled.
-  * @retval 0 if passed, !0 if failed.
-  */
-uint32_t WaveProcess_HeaderInit(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct) {
+uint32_t WaveProcess_HeaderInit(WAVE_FormatTypeDef* pWaveFormatStruct) {
 
 /********* CHUNK DESCRIPTOR *********/	
 	/* Write chunkID. Contains the letters "RIFF"	in ASCII form  ------------------------------------------*/
-  pHeader[0] = 'R';
-  pHeader[1] = 'I';
-  pHeader[2] = 'F';
-  pHeader[3] = 'F';
+  pWaveFormatStruct->pHeader[0] = 'R';
+  pWaveFormatStruct->pHeader[1] = 'I';
+  pWaveFormatStruct->pHeader[2] = 'F';
+  pWaveFormatStruct->pHeader[3] = 'F';
 
   /* Write the file length. This is the size of the entire file in bytes minus 8 bytes for the two
 	fields not included in this count: ChunkID and ChunkSize. ----------------------------------------------------*/
   /* The sampling time: this value will be be written back at the end of the recording opearation. 
 	Example: 661500 Btyes = 0x000A17FC, byte[7]=0x00, byte[4]=0xFC */
-  pHeader[4] = 0x00;
-  pHeader[5] = 0x4C;
-  pHeader[6] = 0x1D;
-  pHeader[7] = 0x00;
+  pWaveFormatStruct->pHeader[4] = 0x00;
+  pWaveFormatStruct->pHeader[5] = 0x4C;
+  pWaveFormatStruct->pHeader[6] = 0x1D;
+  pWaveFormatStruct->pHeader[7] = 0x00;
 	
   /* Write the file format, must be 'Wave'. Contains the letters "WaveE" -----------------------------------*/
-  pHeader[8]  = 'W';
-  pHeader[9]  = 'A';
-  pHeader[10] = 'V';
-  pHeader[11] = 'E';
+  pWaveFormatStruct->pHeader[8]  = 'W';
+  pWaveFormatStruct->pHeader[9]  = 'A';
+  pWaveFormatStruct->pHeader[10] = 'V';
+  pWaveFormatStruct->pHeader[11] = 'E';
 
 
 
 /********* SUB-CHUNK DESCRIPTOR N°1 *********/	
   /* Write the format chunk, must be'fmt ' -----------------------------------*/
-  pHeader[12]  = 'f';
-  pHeader[13]  = 'm';
-  pHeader[14]  = 't';
-  pHeader[15]  = ' ';
+  pWaveFormatStruct->pHeader[12]  = 'f';
+  pWaveFormatStruct->pHeader[13]  = 'm';
+  pWaveFormatStruct->pHeader[14]  = 't';
+  pWaveFormatStruct->pHeader[15]  = ' ';
 
   /* Write the length of the 'fmt' data (16 for PCM).
 	This is the size of the rest of the Subchunk which follows this number. ------------------------*/
-  pHeader[16]  = 0x10;
-  pHeader[17]  = 0x00;
-  pHeader[18]  = 0x00;
-  pHeader[19]  = 0x00;
+  pWaveFormatStruct->pHeader[16]  = 0x10;
+  pWaveFormatStruct->pHeader[17]  = 0x00;
+  pWaveFormatStruct->pHeader[18]  = 0x00;
+  pWaveFormatStruct->pHeader[19]  = 0x00;
 
   /* Write the audio format. PCM = 1 ==> Linear quantization
 	Values other than 1 indicate some form of compression. ------------------------------*/
-  pHeader[20]  = 0x01;
-  pHeader[21]  = 0x00;
+  pWaveFormatStruct->pHeader[20]  = 0x01;
+  pWaveFormatStruct->pHeader[21]  = 0x00;
 
   /* Write the number of channels (Mono = 1, Stereo = 2). ---------------------------*/
-  pHeader[22]  = pWaveFormatStruct->NbrChannels;
-  pHeader[23]  = 0x00;
+  pWaveFormatStruct->pHeader[22]  = pWaveFormatStruct->NbrChannels;
+  pWaveFormatStruct->pHeader[23]  = 0x00;
 
   /* Write the Sample Rate in Hz ---------------------------------------------*/
   /* Write Little Endian ie. 8000 = 0x00001F40 => byte[24]=0x40, byte[27]=0x00*/
-  pHeader[24]  = (uint8_t)((pWaveFormatStruct->SampleRate & 0xFF));
-  pHeader[25]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 8) & 0xFF);
-  pHeader[26]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 16) & 0xFF);
-  pHeader[27]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 24) & 0xFF);
+  pWaveFormatStruct->pHeader[24]  = (uint8_t)((pWaveFormatStruct->SampleRate & 0xFF));
+  pWaveFormatStruct->pHeader[25]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 8) & 0xFF);
+  pWaveFormatStruct->pHeader[26]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 16) & 0xFF);
+  pWaveFormatStruct->pHeader[27]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 24) & 0xFF);
 
   /* Write the Byte Rate
 	==> SampleRate * NumChannels * BitsPerSample/8	-----------------------------------------------------*/
-  pHeader[28]  = (uint8_t)((pWaveFormatStruct->ByteRate & 0xFF));
-  pHeader[29]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 8) & 0xFF);
-  pHeader[30]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 16) & 0xFF);
-  pHeader[31]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 24) & 0xFF);
+  pWaveFormatStruct->pHeader[28]  = (uint8_t)((pWaveFormatStruct->ByteRate & 0xFF));
+  pWaveFormatStruct->pHeader[29]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 8) & 0xFF);
+  pWaveFormatStruct->pHeader[30]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 16) & 0xFF);
+  pWaveFormatStruct->pHeader[31]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 24) & 0xFF);
 
   /* Write the block alignment 
 	==> NumChannels * BitsPerSample/8 -----------------------------------------------*/
-  pHeader[32]  = pWaveFormatStruct->BlockAlign;
-  pHeader[33]  = 0x00;
+  pWaveFormatStruct->pHeader[32]  = pWaveFormatStruct->BlockAlign;
+  pWaveFormatStruct->pHeader[33]  = 0x00;
 
   /* Write the number of bits per sample -------------------------------------*/
-  pHeader[34]  = pWaveFormatStruct->BitPerSample;
-  pHeader[35]  = 0x00;
+  pWaveFormatStruct->pHeader[34]  = pWaveFormatStruct->BitPerSample;
+  pWaveFormatStruct->pHeader[35]  = 0x00;
 
 
 
 /********* SUB-CHUNK DESCRIPTOR N°2 *********/	
   /* Write the Data chunk. Contains the letters "data" ------------------------------------*/
-  pHeader[36]  = 'd';
-  pHeader[37]  = 'a';
-  pHeader[38]  = 't';
-  pHeader[39]  = 'a';
+  pWaveFormatStruct->pHeader[36]  = 'd';
+  pWaveFormatStruct->pHeader[37]  = 'a';
+  pWaveFormatStruct->pHeader[38]  = 't';
+  pWaveFormatStruct->pHeader[39]  = 'a';
 
   /* Write the number of sample data. This is the number of bytes in the data.
 	==> NumSamples * NumChannels * BitsPerSample/8  -----------------------------------------*/
   /* This variable will be written back at the end of the recording operation */
-  pHeader[40]  = 0x00;
-  pHeader[41]  = 0x4C;
-  pHeader[42]  = 0x1D;
-  pHeader[43]  = 0x00;
+  pWaveFormatStruct->pHeader[40]  = 0x00;
+  pWaveFormatStruct->pHeader[41]  = 0x4C;
+  pWaveFormatStruct->pHeader[42]  = 0x1D;
+  pWaveFormatStruct->pHeader[43]  = 0x00;
   
   /* Return 0 if all operations are OK */
   return 0;
 }
-
-/**
-  * @brief  Initialize the Wave header file
-  * @param  pHeader: Header Buffer to be filled
-  * @param  pWaveFormatStruct: Pointer to the Wave structure to be filled.
-  * @retval 0 if passed, !0 if failed.
-  */
-uint32_t WaveProcess_HeaderUpdate(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t filesize) {
+uint32_t WaveProcess_HeaderUpdate(WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t adudio_size) {
   /* Write the file length ----------------------------------------------------*/
   /* The sampling time: this value will be be written back at the end of the 
    recording opearation.  Example: 661500 Btyes = 0x000A17FC, byte[7]=0x00, byte[4]=0xFC */
-  pHeader[4] = (uint8_t)(filesize);
-  pHeader[5] = (uint8_t)(filesize >> 8);
-  pHeader[6] = (uint8_t)(filesize >> 16);
-  pHeader[7] = (uint8_t)(filesize >> 24);
+  pWaveFormatStruct->pHeader[4] = (uint8_t)(adudio_size+36);
+  pWaveFormatStruct->pHeader[5] = (uint8_t)((adudio_size+36) >> 8);
+  pWaveFormatStruct->pHeader[6] = (uint8_t)((adudio_size+36) >> 16);
+  pWaveFormatStruct->pHeader[7] = (uint8_t)((adudio_size+36) >> 24);
   /* Write the number of sample data -----------------------------------------*/
   /* This variable will be written back at the end of the recording operation */
-  filesize -=44;
-  pHeader[40] = (uint8_t)(filesize); 
-  pHeader[41] = (uint8_t)(filesize >> 8);
-  pHeader[42] = (uint8_t)(filesize >> 16);
-  pHeader[43] = (uint8_t)(filesize >> 24); 
+  pWaveFormatStruct->pHeader[40] = (uint8_t)(adudio_size); 
+  pWaveFormatStruct->pHeader[41] = (uint8_t)(adudio_size >> 8);
+  pWaveFormatStruct->pHeader[42] = (uint8_t)(adudio_size >> 16);
+  pWaveFormatStruct->pHeader[43] = (uint8_t)(adudio_size >> 24); 
   /* Return 0 if all operations are OK */
   return 0;
 }
-/**
-	* @brief
-	* @param
-	* @param
-	*/
-char *updateFilename (char *Filename) {
-	uint32_t indx,start;
-	
-	// Busco el inicio del número
-	for(indx=0; Filename[indx]<'0' || Filename[indx]>'9'; indx++)	{}
-	start = indx;
-	
-	// Busco el final del número
-	for(; Filename[indx]>='0' && Filename[indx]<='9'; indx++)	{}
-	
-	// Hago un update del número
-	while(--indx>=start)
-	{
-		if(++Filename[indx] >'9')
-			Filename[indx] = '0';
-		else
-			break;
-	}
-	return Filename;
-}
-FRESULT open_append (FIL* fp, const char* path) {
-	FRESULT fr;
 
-	/* Opens an existing file. If not exist, creates a new file. */
-	fr = f_open(fp, path, FA_WRITE | FA_OPEN_ALWAYS);
-	if (fr == FR_OK) {
-			/* Seek to end of the file to append data */
-			fr = f_lseek(fp, f_size(fp));
-			if (fr != FR_OK)
-					f_close(fp);
-	}
-	return fr;
-}
+
 
 
 

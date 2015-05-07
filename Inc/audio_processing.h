@@ -17,17 +17,10 @@
 
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "cmsis_os.h"
-#include "ff.h"
 #include "arm_math.h"
-#include "float.h"
-#include "usb_host.h"
-#include "string.h"
-#include "stdlib.h"
+#include "ff.h"
 #include "stdbool.h"
-#include "recognition_specific.h"
-#include "error_handler.h"
+
 
 //enum{
 //	FINISH_PROCESSING,
@@ -181,32 +174,6 @@ void 			Hamming_float 	(float32_t *Hamming, uint32_t LEN);
   */
 void 			Lifter_float 		(float32_t *Lifter, uint32_t L);
 
-
-
-//---------------------------------------
-//						MATH FUNCTIONS
-//---------------------------------------
-/**
-  * @brief  Calcula la derivada del vector. El vector destino debería tener tamaño blockSize-1
-  * @param	Puntero al vector de entrada
-	* @param	Puntero al vector destino 
-	* @param  Tamaño del vector de entrada
-  */
-void 			arm_diff_f32 		(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
-/**
-  * @brief  Cum sum
-  * @param	Puntero al vector de entrada
-	* @param	Puntero al vector destino 
-	* @param  Tamaño del vector de entrada
-  */
-void			cumsum 					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
-/**
-  * @brief  Cum sum
-  * @param	Puntero al vector de entrada
-	* @param	Puntero al vector destino 
-	* @param  Tamaño del vector de entrada
-  */
-void			sumlog					(float32_t *pSrc, float32_t *pDst, uint32_t blockSize);
 
 
 //---------------------------------------
