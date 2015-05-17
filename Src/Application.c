@@ -1097,7 +1097,7 @@ void AudioCapture (void const * pvParameters) {
 	bool save_to_file = true;
 	uint16_t* data;
 	uint32_t data_size;
-	
+
 	// Message Variables
 	Audio_Capture_args *args;
 	osMessageQId parent_msg_id;
@@ -1109,7 +1109,12 @@ void AudioCapture (void const * pvParameters) {
 	FIL WavFile;                   					// File object
   uint32_t audio_size;										// Size of the Wave File
 	uint32_t byteswritten;     							// File write/read counts
-	
+	WAVE_Audio_config wave_config;
+
+	// Set Wave Configuration
+	wave_config.SampleRate = appconf.audio_capture_conf.audio_freq;
+	wave_config.NbrChannels = appconf.audio_capture_conf.audio_channel_nbr;
+	wave_config.BitPerSample = appconf.audio_capture_conf.audio_bit_resolution;
 
 	// Create Mail
 	osMailQDef(audio_capture_mail, 10, Mail);
@@ -1152,7 +1157,7 @@ void AudioCapture (void const * pvParameters) {
 				f_chdir (mail->file_path);
 				
 				// Create New Wave File
-				if(newWavFile(mail->file_name,&WaveFormat,&WavFile) != FR_OK)
+				if(newWavFile(mail->file_name,&WaveFormat,&WavFile, wave_config) != FR_OK)
 					Error_Handler();
 				//TODO: Send message back saying that it has fail
 				
@@ -1499,179 +1504,6 @@ void User_Button_EXTI (void) {
 	HAL_NVIC_DisableIRQ(EXTI0_IRQn);			// Disable EXTI0 IRQ
 	osMessagePut(key_msg,BUTTON_IRQ,0);
 }
-//---------------------------------------
-//						WAVE FILE FUNCTIONS
-//---------------------------------------
-
-FRESULT newWavFile (char *Filename, WAVE_FormatTypeDef* WaveFormat, FIL *WavFile) {
-	
-	FRESULT res;
-	uint32_t byteswritten;
-	
-	// Open File
-	res = f_open(WavFile, Filename, FA_CREATE_ALWAYS | FA_WRITE);
-
-	/* If Error */
-	if(res != FR_OK)
-		return res;
-		
-	/* Initialized Wave Header File */
-	WaveProcess_EncInit(WaveFormat);
-	
-	/* Write data to the file */
-	res = f_write(WavFile, WaveFormat->pHeader, 44, (void*) &byteswritten);
-	
-	/* Error when trying to write file*/
-	if(res != FR_OK)
-		f_close(WavFile);
-	
-	return res;
-}
-
-FRESULT closeWavFile (FIL *WavFile, WAVE_FormatTypeDef* WaveFormat, uint32_t audio_size){
-	FRESULT res;
-	uint32_t byteswritten;
-	
-	WaveProcess_HeaderUpdate(WaveFormat, audio_size);
-	f_lseek(WavFile, 0);				
-	f_write(WavFile, WaveFormat->pHeader, 44, (void*)&byteswritten);
-	res = f_close(WavFile);
-	
-	return res;
-}
-uint32_t WaveProcess_EncInit(WAVE_FormatTypeDef* WaveFormat) {  
-	/* Initialize the encoder structure */
-	WaveFormat->SampleRate = appconf.audio_capture_conf.audio_freq;        					/* Audio sampling frequency */
-	WaveFormat->NbrChannels = appconf.audio_capture_conf.audio_channel_nbr;       	/* Number of channels: 1:Mono or 2:Stereo */
-	WaveFormat->BitPerSample = appconf.audio_capture_conf.audio_bit_resolution;  	 	/* Number of bits per sample (16, 24 or 32) */
-	WaveFormat->FileSize = 0x001D4C00;    									/* Total length of useful audio data (payload) */
-	WaveFormat->SubChunk1Size = 44;       									/* The file header chunk size */
-	WaveFormat->ByteRate = (WaveFormat->SampleRate * \
-												(WaveFormat->BitPerSample/8) * \
-												 WaveFormat->NbrChannels);        /* Number of bytes per second  (sample rate * block align)  */
-	WaveFormat->BlockAlign = WaveFormat->NbrChannels * \
-													(WaveFormat->BitPerSample/8);   /* channels * bits/sample / 8 */
-	
-	/* Parse the Wave file header and extract required information */
-  if(WaveProcess_HeaderInit(WaveFormat))
-    return 1;
-	
-  return 0;
-}
-uint32_t WaveProcess_HeaderInit(WAVE_FormatTypeDef* pWaveFormatStruct) {
-
-/********* CHUNK DESCRIPTOR *********/	
-	/* Write chunkID. Contains the letters "RIFF"	in ASCII form  ------------------------------------------*/
-  pWaveFormatStruct->pHeader[0] = 'R';
-  pWaveFormatStruct->pHeader[1] = 'I';
-  pWaveFormatStruct->pHeader[2] = 'F';
-  pWaveFormatStruct->pHeader[3] = 'F';
-
-  /* Write the file length. This is the size of the entire file in bytes minus 8 bytes for the two
-	fields not included in this count: ChunkID and ChunkSize. ----------------------------------------------------*/
-  /* The sampling time: this value will be be written back at the end of the recording opearation. 
-	Example: 661500 Btyes = 0x000A17FC, byte[7]=0x00, byte[4]=0xFC */
-  pWaveFormatStruct->pHeader[4] = 0x00;
-  pWaveFormatStruct->pHeader[5] = 0x4C;
-  pWaveFormatStruct->pHeader[6] = 0x1D;
-  pWaveFormatStruct->pHeader[7] = 0x00;
-	
-  /* Write the file format, must be 'Wave'. Contains the letters "WaveE" -----------------------------------*/
-  pWaveFormatStruct->pHeader[8]  = 'W';
-  pWaveFormatStruct->pHeader[9]  = 'A';
-  pWaveFormatStruct->pHeader[10] = 'V';
-  pWaveFormatStruct->pHeader[11] = 'E';
-
-
-
-/********* SUB-CHUNK DESCRIPTOR N°1 *********/	
-  /* Write the format chunk, must be'fmt ' -----------------------------------*/
-  pWaveFormatStruct->pHeader[12]  = 'f';
-  pWaveFormatStruct->pHeader[13]  = 'm';
-  pWaveFormatStruct->pHeader[14]  = 't';
-  pWaveFormatStruct->pHeader[15]  = ' ';
-
-  /* Write the length of the 'fmt' data (16 for PCM).
-	This is the size of the rest of the Subchunk which follows this number. ------------------------*/
-  pWaveFormatStruct->pHeader[16]  = 0x10;
-  pWaveFormatStruct->pHeader[17]  = 0x00;
-  pWaveFormatStruct->pHeader[18]  = 0x00;
-  pWaveFormatStruct->pHeader[19]  = 0x00;
-
-  /* Write the audio format. PCM = 1 ==> Linear quantization
-	Values other than 1 indicate some form of compression. ------------------------------*/
-  pWaveFormatStruct->pHeader[20]  = 0x01;
-  pWaveFormatStruct->pHeader[21]  = 0x00;
-
-  /* Write the number of channels (Mono = 1, Stereo = 2). ---------------------------*/
-  pWaveFormatStruct->pHeader[22]  = pWaveFormatStruct->NbrChannels;
-  pWaveFormatStruct->pHeader[23]  = 0x00;
-
-  /* Write the Sample Rate in Hz ---------------------------------------------*/
-  /* Write Little Endian ie. 8000 = 0x00001F40 => byte[24]=0x40, byte[27]=0x00*/
-  pWaveFormatStruct->pHeader[24]  = (uint8_t)((pWaveFormatStruct->SampleRate & 0xFF));
-  pWaveFormatStruct->pHeader[25]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 8) & 0xFF);
-  pWaveFormatStruct->pHeader[26]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 16) & 0xFF);
-  pWaveFormatStruct->pHeader[27]  = (uint8_t)((pWaveFormatStruct->SampleRate >> 24) & 0xFF);
-
-  /* Write the Byte Rate
-	==> SampleRate * NumChannels * BitsPerSample/8	-----------------------------------------------------*/
-  pWaveFormatStruct->pHeader[28]  = (uint8_t)((pWaveFormatStruct->ByteRate & 0xFF));
-  pWaveFormatStruct->pHeader[29]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 8) & 0xFF);
-  pWaveFormatStruct->pHeader[30]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 16) & 0xFF);
-  pWaveFormatStruct->pHeader[31]  = (uint8_t)((pWaveFormatStruct->ByteRate >> 24) & 0xFF);
-
-  /* Write the block alignment 
-	==> NumChannels * BitsPerSample/8 -----------------------------------------------*/
-  pWaveFormatStruct->pHeader[32]  = pWaveFormatStruct->BlockAlign;
-  pWaveFormatStruct->pHeader[33]  = 0x00;
-
-  /* Write the number of bits per sample -------------------------------------*/
-  pWaveFormatStruct->pHeader[34]  = pWaveFormatStruct->BitPerSample;
-  pWaveFormatStruct->pHeader[35]  = 0x00;
-
-
-
-/********* SUB-CHUNK DESCRIPTOR N°2 *********/	
-  /* Write the Data chunk. Contains the letters "data" ------------------------------------*/
-  pWaveFormatStruct->pHeader[36]  = 'd';
-  pWaveFormatStruct->pHeader[37]  = 'a';
-  pWaveFormatStruct->pHeader[38]  = 't';
-  pWaveFormatStruct->pHeader[39]  = 'a';
-
-  /* Write the number of sample data. This is the number of bytes in the data.
-	==> NumSamples * NumChannels * BitsPerSample/8  -----------------------------------------*/
-  /* This variable will be written back at the end of the recording operation */
-  pWaveFormatStruct->pHeader[40]  = 0x00;
-  pWaveFormatStruct->pHeader[41]  = 0x4C;
-  pWaveFormatStruct->pHeader[42]  = 0x1D;
-  pWaveFormatStruct->pHeader[43]  = 0x00;
-  
-  /* Return 0 if all operations are OK */
-  return 0;
-}
-uint32_t WaveProcess_HeaderUpdate(WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t adudio_size) {
-  /* Write the file length ----------------------------------------------------*/
-  /* The sampling time: this value will be be written back at the end of the 
-   recording opearation.  Example: 661500 Btyes = 0x000A17FC, byte[7]=0x00, byte[4]=0xFC */
-  pWaveFormatStruct->pHeader[4] = (uint8_t)(adudio_size+36);
-  pWaveFormatStruct->pHeader[5] = (uint8_t)((adudio_size+36) >> 8);
-  pWaveFormatStruct->pHeader[6] = (uint8_t)((adudio_size+36) >> 16);
-  pWaveFormatStruct->pHeader[7] = (uint8_t)((adudio_size+36) >> 24);
-  /* Write the number of sample data -----------------------------------------*/
-  /* This variable will be written back at the end of the recording operation */
-  pWaveFormatStruct->pHeader[40] = (uint8_t)(adudio_size); 
-  pWaveFormatStruct->pHeader[41] = (uint8_t)(adudio_size >> 8);
-  pWaveFormatStruct->pHeader[42] = (uint8_t)(adudio_size >> 16);
-  pWaveFormatStruct->pHeader[43] = (uint8_t)(adudio_size >> 24); 
-  /* Return 0 if all operations are OK */
-  return 0;
-}
-
-
-
-
-
 //tick_start = osKernelSysTick();
 //elapsed_time = osKernelSysTick() - tick_start;
 //f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );
