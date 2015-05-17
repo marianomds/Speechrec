@@ -16,6 +16,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "arm_math.h"
+#include "stdbool.h"
 
 enum Path{
 	DIAGONAL = 0,
@@ -61,8 +62,8 @@ enum Path{
 	* @param  [in] path: Pointer to the matrix where the path taken can be seen. Size of path must be length(a)+length(b). If it's not need pass NULL.
   * @retval 
   */
-float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path);
-float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, uint16_t *path);
+float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx);
+float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx);
 
 /**
   * @brief  Inicializa la función distancia

@@ -451,10 +451,6 @@ void Recognition (void const *pvParameters) {
 	if (f_chdir (args->patterns_path) != FR_OK)																			Error_Handler();		// Go to file path
 	if (!readPaternsConfigFile (args->patterns_config_file_name, &pat, &pat_num))		Error_Handler();		// Read Patterns File
 	if (f_chdir ("..") != FR_OK)																										Error_Handler();		// Go back to original directory
-
-	//DESPUES BORRAR
-//	processing = true;
-//	osMessagePut(recognition_msg, FINISH_PROCESSING, 0);
 	
 	/* START TASK */
 	for (;;)
@@ -599,19 +595,29 @@ void Recognition (void const *pvParameters) {
 						for(int i=0; i < pat_num ; i++)
 							dist[i] = FLT_MAX;
 						
-						// Go to file path
-						if (f_chdir (args->patterns_path) != FR_OK)							Error_Handler();
-								
+						
 						// Search for minimun distance between patterns and utterance
 						pat_reco = pat_num-1;
 						for(int i=0; i < pat_num ; i++)
 						{
+							// Go to file path
+							if (f_chdir (args->patterns_path) != FR_OK)
+								Error_Handler();
+							
 							// load pattern
 							if( !loadPattern (&pat[i]) )
 								continue;
 							
+							// Go back to original directory
+							if (f_chdir ("..") != FR_OK)
+								Error_Handler();
+							
+							// Go to file path
+							if (f_chdir (file_name) != FR_OK)
+								Error_Handler();
+
 							// Get distance
-							dist[i] = dtw_reduce (&pat[i].pattern_mtx, &utterance_mtx, NULL);
+							dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, appconf.debug_conf.save_dist);								
 							
 							// Check if distance is shorter
 							if( dist[i] <  dist[pat_reco])
@@ -622,11 +628,11 @@ void Recognition (void const *pvParameters) {
 							pat[i].pattern_mtx.pData = NULL;
 							pat[i].pattern_mtx.numCols = 0;
 							pat[i].pattern_mtx.numRows = 0;
+							
+							if (f_chdir ("..") != FR_OK)
+								Error_Handler();
 						}
-
-						// Go back to original directory
-						if (f_chdir ("..") != FR_OK)								Error_Handler();
-
+														
 						// Record in file wich pattern was spoken
 						if ( open_append (&result,"Spoken") != FR_OK)		Error_Handler();				// Load result file
 						if (dist[pat_reco] != FLT_MAX)
@@ -1362,9 +1368,10 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->vad				= ini_getbool	("System", "VAD", 	true,		filename);
 	
 	// Read Debug configuration
-	config->debug_conf.debug					= ini_getbool	("Debug", "Debug",	false,	filename);	
-	config->debug_conf.save_proc_vars	= ini_getbool	("Debug", "save_proc_vars",	false,	filename);	
-	config->debug_conf.save_vad_vars	= ini_getbool	("Debug", "save_vad_vars",	false,	filename);	
+	config->debug_conf.debug					= ini_getbool	("Debug", "Debug",	false,	filename);
+	config->debug_conf.save_proc_vars	= ini_getbool	("Debug", "save_proc_vars",	false,	filename);
+	config->debug_conf.save_vad_vars	= ini_getbool	("Debug", "save_vad_vars",	false,	filename);
+	config->debug_conf.save_dist			= ini_getbool	("Debug", "save_dist",	false,	filename);
 	
 	// Read Auido configuration
 	config->audio_capture_conf.audio_freq						= (uint16_t)	ini_getl("AudioConf", "FREQ",						AUDIO_IN_FREQ,					filename);
