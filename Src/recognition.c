@@ -269,7 +269,7 @@ void deinit_dist (void){
 	vPortFree(pDst);;
 }
 float32_t dist (float32_t *pSrcA, float32_t *pSrcB){
-	float32_t *pDst,power,result;
+	float32_t power,result;
 	
 	// Calculo la distancia euclidia
 	arm_sub_f32 (pSrcA, pSrcB, pDst, dist_blockSize);		// pDst[n] = pSrcA[n] - pSrcB[n]
