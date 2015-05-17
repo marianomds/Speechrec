@@ -108,21 +108,14 @@ void Main_Thread (void const *pvParameters) {
 						audio_task_ID = osThreadCreate (osThread(AudioCaptureTask), &audio_cap_args);
 					
 						/* If VAD was configured*/
-//						if(appconf.vad)
-//						{
+						if(appconf.vad)
+						{
 							/* Create Calibration Task */
-//							osThreadDef(CalibrationTask,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
-//							TaskID = osThreadCreate (osThread(CalibrationTask), NULL);
-//							msgID = &calibration_msg;
-//						}
-//						else
-//						{
-//							/* Create Pattern_Storing Task */
-//							osThreadDef(PatternStoringTask,	PatternStoring, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
-//							TaskID = osThreadCreate (osThread(PatternStoringTask), NULL);
-//							msgID = &pattern_storring_msg;
-//						}
-						osMessagePut(appli_event,CHANGE_STATE,osWaitForever);
+							osThreadDef(CalibrationTask,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*10);
+							current_task_ID = osThreadCreate (osThread(CalibrationTask), NULL);
+							msgID = &calibration_msg;
+						}
+						
 						appstarted = true;
 					}
 					break;
@@ -171,7 +164,7 @@ void Main_Thread (void const *pvParameters) {
 						osMessagePut(*msgID,BUTTON_PRESS,0);
 					break;
 				}
-				case CHANGE_STATE:
+				case CHANGE_TASK:
 				{
 					// Send kill to running task if necesary
 					if (msgID != NULL)
@@ -861,6 +854,9 @@ void Calibration (void const * pvParameters) {
 					
 					//Kill message queue
 					calibration_msg = NULL;
+
+					// Send message to change task
+					osMessagePut(appli_event,CHANGE_TASK,osWaitForever);
 					
 					// Kill thread
 					osThreadTerminate (osThreadGetId());

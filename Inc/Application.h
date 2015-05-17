@@ -115,7 +115,7 @@ typedef enum {
 	BUTTON_IRQ,	
 	BUTTON_RELEASE,
 	BUTTON_PRESS,
-	CHANGE_STATE,
+	CHANGE_TASK,
 	FINISH_PROCESSING,
 	KILL_THREAD,
 }Common_task_Messages;
@@ -296,6 +296,7 @@ void User_Button_EXTI (void);
 
 
 
+
 //---------------------------------------------------------------------------------
 //														WAVE FILE FUNCTIONS MANAGMENT
 //---------------------------------------------------------------------------------
@@ -350,8 +351,6 @@ uint32_t	WaveProcess_HeaderInit		(WAVE_FormatTypeDef* pWaveFormatStruct);
   * @retval 0 if passed, !0 if failed.
   */
 uint32_t	WaveProcess_HeaderUpdate	(WAVE_FormatTypeDef* pWaveFormatStruct, uint32_t adudio_size);
-
-
 
 
 #endif  // _APPLICATION_H
