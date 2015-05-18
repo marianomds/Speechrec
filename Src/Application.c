@@ -115,6 +115,10 @@ void Main_Thread (void const *pvParameters) {
 							current_task_ID = osThreadCreate (osThread(CalibrationTask), NULL);
 							msgID = &calibration_msg;
 						}
+						else
+						{
+							osMessagePut(appli_event,CHANGE_TASK,osWaitForever);
+						}
 						
 						appstarted = true;
 					}
@@ -167,7 +171,7 @@ void Main_Thread (void const *pvParameters) {
 				case CHANGE_TASK:
 				{
 					// Send kill to running task if necesary
-					if (*msgID != NULL)
+					if (msgID != NULL && *msgID != NULL)
 					{
 						osMessagePut(*msgID,KILL_THREAD,0);
 						msgID = NULL;
@@ -1046,10 +1050,7 @@ void fileProcessing (void const *pvParameters) {
 			
 			// Si estoy en el último Frame relleno el final del Frame con ceros de ser necesario
 			if(bytesread < appconf.proc_conf.frame_net * sizeof(*frame))
-			{
 				memset(&frame[bytesread], 0, appconf.proc_conf.frame_net * sizeof(*frame) - bytesread);
-				finish = true;
-			}
 			
 			// Proceso el frame obtenido y escribo los MFCC en un archivo
 			if (MFCC_float (frame) == VOICE)
@@ -1062,6 +1063,10 @@ void fileProcessing (void const *pvParameters) {
 			
 			// Incremento el Nº de Frame
 			frameNum++;
+			
+			// Si lei todo el archivo termino
+			if(f_eof(&WaveFile))
+				finish = true;
 		}
 
 		// Free memory
@@ -1404,7 +1409,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->calib_conf.calib_len		= (uint32_t)	floorf((config->calib_conf.calib_time * config->audio_capture_conf.audio_freq ) / config->proc_conf.frame_net * 1.0);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,	filename);
-	config->calib_conf.thd_min_fmax = (uint32_t)  config->calib_conf.thd_min_fmax * (config->proc_conf.fft_len/2) /(config->audio_capture_conf.audio_freq/2) * 1.0;
+	config->calib_conf.thd_min_fmax = (uint32_t)  config->calib_conf.thd_min_fmax * config->proc_conf.fft_len / config->audio_capture_conf.audio_freq;
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
 	
 	
