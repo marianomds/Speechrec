@@ -149,7 +149,7 @@ enum States{
 typedef struct {
 	bool			debug;
 	bool			save_proc_vars;
-	bool			save_vad_vars;
+	bool			save_clb_vars;
 	bool			save_dist;
 }DebugConfig;
 

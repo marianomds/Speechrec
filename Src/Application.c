@@ -167,7 +167,7 @@ void Main_Thread (void const *pvParameters) {
 				case CHANGE_TASK:
 				{
 					// Send kill to running task if necesary
-					if (msgID != NULL)
+					if (*msgID != NULL)
 					{
 						osMessagePut(*msgID,KILL_THREAD,0);
 						msgID = NULL;
@@ -825,7 +825,7 @@ void Calibration (void const * pvParameters) {
 					}					
 					
 					//End calibration
-					endCalibration(appconf.debug_conf.debug & appconf.debug_conf.save_vad_vars);
+					endCalibration(appconf.debug_conf.debug & appconf.debug_conf.save_clb_vars);
 					
 					// Set processing state to false
 					processing = false;
@@ -1054,7 +1054,7 @@ void fileProcessing (void const *pvParameters) {
 			// Proceso el frame obtenido y escribo los MFCC en un archivo
 			if (MFCC_float (frame) == VOICE)
 				if(f_write(&MFCCFile, MFCC, MFCC_size, &byteswritten) != FR_OK)
-					Error_Handler();					
+					Error_Handler();
 			
 			// Escribo los valores intermedios en archivos
 			if(args->save_to_files)
@@ -1371,7 +1371,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	// Read Debug configuration
 	config->debug_conf.debug					= ini_getbool	("Debug", "Debug",	false,	filename);
 	config->debug_conf.save_proc_vars	= ini_getbool	("Debug", "save_proc_vars",	false,	filename);
-	config->debug_conf.save_vad_vars	= ini_getbool	("Debug", "save_vad_vars",	false,	filename);
+	config->debug_conf.save_clb_vars	= ini_getbool	("Debug", "save_clb_vars",	false,	filename);
 	config->debug_conf.save_dist			= ini_getbool	("Debug", "save_dist",	false,	filename);
 	
 	// Read Auido configuration
