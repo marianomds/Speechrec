@@ -34,7 +34,7 @@
 	float32_t *var2 ; 				// [proc_conf.fft_len];
 	float32_t *pState;				// [proc_conf.numtaps + proc_conf.frame_len - 1]
 	float32_t *Pre_enfasis_Coeef;	// [proc_conf.numtaps]
-	float32_t  *MFCC_buff;					// [proc_conf.lifterlength];
+	float32_t *MFCC_buff;					// [proc_conf.lifterlength];
 	
 	
 	float32_t *HamWin 	 ; 		// [proc_conf.frame_len];
@@ -70,6 +70,7 @@
 	//	float32_t SilZeroCrossMean;
 
 		float32_t SilEnergyDev;
+		uint32_t	SilFmaxDev;
 		float32_t SilSpFlatDev;
 	//	float32_t SilZeroCrossDev;
 
@@ -113,6 +114,8 @@ void finishProcessing(void){
 }
 ProcStatus MFCC_float (uint16_t *frame) {
 	
+	ProcStatus output = NO_VOICE;
+	
 	// Muevo los datos de FRAME_OVERLAP al principio del buffer
 	memcpy(&frame_buff[0], &frame_buff[proc_conf.frame_net], proc_conf.frame_overlap * sizeof(*frame_buff));
 	
@@ -123,11 +126,25 @@ ProcStatus MFCC_float (uint16_t *frame) {
 		
 	/* Check if it is a Voiced Frame */
 	if( !use_vad || (Energy > THD_E   &&  Frecmax < THD_FMX) || SpFlat > THD_SF)
+	{
 		secondProcStage (MFCC_buff, vars_buffers);
-	else
-		return NO_VOICE;
+		output = VOICE;
+	}
 	
-	return VOICE;
+	if(vars_buffers != NULL)
+	{
+		if(output == NO_VOICE)
+		{
+			memset(vars_buffers->MelWin, 0, proc_conf.mel_banks * sizeof(*(vars_buffers->MelWin)));
+			memset(vars_buffers->LogWin, 0, proc_conf.ifft_len  * sizeof(*(vars_buffers->LogWin)));
+			memset(vars_buffers->CepWin, 0, proc_conf.ifft_len  * sizeof(*(vars_buffers->CepWin)));
+			vars_buffers->VAD = 0;
+		}
+		else
+			vars_buffers->VAD = 1;
+	}
+	
+	return output;
 }
 //
 //-------- CALIBRATION FUNCTIONS --------
@@ -185,8 +202,14 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 
 	// Calculate Deviation of Features
 	arm_std_f32 (SilEnergy, calib_conf.calib_len, &SilEnergyDev);
+	arm_std_q31 ((q31_t*)SilFrecmax, calib_conf.calib_len,(q31_t*) &SilFmaxDev);
 	arm_std_f32 (SilSpFlat, calib_conf.calib_len, &SilSpFlatDev);
 
+	// Free memory
+	vPortFree(SilEnergy);		SilEnergy = NULL;
+	vPortFree(SilFrecmax);	SilFrecmax = NULL;
+	vPortFree(SilSpFlat);		SilSpFlat = NULL;
+	
 	// Set Thresholds
 	THD_E   = SilEnergyMean + calib_conf.thd_scl_eng * SilEnergyDev;
 	THD_FMX = SilFmaxMean > calib_conf.thd_min_fmax ? SilFmaxMean : calib_conf.thd_min_fmax;
@@ -199,40 +222,28 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 		
 		// Guardo la Energía
 		if(f_open(&CalibFile, "CLB_ENR.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilEnergyMean, 	sizeof(SilEnergyMean), 	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilEnergyDev, 	sizeof(SilEnergyDev), 	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, SilEnergy, 	calib_conf.calib_len * sizeof(*SilEnergy),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilEnergyMean,sizeof(SilEnergyMean),(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilEnergyDev,	sizeof(SilEnergyDev), (void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_E, 				sizeof(THD_E), 				(void*)&byteswritten) != FR_OK) Error_Handler();
 		f_close(&CalibFile);
-		
-		// Guardo el Spectral Flatness
-		if(f_open(&CalibFile, "CLB_SF.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilSpFlatMean,	sizeof(SilSpFlatMean),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilSpFlatDev,		sizeof(SilSpFlatDev),		(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, SilSpFlat,	calib_conf.calib_len * sizeof(*SilSpFlat),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		f_close(&CalibFile);
-		
+			
 		// Guardo la Frecuencia Máxima
 		if(f_open(&CalibFile, "CLB_FMX.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilFmaxMean, sizeof(SilFmaxMean),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, SilFrecmax, calib_conf.calib_len * sizeof(*SilFrecmax),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilFmaxMean,sizeof(SilFmaxMean),(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilFmaxDev, sizeof(SilFmaxDev),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_FMX,		sizeof(THD_FMX),		(void*)&byteswritten) != FR_OK) Error_Handler();
 		f_close(&CalibFile);
 		
-		// Guardo los thresholds
-		if(f_open(&CalibFile, "CLB_THD.bin", FA_CREATE_NEW | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_E, 		sizeof(THD_E), 		(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_FMX,	sizeof(THD_FMX),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_SF, 	sizeof(THD_SF),		(void*)&byteswritten) != FR_OK) Error_Handler();
+				// Guardo el Spectral Flatness
+		if(f_open(&CalibFile, "CLB_SF.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilSpFlatMean,sizeof(SilSpFlatMean),(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &SilSpFlatDev,	sizeof(SilSpFlatDev),	(void*)&byteswritten) != FR_OK) Error_Handler();
+		if(f_write(&CalibFile, &THD_SF, 			sizeof(THD_SF),				(void*)&byteswritten) != FR_OK) Error_Handler();
 		f_close(&CalibFile);
 	}
 	
 	// Finish basics
-	finishBasics();
-		
-	// Allocate space for variables
-	vPortFree(SilEnergy);		SilEnergy = NULL;
-	vPortFree(SilFrecmax);	SilFrecmax = NULL;
-	vPortFree(SilSpFlat);		SilSpFlat = NULL;
-	
+	finishBasics();	
 	
 	return CALIB_OK;
 }
@@ -522,7 +533,7 @@ uint8_t Open_proc_files (Proc_files *files, const bool vad) {
 
 	if (vad)
 	{
-//		if(f_open(&files->VADFile,			 "VAD.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();
+		if(f_open(&files->VADFile,			 "VAD.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();
 		if(f_open(&files->EnerFile,		"Energy.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();
 		if(f_open(&files->FrecFile,  "FrecMax.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();
 		if(f_open(&files->SFFile,		"SpecFlat.bin",	FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();
@@ -547,7 +558,7 @@ uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool v
 
 	if(vad)
 	{
-//		if(f_write(&files->VADFile,	&output,		sizeof(output),		&byteswritten) != FR_OK)	Error_Handler();
+		if(f_write(&files->VADFile,	&data->VAD,	sizeof(data->VAD),&byteswritten) != FR_OK)	Error_Handler();
 		if(f_write(&files->EnerFile,&Energy,		sizeof(Energy),		&byteswritten) != FR_OK)	Error_Handler();
 		if(f_write(&files->FrecFile,&Frecmax,		sizeof(Frecmax),	&byteswritten) != FR_OK)	Error_Handler();
 		if(f_write(&files->SFFile,	&SpFlat,		sizeof(SpFlat),		&byteswritten) != FR_OK)	Error_Handler();
@@ -567,7 +578,7 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad) {
 
 	if(vad)
 	{
-//		f_close(&files->VADFile);
+		f_close(&files->VADFile);
 		f_close(&files->EnerFile);
 		f_close(&files->FrecFile);
 		f_close(&files->SFFile);

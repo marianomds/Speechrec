@@ -65,12 +65,6 @@ typedef struct{
 	uint32_t	thd_min_fmax;
 	float32_t	thd_scl_sf;
 }CalibConf;
- 
-typedef struct{
-	float32_t Energy;
-	uint32_t  Frecmax;
-	float32_t SpFlat;
-}VADVar;
 
 typedef struct{
 	float32_t *speech;			// Señal de audio escalada
@@ -81,7 +75,7 @@ typedef struct{
 	float32_t *MelWin;			// Espectro pasado por los filtros de Mel
 	float32_t *LogWin;			// Logaritmo del espectro filtrado
 	float32_t *CepWin;			// Señal cepstral
-//	VADVar		vad;
+	uint8_t 	VAD;					// Indica si es salida de voz o no
 }Proc_var;
 
 typedef struct {
@@ -95,9 +89,13 @@ typedef struct {
 	FIL MelWinFile;
 	FIL LogWinFile;
 	FIL CepWinFile;
+	
+	// When VAD Activated
+	FIL VADFile;
 	FIL EnerFile;
 	FIL FrecFile;
 	FIL SFFile;
+	
 } Proc_files;
 
 
