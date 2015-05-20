@@ -41,15 +41,12 @@ osMessageQId audio_processing_msg;
 osMessageQId audio_capture_msg;
 osMailQId audio_capture_mail;
 
-uint32_t tick_start ,elapsed_time;
-
 AppConfig appconf;	/* Configuration structure */
 uint16_t *audio;
 
 int8_t test = 0;
 UINT bwrt;
 
-FIL log_file;
 //---------------------------------------
 //						APPLICATIONS TASKS
 //---------------------------------------
@@ -88,9 +85,6 @@ void Main_Thread (void const *pvParameters) {
 						if(f_mount(&USBDISKFatFs, (TCHAR const*)USBH_Path, 0) != FR_OK)
 							Error_Handler();	/* FatFs Initialization Error */
 
-						// Archivo de log
-						if(f_open(&log_file,"log.txt",FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();		//TODO de prueba						
-						
 						/* Read Configuration File */
 						readConfigFile(CONFIG_FILE_NAME,&appconf);
 
@@ -1230,8 +1224,6 @@ void AudioCapture (void const * pvParameters) {
 						// Turn off led
 						LED_Off((Led_TypeDef)EXECUTE_LED);
 						
-						f_close(&log_file);
-						
 						// Set finish variable
 						finish = true;
 						}
@@ -1242,7 +1234,6 @@ void AudioCapture (void const * pvParameters) {
 					{
 						if(save_to_file)
 						{
-							tick_start = osKernelSysTick();
 							/* write buffer in file */
 							if(f_write(&WavFile, data, data_size*sizeof(*data), (void*)&byteswritten) != FR_OK)
 							{
@@ -1250,9 +1241,6 @@ void AudioCapture (void const * pvParameters) {
 								Error_Handler();
 							}
 							audio_size += byteswritten;
-							
-							elapsed_time = osKernelSysTick() - tick_start;
-							f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );
 						}
 						
 						// Send message back telling that the frame is ready
@@ -1509,6 +1497,8 @@ void User_Button_EXTI (void) {
 	HAL_NVIC_DisableIRQ(EXTI0_IRQn);			// Disable EXTI0 IRQ
 	osMessagePut(key_msg,BUTTON_IRQ,0);
 }
+//uint32_t tick_start ,elapsed_time;
+//if(f_open(&log_file,"log.txt",FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();		//TODO de prueba						
 //tick_start = osKernelSysTick();
 //elapsed_time = osKernelSysTick() - tick_start;
 //f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );

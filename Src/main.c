@@ -42,7 +42,8 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "error_handler.h"
+#include "misc.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -172,8 +173,22 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+	FIL log_file;
+	
+	// Go to root directory
+	f_chdir ("0:/");
 
+	// Archivo de log
+	open_append(&log_file,"log.txt");
+	
+	// Imprimo
+	f_printf(&log_file, "Wrong parameters value: file %s on line %d\r\n", file, line);
+	
+	// Cierro el archivo
+	f_close(&log_file);
+	
+	Error_Handler();
+  /* USER CODE END 6 */
 }
 
 #endif
