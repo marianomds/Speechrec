@@ -36,7 +36,7 @@
 #define TIME_OVERLAP									10			// [miliseconds]
 
 #define FRAME_LEN											512	// (int) 2^(AUDIO_IN_FREQ/1000*(TIME_WINDOW))
-#define FRAME_OVERLAP									160 // (AUDIO_IN_FREQ/1000)*TIME_OVERLAP
+#define FRAME_OVERLAP									170 // (AUDIO_IN_FREQ/1000)*TIME_OVERLAP
 #define FRAME_NET											FRAME_LEN - FRAME_OVERLAP
 
 #define NUMTAPS												2

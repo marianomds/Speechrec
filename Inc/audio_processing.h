@@ -46,8 +46,10 @@ typedef enum{
 //	uint8_t		time_overlap;
 	 
 	uint16_t	frame_len;
-	uint16_t	frame_overlap;
 	uint16_t	frame_net;
+	uint16_t	frame_overlap;
+	uint16_t	zero_padding_left;
+	uint16_t	zero_padding_right;
 	 
 	uint16_t	numtaps;
 	float32_t	alpha;

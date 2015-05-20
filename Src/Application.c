@@ -1347,6 +1347,22 @@ void Configure_Application (void) {
   */
 void setEnvVar (void){
 	//TODO: Calcular las variables que va a utilizar el sistema y dejar de usar los defines
+	
+	uint32_t buff_n;
+	uint32_t padding;
+	
+	// Calculo la longitud necesaria del buffer (haciendo zero padding de ser necesario)
+	buff_n = ceil( log(appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2) / log(2) );
+	appconf.proc_conf.frame_len = pow(2,buff_n);
+	padding = appconf.proc_conf.frame_len - (appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2);
+	appconf.proc_conf.zero_padding_left  = padding / 2;
+	appconf.proc_conf.zero_padding_right = appconf.proc_conf.zero_padding_left + padding  % 2;
+
+	// Calculo la longitud de la calibración según el tiempo seteado
+	appconf.calib_conf.calib_len		= (uint32_t)	(appconf.calib_conf.calib_time * appconf.audio_capture_conf.audio_freq ) / appconf.proc_conf.frame_net;
+	
+	// Escalo el THD_min_FMAX a índices en el buffer
+	appconf.calib_conf.thd_min_fmax = (uint32_t)  appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.audio_capture_conf.audio_freq;
 }
 /**
   * @brief  Lee el archivo de configuración del sistema
@@ -1381,10 +1397,8 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 //	config->proc_conf.time_window		= (uint16_t) 	ini_getl("SPConf", "TIME_WINDOW", 	TIME_WINDOW,		filename);
 //	config->proc_conf.time_overlap	= (uint16_t) 	ini_getl("SPConf", "TIME_OVERLAP",	TIME_OVERLAP,		filename);
 	
-	config->proc_conf.frame_len			= (uint16_t)	ini_getl("SPConf", "FRAME_LEN", 		FRAME_LEN,			filename);
-	config->proc_conf.frame_overlap	= (uint16_t)	ini_getl("SPConf", "FRAME_OVERLAP", FRAME_OVERLAP,	filename);
-	config->proc_conf.frame_net			= config->proc_conf.frame_len - config->proc_conf.frame_overlap;
-
+	config->proc_conf.frame_net			= (uint16_t)		ini_getl("SPConf", "FRAME_NET", 		FRAME_LEN,			filename);
+	config->proc_conf.frame_overlap	= (uint16_t)		ini_getl("SPConf", "FRAME_OVERLAP", FRAME_LEN,			filename);
 	config->proc_conf.numtaps				= (uint16_t)		ini_getl("SPConf", "NUMTAPS",				NUMTAPS,				filename);
 	config->proc_conf.alpha					= (float32_t)		ini_getf("SPConf", "ALPHA",					ALPHA,					filename);
 	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 			FFT_LEN,				filename);
@@ -1393,11 +1407,9 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",	LIFTER_LEGNTH,	filename);
 	
 	// Read Calibration configuration
-	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", CALIB_TIME, filename);
-	config->calib_conf.calib_len		= (uint32_t)	floorf((config->calib_conf.calib_time * config->audio_capture_conf.audio_freq ) / config->proc_conf.frame_net * 1.0);
+	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", 			CALIB_TIME, 			filename);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
-	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,	filename);
-	config->calib_conf.thd_min_fmax = (uint32_t)  config->calib_conf.thd_min_fmax * config->proc_conf.fft_len / config->audio_capture_conf.audio_freq;
+	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,			filename);
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
 	
 	

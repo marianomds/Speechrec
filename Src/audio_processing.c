@@ -24,15 +24,15 @@
 	CalibConf calib_conf;			// Calibration configurartion
 	bool use_vad = true;
 	Proc_var *vars_buffers = NULL;
-
+	
 //---------------------------------------
 //				SPEECH PROCESSING VARIALBES
 //---------------------------------------
 
-	uint16_t  *frame_buff;		// [proc_conf.frame_len];
-	float32_t *var1 ; 				// [proc_conf.frame_len];
-	float32_t *var2 ; 				// [proc_conf.fft_len];
-	float32_t *pState;				// [proc_conf.numtaps + proc_conf.frame_len - 1]
+	uint16_t  *frame_buff;				// [proc_conf.frame_len];
+	float32_t *var1 ; 						// [proc_conf.frame_len];
+	float32_t *var2 ; 						// [proc_conf.fft_len];
+	float32_t *pState;						// [proc_conf.numtaps + proc_conf.frame_len - 1]
 	float32_t *Pre_enfasis_Coeef;	// [proc_conf.numtaps]
 	float32_t *MFCC_buff;					// [proc_conf.lifterlength];
 	
@@ -116,11 +116,12 @@ ProcStatus MFCC_float (uint16_t *frame) {
 	
 	ProcStatus output = NO_VOICE;
 	
-	// Muevo los datos de FRAME_OVERLAP al principio del buffer
-	memcpy(&frame_buff[0], &frame_buff[proc_conf.frame_net], proc_conf.frame_overlap * sizeof(*frame_buff));
+	// Shifteo los datos un FRAME_NET
+	memcpy(&frame_buff[proc_conf.zero_padding_left], &frame_buff[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_buff));
 	
-	// Copio los nuevos datos de frame (FRAME_NET)
-	memcpy(&frame_buff[proc_conf.frame_overlap], frame, proc_conf.frame_net * sizeof(*frame_buff));
+	// Copio el nuevo frame al final del buffer
+	memcpy(&frame_buff[proc_conf.frame_len - proc_conf.zero_padding_right - proc_conf.frame_overlap], frame, proc_conf.frame_overlap * sizeof(*frame_buff));
+	
 	
 	firstProcStage (use_vad, vars_buffers);
 		
@@ -172,11 +173,11 @@ CalibStatus Calibrate (uint16_t *frame, uint32_t frame_num) {
 	
 	if ( frame_num < calib_conf.calib_len)
 	{
-		// Muevo los datos de FRAME_OVERLAP al principio del buffer
-		memcpy(&frame_buff[0], &frame_buff[proc_conf.frame_net], proc_conf.frame_overlap * sizeof(*frame_buff));
+		// Shifteo los datos un FRAME_NET
+		memcpy(&frame_buff[proc_conf.zero_padding_left], &frame_buff[proc_conf.frame_net], proc_conf.frame_net * 2 * sizeof(*frame_buff));
 		
-		// Copio los nuevos datos de frame (FRAME_NET)
-		memcpy(&frame_buff[proc_conf.frame_overlap], frame, proc_conf.frame_net * sizeof(*frame_buff));
+		// Copio el nuevo frame al final del buffer
+		memcpy(&frame_buff[proc_conf.frame_net*2], frame, proc_conf.frame_net * sizeof(*frame_buff));
 		
 		// Process frame
 		firstProcStage (true,vars_buffers);
@@ -251,6 +252,7 @@ CalibStatus endCalibration	(const bool save_calib_vars) {
 //			BASE PROCESSING FUNCTIONS
 //---------------------------------------
 void initBasics (ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers) {
+	
 	// Copio la configuración de procesamiento
 	proc_conf = *configuration;
 	use_vad = vad;
@@ -261,7 +263,7 @@ void initBasics (ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers) 
 	memset(frame_buff, 0, proc_conf.frame_len*sizeof(*frame_buff));
 	
 	// Creo la ventana de Hamming
-	if( (HamWin = pvPortMalloc(proc_conf.frame_len * sizeof(*HamWin))) == NULL)
+	if( (HamWin = pvPortMalloc(proc_conf.frame_len* sizeof(*HamWin))) == NULL)
 		Error_Handler();
 	Hamming_float(HamWin,proc_conf.frame_len);
 	
@@ -336,15 +338,6 @@ void firstProcStage (bool vad, Proc_var *saving_var) {
 //			saving_var->vad.Energy = Energy;
 		}
 		
-	// REVISAR LO DE ABAJO, NO SE SI ESTA BIEN
-	//	/* Hago Zero-Padding si es necesario */
-	//	if(proc_conf.fft_len != proc_conf.frame_len){
-	//		//Relleno con ceros en la parte izquierda
-	//		arm_fill_f32 	(0,STFTWin,(proc_conf.fft_len-proc_conf.frame_len)/2);
-	//		//Relleno con ceros en la parte derecha
-	//		arm_fill_f32 	(0,&STFTWin[(proc_conf.fft_len+proc_conf.frame_len)/2],(proc_conf.fft_len-proc_conf.frame_len)/2);
-	//	}
-		
 		/* Se calcula la STFT */
 		arm_copy_f32 (saving_var->WinSig, var1, proc_conf.frame_len);
 		arm_rfft_fast_f32(&RFFTinst,var1,saving_var->STFTWin,0);
@@ -385,15 +378,6 @@ void firstProcStage (bool vad, Proc_var *saving_var) {
 			arm_power_f32 (var1, proc_conf.frame_len, &Energy);
 			Energy /= proc_conf.frame_len;
 		}
-
-	// REVISAR LO DE ABAJO, NO SE SI ESTA BIEN
-	//	/* Hago Zero-Padding si es necesario */
-	//	if(proc_conf.fft_len != proc_conf.frame_len){
-	//		//Relleno con ceros en la parte izquierda
-	//		arm_fill_f32 	(0,STFTWin,(proc_conf.fft_len-proc_conf.frame_len)/2);
-	//		//Relleno con ceros en la parte derecha
-	//		arm_fill_f32 	(0,&STFTWin[(proc_conf.fft_len+proc_conf.frame_len)/2],(proc_conf.fft_len-proc_conf.frame_len)/2);
-	//	}
 		
 		/* Se calcula la STFT */
 		arm_rfft_fast_f32(&RFFTinst,var1,var2,0);
