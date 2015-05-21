@@ -1096,7 +1096,7 @@ void AudioCapture (void const * pvParameters) {
 	bool save_to_file = true;
 	uint16_t* data;
 	uint32_t data_size;
-	uint16_t* usb_buff;
+	uint16_t* usb_buff = NULL;
 	uint32_t usb_buff_size;
 	uint8_t count = 0;
 
@@ -1130,9 +1130,6 @@ void AudioCapture (void const * pvParameters) {
 	args = (Audio_Capture_args*) pvParameters;
 	data = args->data;
 	data_size = args->data_buff_size;
-	
-	usb_buff_size = args->data_buff_size*5;
-	usb_buff = pvPortMalloc(usb_buff_size*sizeof(*usb_buff));
 	
 	// Intialized Audio Driver
 	if(initCapture(&args->audio_conf, data, data_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
@@ -1172,6 +1169,10 @@ void AudioCapture (void const * pvParameters) {
 				// Go back to original directory
 				if (f_chdir ("..") != FR_OK)
 					Error_Handler();
+				
+				// Set buffer for USB
+				usb_buff_size = args->data_buff_size * 5;
+				usb_buff = pvPortMalloc(usb_buff_size * sizeof(*usb_buff));
 			}
 
 			// Free Mail memory
@@ -1222,7 +1223,11 @@ void AudioCapture (void const * pvParameters) {
 						audioStop();
 							
 						if(save_to_file)
+						{
 							closeWavFile(&WavFile, &WaveFormat, audio_size);
+							vPortFree(usb_buff);
+							usb_buff = NULL;
+						}
 						
 						// Send Message that finish capturing
 						osMessagePut(parent_msg_id,END_CAPTURE,0);
@@ -1240,12 +1245,9 @@ void AudioCapture (void const * pvParameters) {
 					{
 						if(save_to_file)
 						{
-							if (count < 5)
-							{
-								memcpy(&usb_buff[count*data_size], &data[0], data_size * sizeof(*data));
-								count++;
-							}
-							else
+							memcpy(&usb_buff[count*data_size], &data[0], data_size * sizeof(*data));
+							count++;
+							if (count == usb_buff_size / data_size)
 							{
 								/* write buffer in file */
 								if(f_write(&WavFile, usb_buff, usb_buff_size*sizeof(*usb_buff), (void*)&byteswritten) != FR_OK)
@@ -1256,6 +1258,7 @@ void AudioCapture (void const * pvParameters) {
 								audio_size += byteswritten;
 								count = 0;
 							}
+							
 						}
 						
 						// Send message back telling that the frame is ready
@@ -1266,6 +1269,9 @@ void AudioCapture (void const * pvParameters) {
 					{
 						// Pause Audio Record
 						audioStop();
+						
+						// Free memroy (if necesary)
+						vPortFree(usb_buff);
 						
 						// Turn off led
 						LED_Off((Led_TypeDef)EXECUTE_LED);
@@ -1366,13 +1372,16 @@ void setEnvVar (void){
 	uint32_t buff_n;
 	uint32_t padding;
 	
+	// SETEO OVERLAP IGUAL A NET POR EL PROBLEMA DE NO TENER BUFFER CIRCULAR
+	appconf.proc_conf.frame_overlap = appconf.proc_conf.frame_net;
+	
 	// Calculo la longitud necesaria del buffer (haciendo zero padding de ser necesario)
 	buff_n = ceil( log(appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2) / log(2) );
 	appconf.proc_conf.frame_len = pow(2,buff_n);
 	padding = appconf.proc_conf.frame_len - (appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2);
 	appconf.proc_conf.zero_padding_left  = padding / 2;
 	appconf.proc_conf.zero_padding_right = appconf.proc_conf.zero_padding_left + padding  % 2;
-
+	
 	// Calculo la longitud de la calibración según el tiempo seteado
 	appconf.calib_conf.calib_len		= (uint32_t)	(appconf.calib_conf.calib_time * appconf.audio_capture_conf.audio_freq ) / appconf.proc_conf.frame_net;
 	
@@ -1414,6 +1423,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	
 	config->proc_conf.frame_net			= (uint16_t)		ini_getl("SPConf", "FRAME_NET", 		FRAME_LEN,			filename);
 	config->proc_conf.frame_overlap	= (uint16_t)		ini_getl("SPConf", "FRAME_OVERLAP", FRAME_LEN,			filename);
+	
 	config->proc_conf.numtaps				= (uint16_t)		ini_getl("SPConf", "NUMTAPS",				NUMTAPS,				filename);
 	config->proc_conf.alpha					= (float32_t)		ini_getf("SPConf", "ALPHA",					ALPHA,					filename);
 	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 			FFT_LEN,				filename);

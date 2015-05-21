@@ -13,7 +13,7 @@
 	
 /* Includes ------------------------------------------------------------------*/
 #include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
-
+#include "stm32f4xx_hal_conf.h"
 
 
 Auido_Capture_Config capture_conf;
@@ -25,10 +25,9 @@ uint8_t  *PDM;
 uint16_t *PCM;
 PDMFilter_InitStruct *Filter;
 
+osMessageQId I2SmsgQID;
 osMessageQId msgQId;
 uint32_t msg_val;
-
-extern int8_t test;
 
 //------------------------------------------------------------------------------
 //											PUBLIC AUDIO DRIVER CONTROL FUNCTIONS
@@ -41,18 +40,25 @@ uint8_t initCapture(const Auido_Capture_Config* config, uint16_t* data, uint16_t
 	msg_val = message_val;
 	
 	// Calculate buffer sizes
-	pdm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_decimator*capture_conf.audio_channel_nbr/8;
-	pcm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_channel_nbr;
-	extend_buff   = data_buff_size/pcm_buff_size;
+	pdm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_decimator*capture_conf.audio_channel_nbr/8;		// El size de PDM vale como mínimo AudioFreq en [KHz]
+	pcm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_channel_nbr;																	// El size de PCM vale como mínimo AudioFreq en [KHz]
+	
+	// Tengo que extender los buffers para llenar data_buff_size y que solo interrumpa 1 vez
+	assert_param( (data_buff_size % pcm_buff_size) == 0 );
+	extend_buff = data_buff_size/pcm_buff_size;
 	
 	// Create buffers
 	PCM = data;
-	PDM = pvPortMalloc(pdm_buff_size*extend_buff*2);					// Get memory for PDM Buffer
+	PDM = pvPortMalloc(pdm_buff_size*extend_buff*2);													// Es 2 porque es un buffer circular
 	Filter = pvPortMalloc(capture_conf.audio_channel_nbr*sizeof(*Filter));		// Get memory for Filter structure
 	
 	// Initialize PDM Decoder
 	PDMDecoder_Init(capture_conf.audio_freq,capture_conf.audio_channel_nbr,Filter);
 	
+	// Create DMA Interrup Handler Task
+	osThreadDef(DMAHandlerTask,		DMA_Interrup_Handler_Task, 		osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
+	osThreadCreate (osThread(DMAHandlerTask), NULL);
+							
 	return AUDIO_OK;
 }
 
@@ -169,27 +175,57 @@ uint8_t audioPDM2PCM(uint16_t *PDMBuf, uint32_t PDMsize, uint16_t *PCMBuf, uint8
 }
 
 void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-  /* First Half of PDM Buffer */
-	int i;
-	
-	for(i=0; i<extend_buff; i++)		
-		audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[i*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
-	
-	osMessagePut(msgQId,msg_val,0);
-	test++;	// TODO de prueba, luego borrar
+
+	osMessagePut(I2SmsgQID,I2S_FIRST_HALF,0);
 }
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s){
-	int i;
 	
-	for(i=extend_buff; i<extend_buff*2; i++)
-		audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
-
-	osMessagePut(msgQId,msg_val,0);
-	test++;		// TODO de prueba, luego borrar
+	osMessagePut(I2SmsgQID,I2S_SECOND_HALF,0);
 }
 
 void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s){
 
-		Error_Handler();
+	osMessagePut(I2SmsgQID,I2S_ERROR,0);
+
+}
+
+void DMA_Interrup_Handler_Task (void const *pvParameters) {
+	
+	osEvent event;
+	int i;
+	
+	// Create Message
+	osMessageQDef(I2SmsgQID, 4, uint32_t);
+	I2SmsgQID = osMessageCreate(osMessageQ(I2SmsgQID),NULL);
+	
+	for(;;) {
+		
+		event = osMessageGet(I2SmsgQID, osWaitForever);
+		if(event.status == osEventMessage)
+		{
+			switch (event.value.v) {
+				
+				case I2S_FIRST_HALF:
+				{
+					for(i=0; i<extend_buff; i++)		
+						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[i*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
+				}
+				break;
+				case I2S_SECOND_HALF:
+				{
+					for(i=extend_buff; i<extend_buff*2; i++)
+						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
+				}
+				break;
+				case I2S_ERROR:
+				{
+					Error_Handler();
+				}
+				break;
+			}
+			
+			osMessagePut(msgQId,msg_val,0);
+		}
+	}
 }

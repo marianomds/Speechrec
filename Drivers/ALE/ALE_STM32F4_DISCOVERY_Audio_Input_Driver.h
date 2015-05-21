@@ -32,6 +32,17 @@ enum {
 	AUDIO_ERROR,				/*!< */
 	AUDIO_TIMEOUT				/*!< */
 };
+
+/**	
+	* \enum
+  *	\brief Audio status definition
+	*/
+enum {
+	I2S_ERROR,						/*!< */
+	I2S_FIRST_HALF,				/*!< */
+	I2S_SECOND_HALF				/*!< */
+};
+
 /**
 	*\typedef
 	*	\struct
@@ -164,5 +175,7 @@ void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s);
   */
 void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s);
 
+void DMA_Interrup_Handler_Task (void const *pvParameters);
+	
 #endif //_ALE_STM32F4_DISCOVERY_AUDIO_H
 
