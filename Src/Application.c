@@ -1096,6 +1096,9 @@ void AudioCapture (void const * pvParameters) {
 	bool save_to_file = true;
 	uint16_t* data;
 	uint32_t data_size;
+	uint16_t* usb_buff;
+	uint32_t usb_buff_size;
+	uint8_t count = 0;
 
 	// Message Variables
 	Audio_Capture_args *args;
@@ -1127,6 +1130,9 @@ void AudioCapture (void const * pvParameters) {
 	args = (Audio_Capture_args*) pvParameters;
 	data = args->data;
 	data_size = args->data_buff_size;
+	
+	usb_buff_size = args->data_buff_size*5;
+	usb_buff = pvPortMalloc(usb_buff_size*sizeof(*usb_buff));
 	
 	// Intialized Audio Driver
 	if(initCapture(&args->audio_conf, data, data_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
@@ -1234,13 +1240,22 @@ void AudioCapture (void const * pvParameters) {
 					{
 						if(save_to_file)
 						{
-							/* write buffer in file */
-							if(f_write(&WavFile, data, data_size*sizeof(*data), (void*)&byteswritten) != FR_OK)
+							if (count < 5)
 							{
-								f_close(&WavFile);
-								Error_Handler();
+								memcpy(&usb_buff[count*data_size], &data[0], data_size * sizeof(*data));
+								count++;
 							}
-							audio_size += byteswritten;
+							else
+							{
+								/* write buffer in file */
+								if(f_write(&WavFile, usb_buff, usb_buff_size*sizeof(*usb_buff), (void*)&byteswritten) != FR_OK)
+								{
+									f_close(&WavFile);
+									Error_Handler();
+								}
+								audio_size += byteswritten;
+								count = 0;
+							}
 						}
 						
 						// Send message back telling that the frame is ready
