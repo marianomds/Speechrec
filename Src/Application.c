@@ -926,7 +926,7 @@ void audioProcessing (void const *pvParameters) {
 					case NEXT_FRAME:
 					{
 						// Process frame and write MFCC in a file
-						if( MFCC_float (args->data, &stages) == VOICE)
+						if( MFCC_float (args->data, &stages,finish) == VOICE)
 							if(f_write(&MFCCFile, MFCC, MFCC_size, &byteswritten) != FR_OK)
 								Error_Handler();
 					
@@ -1042,18 +1042,18 @@ void fileProcessing (void const *pvParameters) {
 				break;
 			}
 				
-			// Si lei todo el archivo termino
+			// Si no lei todo el archivo leo un frame de audio
 			if(!f_eof(&WaveFile))
 			{
 				// Leo un Frame del archivo
 				if(f_read (&WaveFile, frame, appconf.proc_conf.frame_net * sizeof(*frame), &bytesread) != FR_OK)
 					Error_Handler();
 				
-				// Si estoy en el último Frame relleno el final del Frame con ceros de ser necesario
+				// Si el último frame es menor a frame_net, relleno con ceros
 				if(bytesread < appconf.proc_conf.frame_net * sizeof(*frame))
 					memset(&frame[bytesread], 0, appconf.proc_conf.frame_net * sizeof(*frame) - bytesread);
 			}
-			// Si no paso el ultimo frame vacío (así lo pide la librería)
+			// Le paso el último frame vacío (así lo pide la librería)
 			else
 			{
 				memset(frame, 0, appconf.proc_conf.frame_net * sizeof(*frame));
@@ -1061,7 +1061,7 @@ void fileProcessing (void const *pvParameters) {
 			}
 			
 			// Proceso el frame obtenido y escribo los MFCC en un archivo
-			proc_output = MFCC_float (frame,&stages_to_save);
+			proc_output = MFCC_float (frame,&stages_to_save,finish);
 			frameNum++;
 			
 			if(frameNum >1 && proc_output == VOICE)
@@ -1069,10 +1069,6 @@ void fileProcessing (void const *pvParameters) {
 				if(f_write(&MFCCFile, MFCC, MFCC_size, &byteswritten) != FR_OK)
 					Error_Handler();			
 			}
-			
-			// Para que no grabe el speech del último frame
-			if(finish == true)
-				stages_to_save &= !First_Stage;
 			
 			// Escribo los valores intermedios en archivos
 			if(args->save_to_files)
@@ -1182,6 +1178,7 @@ void AudioCapture (void const * pvParameters) {
 				
 				//Init filesize
 				audio_size = 0;
+				count = 0;
 				
 				// Go back to original directory
 				if (f_chdir ("..") != FR_OK)
@@ -1241,6 +1238,18 @@ void AudioCapture (void const * pvParameters) {
 							
 						if(save_to_file)
 						{
+							// Grabo lo último que me quedo en el buffer
+							if (count !=0 )
+							{
+									/* write buffer in file */
+									if(f_write(&WavFile, usb_buff, data_size * count * sizeof(*usb_buff), (void*)&byteswritten) != FR_OK)
+									{
+										f_close(&WavFile);
+										Error_Handler();
+									}
+									audio_size += byteswritten;
+							}
+							
 							closeWavFile(&WavFile, &WaveFormat, audio_size);
 							vPortFree(usb_buff);
 							usb_buff = NULL;
@@ -1262,9 +1271,9 @@ void AudioCapture (void const * pvParameters) {
 					{
 						if(save_to_file)
 						{
+							// Copio los datos al Buffer del USB y me fijo si hay que grabar
 							memcpy(&usb_buff[count*data_size], &data[0], data_size * sizeof(*data));
-							count++;
-							if (count == usb_buff_size / data_size)
+							if (++count == usb_buff_size / data_size)
 							{
 								/* write buffer in file */
 								if(f_write(&WavFile, usb_buff, usb_buff_size*sizeof(*usb_buff), (void*)&byteswritten) != FR_OK)
@@ -1275,7 +1284,6 @@ void AudioCapture (void const * pvParameters) {
 								audio_size += byteswritten;
 								count = 0;
 							}
-							
 						}
 						
 						// Send message back telling that the frame is ready
@@ -1285,7 +1293,7 @@ void AudioCapture (void const * pvParameters) {
 					case KILL_CAPTURE:
 					{
 						// Pause Audio Record
-						audioStop();
+						audioStop();						
 						
 						// Free memroy (if necesary)
 						vPortFree(usb_buff);

@@ -117,17 +117,29 @@ void finishProcessing(void){
 	vPortFree(MFCC_buff);							MFCC_buff = NULL;
 	vPortFree(CepWeight);							CepWeight = NULL;
 }
-ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages) {
+ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages, bool last_frame) {
 	
+	// Inicializo variables
 	ProcStatus output = NO_VOICE;
+	*stages = 0;
 	
 	// Copio el puntero del nuevo frame al que usa audio_processing
 	new_frame = frame;
 	
-	// Ejecuto la primera parte del procesamiento
-	firstProcStage (vars_buffers);
-	frame_num++;
-	*stages = First_Stage;
+	if (!last_frame)
+	{
+		// Ejecuto la primera parte del procesamiento
+		firstProcStage (vars_buffers);
+		frame_num++;
+		*stages |= First_Stage;
+	}
+	else
+	{
+		if(vars_buffers != NULL)
+			arm_fill_f32 (0, vars_buffers->FltSig, proc_conf.frame_net);
+		else
+			arm_fill_f32 (0, var2, proc_conf.frame_net);
+	}
 	
 	if (frame_num >1)
 	{
@@ -338,11 +350,6 @@ void firstProcStage (Proc_var *saving_var) {
 
 		/* Se aplica un filtro de Pre-énfais al segmento de señal obtenida */	
 		arm_fir_f32 (&FirInst, saving_var->speech, saving_var->FltSig, proc_conf.frame_net);
-
-		// Shifteo la ventana FRAME_OVERLAP veces
-		// Para ello, shifteo lo viejo y copio el nuevo frame al final
-		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
-		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], saving_var->FltSig, proc_conf.frame_net * sizeof(*saving_var->FltSig));
 	}
 	else
 	{
@@ -351,11 +358,6 @@ void firstProcStage (Proc_var *saving_var) {
 
 		/* Se aplica un filtro de Pre-énfais al segmento de señal obtenida */	
 		arm_fir_f32 (&FirInst, var1, var2, proc_conf.frame_net);
-
-		// Shifteo la ventana FRAME_OVERLAP veces
-		// Para ello, shifteo lo viejo y copio el nuevo frame al final
-		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
-		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], var2, proc_conf.frame_net * sizeof(*var2));
 	}
 }
 void secondProcStage (bool vad, Proc_var *saving_var) {
@@ -365,6 +367,11 @@ void secondProcStage (bool vad, Proc_var *saving_var) {
 		
 	if(saving_var != NULL)
 	{
+		// Shifteo la ventana FRAME_OVERLAP veces
+		// Para ello, shifteo lo viejo y copio el nuevo frame al final
+		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
+		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], saving_var->FltSig, proc_conf.frame_net * sizeof(*saving_var->FltSig));
+
 		/* Se le aplica la ventana de Hamming al segmento obtenido */
 		arm_mult_f32 (frame_block, HamWin, saving_var->WinSig, proc_conf.frame_len);
 				
@@ -401,6 +408,11 @@ void secondProcStage (bool vad, Proc_var *saving_var) {
 	}
 	else
 	{
+		// Shifteo la ventana FRAME_OVERLAP veces
+		// Para ello, shifteo lo viejo y copio el nuevo frame al final
+		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
+		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], var2, proc_conf.frame_net * sizeof(*var2));
+
 		/* Se le aplica la ventana de Hamming al segmento obtenido */
 		arm_mult_f32 (frame_block, HamWin, var1, proc_conf.frame_len);
 
@@ -450,7 +462,7 @@ void thirdProcStage (float32_t *MFCC, Proc_var *saving_var) {
 		/* Se Anti-transforma aplicando la DCT-II */
 		arm_copy_f32 (saving_var->LogWin, var1, proc_conf.dct_len);
 		ale_dct2_f32(&DCTinst, var2, var1);
-		arm_copy_f32 (var1, saving_var->CepWin, proc_conf.dct_len);
+		arm_copy_f32 (var1, saving_var->CepWin, proc_conf.dct_len/2);
 
 		/* Se pasa la señal por un filtro en el campo Cepstral */
 		arm_mult_f32 (saving_var->CepWin, CepWeight, MFCC, proc_conf.lifter_legnth);
@@ -513,7 +525,7 @@ void allocateProcVariables (Proc_var *var) {
 	var->MelWin		= pvPortMalloc(proc_conf.mel_banks * sizeof(*(var->MelWin)));		// Espectro pasado por los filtros de Mel
 	
 	var->LogWin		= pvPortMalloc(proc_conf.dct_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
-	var->CepWin		= pvPortMalloc(proc_conf.dct_len  * sizeof(*(var->CepWin)));		// Señal cepstral
+	var->CepWin		= pvPortMalloc(proc_conf.dct_len/2* sizeof(*(var->CepWin)));		// Señal cepstral
 	
 	if(var->speech == NULL || var->FltSig == NULL || var->WinSig == NULL || var->STFTWin == NULL || 
 		 var->MagFFT == NULL || var->MelWin == NULL || var->LogWin == NULL || var->CepWin == NULL)
@@ -589,7 +601,7 @@ uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool v
 	{
 		if(f_write(&files->MelWinFile,  data->MelWin, proc_conf.mel_banks * sizeof(*(data->MelWin)),  &byteswritten) != FR_OK)	Error_Handler();
 		if(f_write(&files->LogWinFile,  data->LogWin, proc_conf.dct_len   *	sizeof(*(data->LogWin)),  &byteswritten) != FR_OK)	Error_Handler();
-		if(f_write(&files->CepWinFile,  data->CepWin, proc_conf.dct_len   * sizeof(*(data->CepWin)),  &byteswritten) != FR_OK)	Error_Handler();
+		if(f_write(&files->CepWinFile,  data->CepWin, proc_conf.dct_len/2 * sizeof(*(data->CepWin)),  &byteswritten) != FR_OK)	Error_Handler();
 	}
 	
 	if(vad)

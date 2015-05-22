@@ -141,7 +141,7 @@ void		finishProcessing			(void);
 	* @param[in]  vad: If VAD should be used or no
 	* @param[out]  saving_var: Address of the vector with the Window to apply
   */
-ProcStatus		MFCC_float				(uint16_t *frame, ProcStages *stages);
+ProcStatus		MFCC_float				(uint16_t *frame, ProcStages *stages, bool last_frame);
 
 // CALIBRATION
 
