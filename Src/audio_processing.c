@@ -15,7 +15,7 @@
 #include "audio_processing.h"
 #include "misc.h"
 #include "error_handler.h"
-
+#include "ale_dct2_f32.h"
 
 //---------------------------------------
 //				CONFIGURATION VARIALBES
@@ -46,7 +46,8 @@
 	
 	arm_matrix_instance_f32 				MagFFTMtx, MelWinMtx;
 	arm_fir_instance_f32 						FirInst;	
-	arm_rfft_fast_instance_f32 			RFFTinst, DCTinst;
+	arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
+	ale_dct2_instance_f32						DCTinst;
 
 //---------------------------------------
 //							VAD VARIALBES
@@ -103,9 +104,9 @@ void initProcessing (float32_t **MFCC, uint32_t *MFCC_size, ProcConf *configurat
 	if( (CepWeight = pvPortMalloc(proc_conf.lifter_legnth * sizeof(*CepWeight))) == NULL)
 		Error_Handler();
 	Lifter_float (CepWeight,proc_conf.lifter_legnth);
-	
-	// Instance IFFT - DCT
-	if(arm_rfft_fast_init_f32 (&DCTinst, proc_conf.ifft_len) == ARM_MATH_ARGUMENT_ERROR)
+
+	// Instance DCT
+	if(dct2_init_f32(&DCTinst, &DCTinst_rfft, proc_conf.dct_len, proc_conf.dct_len/2, sqrt(2.0f/proc_conf.dct_len)) == ARM_MATH_ARGUMENT_ERROR)
 		Error_Handler();
 }
 void finishProcessing(void){
@@ -146,8 +147,8 @@ ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages) {
 			if(output == NO_VOICE)
 			{
 				memset(vars_buffers->MelWin, 0, proc_conf.mel_banks * sizeof(*(vars_buffers->MelWin)));
-				memset(vars_buffers->LogWin, 0, proc_conf.ifft_len  * sizeof(*(vars_buffers->LogWin)));
-				memset(vars_buffers->CepWin, 0, proc_conf.ifft_len  * sizeof(*(vars_buffers->CepWin)));
+				memset(vars_buffers->LogWin, 0, proc_conf.dct_len  * sizeof(*(vars_buffers->LogWin)));
+				memset(vars_buffers->CepWin, 0, proc_conf.dct_len  * sizeof(*(vars_buffers->CepWin)));
 				vars_buffers->VAD = 0;
 			}
 			else
@@ -300,20 +301,17 @@ void initBasics (ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers) 
 	if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf.fft_len) == ARM_MATH_ARGUMENT_ERROR)
 		Error_Handler();
 	
-	// Alloco memoria para var1 que la uso como auxiliar
+	// Alloco memoria para var1 y var2 que las uso como auxiliares
 	if( (var1 = pvPortMalloc( max(proc_conf.frame_len,proc_conf.fft_len) * sizeof(*var1) ) ) == NULL )
 		Error_Handler();
+	if( (var2 = pvPortMalloc( max(proc_conf.frame_len,proc_conf.fft_len) * sizeof(*var2) ) ) == NULL )
+			Error_Handler();
 	
 	// Allocate variables
 	if(ptr_vars_buffers != NULL)
 	{
 		allocateProcVariables (ptr_vars_buffers);
 		vars_buffers = ptr_vars_buffers;
-	}
-	else
-	{
-		if( (var2 = pvPortMalloc( max(proc_conf.frame_len,proc_conf.fft_len) * sizeof(*var2) ) ) == NULL )
-			Error_Handler();
 	}
 }
 void finishBasics	(void) {
@@ -445,15 +443,17 @@ void thirdProcStage (float32_t *MFCC, Proc_var *saving_var) {
 			Error_Handler();
 		
 		/* Se obtienen los valores logaritmicos de los coeficientes y le hago zero-padding */
-		arm_fill_f32 	(0,saving_var->LogWin,proc_conf.ifft_len);
+		arm_fill_f32 	(0,saving_var->LogWin,proc_conf.dct_len);
 		for (i=0; i<proc_conf.mel_banks; i++)
-			saving_var->LogWin[i*2+2] = log10f(saving_var->MelWin[i]);
+			saving_var->LogWin[i] = log10f(saving_var->MelWin[i]);
 		
-		/* Se Anti-transforma aplicando la DCT-II ==> hago la anti-transformada real */
-		arm_rfft_fast_f32(&DCTinst,saving_var->LogWin,saving_var->CepWin,1);
+		/* Se Anti-transforma aplicando la DCT-II */
+		arm_copy_f32 (saving_var->LogWin, var1, proc_conf.dct_len);
+		ale_dct2_f32(&DCTinst, var2, var1);
+		arm_copy_f32 (var1, saving_var->CepWin, proc_conf.dct_len);
 
 		/* Se pasa la señal por un filtro en el campo Cepstral */
-		arm_mult_f32 (saving_var->CepWin,CepWeight,MFCC,proc_conf.lifter_legnth);
+		arm_mult_f32 (saving_var->CepWin, CepWeight, MFCC, proc_conf.lifter_legnth);
 	}
 	else
 	{
@@ -464,16 +464,16 @@ void thirdProcStage (float32_t *MFCC, Proc_var *saving_var) {
 		
 		
 		/* Se obtienen los valores logaritmicos de los coeficientes y le hago zero-padding */
-		arm_fill_f32 	(0,var1,proc_conf.ifft_len);
+		arm_fill_f32 	(0,var1,proc_conf.dct_len);
 		for (i=0; i<proc_conf.mel_banks; i++)
 			var1[i*2+2] = log10f(var2[i]);
 		
 		
 		/* Se Anti-transforma aplicando la DCT-II ==> hago la anti-transformada real */
-		arm_rfft_fast_f32(&DCTinst,var1,var2,1);
+		ale_dct2_f32(&DCTinst, var2,var1);
 		
 		/* Se pasa la señal por un filtro en el campo Cepstral */
-		arm_mult_f32 (var2,CepWeight,MFCC,proc_conf.lifter_legnth);
+		arm_mult_f32 (var1,CepWeight,MFCC,proc_conf.lifter_legnth);
 	}
 }
 void Hamming_float (float32_t *Hamming, uint32_t length) {
@@ -506,11 +506,14 @@ void allocateProcVariables (Proc_var *var) {
 	var->FltSig		= pvPortMalloc(proc_conf.frame_net * sizeof(*(var->FltSig)));		// Señal de audio pasada por el Filtro de Pre-Enfasis
 	
 	var->WinSig		= pvPortMalloc(proc_conf.frame_len * sizeof(*(var->WinSig)));		// Señal de filtrada multiplicada por la ventana de Hamming
+	
 	var->STFTWin	= pvPortMalloc(proc_conf.fft_len   * sizeof(*(var->STFTWin)));	// Transformada de Fourier en Tiempo Corto
 	var->MagFFT		= pvPortMalloc(proc_conf.fft_len/2 * sizeof(*(var->MagFFT)));		// Módulo del espectro
+	
 	var->MelWin		= pvPortMalloc(proc_conf.mel_banks * sizeof(*(var->MelWin)));		// Espectro pasado por los filtros de Mel
-	var->LogWin		= pvPortMalloc(proc_conf.ifft_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
-	var->CepWin		= pvPortMalloc(proc_conf.ifft_len  * sizeof(*(var->CepWin)));		// Señal cepstral
+	
+	var->LogWin		= pvPortMalloc(proc_conf.dct_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
+	var->CepWin		= pvPortMalloc(proc_conf.dct_len  * sizeof(*(var->CepWin)));		// Señal cepstral
 	
 	if(var->speech == NULL || var->FltSig == NULL || var->WinSig == NULL || var->STFTWin == NULL || 
 		 var->MagFFT == NULL || var->MelWin == NULL || var->LogWin == NULL || var->CepWin == NULL)
@@ -585,8 +588,8 @@ uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool v
 	if(stage & Third_Stage)
 	{
 		if(f_write(&files->MelWinFile,  data->MelWin, proc_conf.mel_banks * sizeof(*(data->MelWin)),  &byteswritten) != FR_OK)	Error_Handler();
-		if(f_write(&files->LogWinFile,  data->LogWin, proc_conf.ifft_len  *	sizeof(*(data->LogWin)),  &byteswritten) != FR_OK)	Error_Handler();
-		if(f_write(&files->CepWinFile,  data->CepWin, proc_conf.ifft_len  * sizeof(*(data->CepWin)),  &byteswritten) != FR_OK)	Error_Handler();
+		if(f_write(&files->LogWinFile,  data->LogWin, proc_conf.dct_len   *	sizeof(*(data->LogWin)),  &byteswritten) != FR_OK)	Error_Handler();
+		if(f_write(&files->CepWinFile,  data->CepWin, proc_conf.dct_len   * sizeof(*(data->CepWin)),  &byteswritten) != FR_OK)	Error_Handler();
 	}
 	
 	if(vad)
@@ -622,3 +625,22 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad) {
 	return 1;
 }
 
+
+
+//	ale_dct2_instance_f32 			dct2_instance;
+//	arm_rfft_fast_instance_f32 	rfft_instance;
+//	float32_t pState[64];
+//
+// Los valores fueron obtenidos mediante la equación x = 50*cos((1:32)*2*pi/40);
+//
+//	float32_t pInlineBuffer[32]={		49.384417029756889f,		47.552825814757675f,		44.550326209418394f,		40.450849718747371f,
+//		35.355339059327378f,		29.389262614623657f,		22.699524986977345f,		15.450849718747373f,		7.821723252011546f,
+//		0.000000000000003f,		-7.821723252011529f,		-15.450849718747367f,		-22.699524986977337f,		-29.389262614623650f,
+//		-35.355339059327370f,		-40.450849718747364f,		-44.550326209418387f,		-47.552825814757675f,		-49.384417029756882f,
+//		-50.000000000000000f,		-49.384417029756889f,		-47.552825814757689f,		-44.550326209418394f,		-40.450849718747371f,
+//		-35.355339059327385f,		-29.389262614623661f,		-22.699524986977345f,		-15.450849718747378f,		-7.821723252011552f,
+//		-0.000000000000009f,		7.821723252011534f,		15.450849718747362f,
+//	};
+//	
+//	dct2_init_f32(&dct2_instance, &rfft_instance, 32, 16, sqrt(2.0f/32.0f));
+//	ale_dct2_f32(&dct2_instance, pState, pInlineBuffer);

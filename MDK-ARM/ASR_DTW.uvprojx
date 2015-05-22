@@ -513,6 +513,16 @@
               <FileType>1</FileType>
               <FilePath>..\Drivers\ALE\ALE_STM32F4_DISCOVERY_Audio_Input_Driver.c</FilePath>
             </File>
+            <File>
+              <FileName>ale_dct2_f32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ale_dct2_f32.c</FilePath>
+            </File>
+            <File>
+              <FileName>ale_dct2_init_f32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ale_dct2_init_f32.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

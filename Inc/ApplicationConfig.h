@@ -43,8 +43,8 @@
 #define ALPHA													0.95f
 #define FFT_LEN												512
 #define MEL_BANKS											20
-#define IFFT_LEN											64			// Tiene que ser mayor a 2*MEL_BANKS
-#define LIFTER_LEGNTH									13
+#define DCT_LEN												32			// Tiene que ser mayor a 2*MEL_BANKS
+#define LIFTER_LEGNTH									12
 
 #define THD_Scl_ENERGY								2
 #define THD_Scl_SF										0.5f

@@ -1445,7 +1445,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->proc_conf.alpha					= (float32_t)		ini_getf("SPConf", "ALPHA",					ALPHA,					filename);
 	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 			FFT_LEN,				filename);
 	config->proc_conf.mel_banks			= (uint16_t)		ini_getl("SPConf", "MEL_BANKS",			MEL_BANKS,			filename);
-	config->proc_conf.ifft_len			= (uint16_t)		ini_getl("SPConf", "IFFT_LEN", 			IFFT_LEN,				filename);
+	config->proc_conf.dct_len				= (uint16_t)		ini_getl("SPConf", "DCT_LEN", 			DCT_LEN,				filename);
 	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",	LIFTER_LEGNTH,	filename);
 	
 	// Read Calibration configuration

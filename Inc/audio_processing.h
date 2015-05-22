@@ -62,7 +62,7 @@ typedef enum{
 	float32_t	alpha;
 	uint16_t	fft_len;
 	uint16_t	mel_banks;
-	uint16_t	ifft_len;				// Tiene que ser mayor a 2*MEL_BANKS
+	uint16_t	dct_len;				// Tiene que ser 2^N y mayor que MEL_BANKS
 	uint16_t	lifter_legnth;
 	
 }ProcConf;
