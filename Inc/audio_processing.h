@@ -24,6 +24,7 @@
 
 typedef enum
 {
+	No_Stage = 0x00,
 	First_Stage = 0x01,
 	Second_Stage = 0x02,
 	Third_Stage = 0x04,

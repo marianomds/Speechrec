@@ -124,8 +124,12 @@ void Main_Thread (void const *pvParameters) {
 					if(appstarted)
 					{
 						// Send KILL message to running task
-						if(*msgID != NULL)
-							osMessagePut(*msgID,KILL_THREAD,0);
+					if (msgID != NULL && *msgID != NULL)
+					{
+						osMessagePut(*msgID,KILL_THREAD,0);
+						msgID = NULL;
+						current_task_ID = NULL;
+					}
 
 						// Send KILL message to Auido Capture Task
 						osMessagePut (audio_capture_msg, KILL_CAPTURE, 0);
@@ -443,6 +447,7 @@ void Recognition (void const *pvParameters) {
 	if (!readPaternsConfigFile (args->patterns_config_file_name, &pat, &pat_num))		Error_Handler();		// Read Patterns File
 	if (f_chdir ("..") != FR_OK)																										Error_Handler();		// Go back to original directory
 	
+	
 	/* START TASK */
 	for (;;)
 	{
@@ -633,10 +638,14 @@ void Recognition (void const *pvParameters) {
 						f_close(&result);
 
 						// Save distances
-						f_open(&result,"Dist.bin",FA_WRITE | FA_OPEN_ALWAYS);				// Load result file
-						for(int i=0 ; i<pat_num ; i++)
-							f_write(&result,&dist[i],sizeof(float32_t),&bytesread);
-						f_close(&result);
+						if(appconf.debug_conf.save_dist)
+						{
+							f_chdir (file_name);
+							f_open (&result, "Dist.bin", FA_WRITE | FA_OPEN_ALWAYS);				// Load result file
+							f_write(&result, dist, pat_num*sizeof(*dist),&bytesread);
+							f_close(&result);
+							f_chdir ("..");
+						}
 						
 						// Free memory
 						vPortFree(utterance_data);				utterance_data = NULL;

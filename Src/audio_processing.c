@@ -117,11 +117,11 @@ void finishProcessing(void){
 	vPortFree(MFCC_buff);							MFCC_buff = NULL;
 	vPortFree(CepWeight);							CepWeight = NULL;
 }
-ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages, bool last_frame) {
+ProcStatus MFCC_float (uint16_t *frame, ProcStages *proc_stages, bool last_frame) {
 	
 	// Inicializo variables
 	ProcStatus output = NO_VOICE;
-	*stages = 0;
+	*proc_stages = No_Stage;
 	
 	// Copio el puntero del nuevo frame al que usa audio_processing
 	new_frame = frame;
@@ -131,7 +131,7 @@ ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages, bool last_frame) {
 		// Ejecuto la primera parte del procesamiento
 		firstProcStage (vars_buffers);
 		frame_num++;
-		*stages |= First_Stage;
+		*proc_stages |= First_Stage;
 	}
 	else
 	{
@@ -144,14 +144,14 @@ ProcStatus MFCC_float (uint16_t *frame, ProcStages *stages, bool last_frame) {
 	if (frame_num >1)
 	{
 		secondProcStage (use_vad, vars_buffers);
-		*stages |= Second_Stage;
+		*proc_stages |= Second_Stage;
 		
 		/* Check if it is a Voiced Frame */
 		if( !use_vad || (Energy > THD_E   &&  Frecmax < THD_FMX) || SpFlat > THD_SF)
 		{
 			thirdProcStage (MFCC_buff, vars_buffers);
 			output = VOICE;
-			*stages |= Third_Stage;
+			*proc_stages |= Third_Stage;
 		}
 		
 		if(vars_buffers != NULL)
@@ -502,7 +502,7 @@ void Lifter_float (float32_t *Lifter, uint32_t length) {
 	uint32_t n;
 	
 	for(n=0; n<length; n++) {
-		theta = PI*n/length;
+		theta = PI*n/(length-1);
 		Lifter[n] = 1 + arm_sin_f32(theta) * length/2;
 	}
 }
