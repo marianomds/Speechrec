@@ -700,6 +700,7 @@ void Calibration (void const * pvParameters) {
 	FIL WaveFile;
 	UINT bytesread;
 	CalibStatus calib_status = CALIB_INITIATED;
+	ProcStages stages;
 	
 	bool processing = false;					// If Audio Processing Task is still processing then true
 	bool capture = false;
@@ -759,7 +760,7 @@ void Calibration (void const * pvParameters) {
 					{
 						// Process frame
 						if(!appconf.debug_conf.debug && calib_status != CALIB_FINISH)
-							calib_status =	Calibrate(audio,frame_num);
+							calib_status =	Calibrate(audio,frame_num, &stages);
 						
 						// Send Finish Message to Audio Capture Task
 						if (++frame_num == calib_length)
@@ -809,11 +810,11 @@ void Calibration (void const * pvParameters) {
 								Error_Handler();
 								
 							// Processo el frame
-							Calibrate(frame, frame_num);
+							Calibrate(frame, frame_num, &stages);
 							
 							// Save to files
 							if(appconf.debug_conf.save_proc_vars)
-								Append_proc_files (files, &ptr_vars_buffers, true);
+								Append_proc_files (files, &ptr_vars_buffers, true, stages);
 						}
 						
 						// Cierro los archivos
@@ -880,6 +881,7 @@ void audioProcessing (void const *pvParameters) {
 	uint32_t frameNum=0;
 	float32_t *MFCC;
 	uint32_t MFCC_size;
+	ProcStages stages;
 	
 	// Create Process Task State MessageQ
 	osMessageQDef(audio_processing_msg,10,uint32_t);
@@ -924,7 +926,7 @@ void audioProcessing (void const *pvParameters) {
 					case NEXT_FRAME:
 					{
 						// Process frame and write MFCC in a file
-						if( MFCC_float (args->data) == VOICE)
+						if( MFCC_float (args->data, &stages) == VOICE)
 							if(f_write(&MFCCFile, MFCC, MFCC_size, &byteswritten) != FR_OK)
 								Error_Handler();
 					
@@ -980,6 +982,8 @@ void fileProcessing (void const *pvParameters) {
 	uint16_t *frame;
 	float32_t *MFCC;
 	uint32_t MFCC_size;
+	ProcStatus proc_output;
+	ProcStages stages_to_save;
 	
 	// Create Process Task State MessageQ
 	osMessageQDef(file_processing_msg,10,uint32_t);
@@ -1038,30 +1042,46 @@ void fileProcessing (void const *pvParameters) {
 				break;
 			}
 				
-			// Leo un Frame del archivo
-			if(f_read (&WaveFile, frame, appconf.proc_conf.frame_net * sizeof(*frame), &bytesread) != FR_OK)
-				Error_Handler();
-			
-			// Si estoy en el último Frame relleno el final del Frame con ceros de ser necesario
-			if(bytesread < appconf.proc_conf.frame_net * sizeof(*frame))
-				memset(&frame[bytesread], 0, appconf.proc_conf.frame_net * sizeof(*frame) - bytesread);
+			// Si lei todo el archivo termino
+			if(!f_eof(&WaveFile))
+			{
+				// Leo un Frame del archivo
+				if(f_read (&WaveFile, frame, appconf.proc_conf.frame_net * sizeof(*frame), &bytesread) != FR_OK)
+					Error_Handler();
+				
+				// Si estoy en el último Frame relleno el final del Frame con ceros de ser necesario
+				if(bytesread < appconf.proc_conf.frame_net * sizeof(*frame))
+					memset(&frame[bytesread], 0, appconf.proc_conf.frame_net * sizeof(*frame) - bytesread);
+			}
+			// Si no paso el ultimo frame vacío (así lo pide la librería)
+			else
+			{
+				memset(frame, 0, appconf.proc_conf.frame_net * sizeof(*frame));
+				finish = true;
+			}
 			
 			// Proceso el frame obtenido y escribo los MFCC en un archivo
-			if (MFCC_float (frame) == VOICE)
+			proc_output = MFCC_float (frame,&stages_to_save);
+			frameNum++;
+			
+			if(frameNum >1 && proc_output == VOICE)
+			{
 				if(f_write(&MFCCFile, MFCC, MFCC_size, &byteswritten) != FR_OK)
-					Error_Handler();
+					Error_Handler();			
+			}
+			
+			// Para que no grabe el speech del último frame
+			if(finish == true)
+				stages_to_save &= !First_Stage;
 			
 			// Escribo los valores intermedios en archivos
 			if(args->save_to_files)
-				Append_proc_files (files, &save_vars, args->vad);
-			
-			// Incremento el Nº de Frame
-			frameNum++;
-			
-			// Si lei todo el archivo termino
-			if(f_eof(&WaveFile))
-				finish = true;
+				Append_proc_files (files, &save_vars, args->vad, stages_to_save);
+
 		}
+
+		// Finicializo el proceso (me devuelve un último frame de MFCC)
+		finishProcessing();
 
 		// Free memory
 		vPortFree(frame);
@@ -1072,9 +1092,6 @@ void fileProcessing (void const *pvParameters) {
 		f_close(&MFCCFile);
 		if(args->save_to_files)
 			Close_proc_files (files,args->vad);
-
-		// De-Inicializo el proceso
-		finishProcessing();
 		
 		// Send message to parent task telling it's finish
 		osMessagePut(args->src_msg_id,FINISH_PROCESSING,0);

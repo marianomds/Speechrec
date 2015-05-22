@@ -22,6 +22,13 @@
 #include "stdbool.h"
 
 
+typedef enum
+{
+	First_Stage = 0x01,
+	Second_Stage = 0x02,
+	Third_Stage = 0x04,
+}ProcStages;
+														
 //enum{
 //	FINISH_PROCESSING,
 //};
@@ -69,8 +76,9 @@ typedef struct{
 }CalibConf;
 
 typedef struct{
-	float32_t *speech;			// Señal de audio escalada
-	float32_t *FltSig;			// Señal de audio pasada por el Filtro de Pre-Enfasis
+	float32_t *speech;			// Señal de audio escalada (tiene el largo de frame_net)
+	float32_t *FltSig;			// Señal de audio pasada por el Filtro de Pre-Enfasis (tiene el largo de frame_net)
+	float32_t *Frame;				// Frame con el overlap incluido (tiene el largo de frame_len)
 	float32_t *WinSig;			// Señal de filtrada multiplicada por la ventana de Hamming
 	float32_t *STFTWin;			// Transformada de Fourier en Tiempo Corto
 	float32_t *MagFFT;			// Módulo del espectro
@@ -85,6 +93,7 @@ typedef struct {
 	FIL CepWeiFile;
 	FIL SpeechFile;
 	FIL FltSigFile;
+	FIL FrameFile;
 	FIL WinSigFile;
 	FIL STFTWinFile;
 	FIL MagFFTFile;
@@ -132,12 +141,12 @@ void		finishProcessing			(void);
 	* @param[in]  vad: If VAD should be used or no
 	* @param[out]  saving_var: Address of the vector with the Window to apply
   */
-ProcStatus		MFCC_float				(uint16_t *frame);
+ProcStatus		MFCC_float				(uint16_t *frame, ProcStages *stages);
 
 // CALIBRATION
 
 CalibStatus		initCalibration		(uint32_t *num_frames, CalibConf *calib_config, ProcConf *configuration, Proc_var *ptr_vars_buffers);
-CalibStatus		Calibrate					(uint16_t *frame, uint32_t frame_num);
+CalibStatus		Calibrate					(uint16_t *frame, uint32_t frame_num, ProcStages *stages);
 CalibStatus		endCalibration		(const bool save_calib_vars);
 //---------------------------------------
 //						HELP FUNCTIONS
@@ -149,7 +158,7 @@ CalibStatus		endCalibration		(const bool save_calib_vars);
 	* @retval 	0	==> OK		!=0 ==> Error code
 	*/
 uint8_t Open_proc_files (Proc_files *files, const bool vad);
-uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool vad);
+uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool vad, ProcStages stage);
 uint8_t Close_proc_files (Proc_files *files, const bool vad);
 
 
@@ -157,8 +166,9 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad);
 //---------------------------------------
 //			BASE PROCESSING FUNCTIONS
 //---------------------------------------	
-void			firstProcStage	(bool vad, Proc_var *saving_var);
-void			secondProcStage	(float32_t *MFCC, Proc_var *saving_var);
+void			secondProcStage	(bool vad, Proc_var *saving_var);
+void			thirdProcStage	(float32_t *MFCC, Proc_var *saving_var);
+void			firstProcStage	(Proc_var *saving_var);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
