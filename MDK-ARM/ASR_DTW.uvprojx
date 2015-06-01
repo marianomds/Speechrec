@@ -365,7 +365,7 @@
               <MiscControls>--info=stack  --debug</MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx,ARM_MATH_CM4,__FPU_PRESENT</Define>
               <Undefine></Undefine>
-              <IncludePath>..\Inc; ..\Drivers\ALE; ..\Drivers\STM32F4xx_HAL_Driver\Inc; ..\Drivers\STM32F4xx_HAL_Driver\Inc\Legacy; ..\Middlewares\ST\STM32_USB_Host_Library\Core\Inc; ..\Middlewares\ST\STM32_USB_Host_Library\Class\MSC\Inc; ..\Middlewares\ST\STM32_Audio\Addons\PDM; ..\Middlewares\Third_Party\FatFs\src; ..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F; ..\Middlewares\Third_Party\FreeRTOS\Source\include; ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS; ..\Middlewares\Third_Party\FatFs\src\drivers; ..\Middlewares\Third_Party\minini_12b; ..\Drivers\CMSIS\Include; ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include</IncludePath>
+              <IncludePath>..\Inc;..\Drivers\ALE;..\Drivers\STM32F4xx_HAL_Driver\Inc;..\Drivers\STM32F4xx_HAL_Driver\Inc\Legacy;..\Middlewares\ST\STM32_USB_Host_Library\Core\Inc;..\Middlewares\ST\STM32_USB_Host_Library\Class\MSC\Inc;..\Middlewares\ST\STM32_Audio\Addons\PDM;..\Middlewares\Third_Party\FatFs\src;..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F;..\Middlewares\Third_Party\FreeRTOS\Source\include;..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS;..\Middlewares\Third_Party\FatFs\src\drivers;..\Middlewares\Third_Party\minini_12b;..\Middlewares\Third_Party\ringBuff;..\Drivers\CMSIS\Include;..\Drivers\CMSIS\Device\ST\STM32F4xx\Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -497,6 +497,11 @@
               <FileName>misc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\misc.c</FilePath>
+            </File>
+            <File>
+              <FileName>ring_buffer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\Third_Party\ringBuff\ring_buffer.c</FilePath>
             </File>
           </Files>
         </Group>

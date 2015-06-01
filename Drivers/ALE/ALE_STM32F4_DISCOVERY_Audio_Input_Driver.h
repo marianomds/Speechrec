@@ -49,15 +49,17 @@ enum {
   *	\brief Audio configuration variables
 	*/
 typedef struct{	
-	uint16_t audio_freq;						/*!< Auido frequency in Hz */
+	uint16_t frame_size;			/*!< Auido frame size */
+	uint16_t ring_buff_size;	/*!< Ring Buff size */
+	uint16_t freq;						/*!< Auido frequency in Hz */
 	
-	uint16_t audio_bw_high;					/*!< High pass filter for PDM decoder in Hz */
-	uint16_t audio_bw_low;					/*!< High pass filter for PDM decoder in Hz */
-	uint8_t audio_decimator;				/*!< Decimator used for PDM decoder */
+	uint16_t bw_high;					/*!< High pass filter for PDM decoder in Hz */
+	uint16_t bw_low;					/*!< High pass filter for PDM decoder in Hz */
+	uint8_t  decimator;				/*!< Decimator used for PDM decoder */
 	
-	uint8_t audio_bit_resolution;		/*!< High pass filter for PDM decoder in Hz */
-	uint8_t audio_channel_nbr;			/*!< Number of channels for audio (Mono = 1, Stereo = 2) */
-	uint8_t audio_volume;						/*!< Audio output volume */
+	uint8_t bit_resolution;		/*!< High pass filter for PDM decoder in Hz */
+	uint8_t channel_nbr;			/*!< Number of channels for audio (Mono = 1, Stereo = 2) */
+	uint8_t volume;						/*!< Audio output volume */
 	
 }Auido_Capture_Config;
 

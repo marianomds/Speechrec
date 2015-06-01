@@ -35,7 +35,7 @@
 #include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
 #include "audio_processing.h"
 #include "ff.h"
-
+#include <ring_buffer.h>
 
 
 //---------------------------------------------------------------------------------
@@ -74,9 +74,19 @@ typedef struct{
 	*/
 typedef struct{
 	Auido_Capture_Config audio_conf;
-	uint16_t *data;
-	uint32_t data_buff_size;
+	ringBuf *buff;
 }Audio_Capture_args;
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Save task arguments
+	*/
+typedef struct{
+	uint32_t usb_buff_size;
+	ringBuf *buff;
+	char *file_name;
+}Audio_Save_args;
+
 /**
 	*\typedef
 	*	\struct
@@ -129,14 +139,7 @@ typedef enum {
 	PATTERN_STORING  = 1,
 	RECOGNITION = 2,
 }AppStates;
-/**
-	*	\enum
-  *	\brief Processing task messages
-	*/
-enum ProcessMsg{
-	NEXT_FRAME,
-	LAST_FRAME,
-};
+
 /**
 	*	\enum
   *	\brief Recognition task states
@@ -151,6 +154,7 @@ typedef struct {
 	bool			save_proc_vars;
 	bool			save_clb_vars;
 	bool			save_dist;
+	uint32_t  usb_buff_size;
 }DebugConfig;
 
 
@@ -218,6 +222,7 @@ typedef enum{
 	KILL_CAPTURE,
 }Capture_states;
 
+
 //---------------------------------------------------------------------------------
 //															GENERAL FUNCTIONS
 //---------------------------------------------------------------------------------
@@ -281,6 +286,8 @@ void AudioCapture 		(void const * pvParameters);
 	* @param	Recives folders name where the audio file si located (folders name and audio file name must be equal).
 	*/
 void audioProcessing	(void const * pvParameters);
+
+void AudioSave (void const * pvParameters);
 
 //---------------------------------------------------------------------------------
 //																INTERRUPTION FUNCTIONS

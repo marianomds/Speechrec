@@ -40,8 +40,8 @@ uint8_t initCapture(const Auido_Capture_Config* config, uint16_t* data, uint16_t
 	msg_val = message_val;
 	
 	// Calculate buffer sizes
-	pdm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_decimator*capture_conf.audio_channel_nbr/8;		// El size de PDM vale como mínimo AudioFreq en [KHz]
-	pcm_buff_size = capture_conf.audio_freq/1000*capture_conf.audio_channel_nbr;																	// El size de PCM vale como mínimo AudioFreq en [KHz]
+	pdm_buff_size = capture_conf.freq/1000*capture_conf.decimator*capture_conf.channel_nbr/8;		// El size de PDM vale como mínimo AudioFreq en [KHz]
+	pcm_buff_size = capture_conf.freq/1000*capture_conf.channel_nbr;																	// El size de PCM vale como mínimo AudioFreq en [KHz]
 	
 	// Tengo que extender los buffers para llenar data_buff_size y que solo interrumpa 1 vez
 	assert_param( (data_buff_size % pcm_buff_size) == 0 );
@@ -50,10 +50,10 @@ uint8_t initCapture(const Auido_Capture_Config* config, uint16_t* data, uint16_t
 	// Create buffers
 	PCM = data;
 	PDM = pvPortMalloc(pdm_buff_size*extend_buff*2);													// Es 2 porque es un buffer circular
-	Filter = pvPortMalloc(capture_conf.audio_channel_nbr*sizeof(*Filter));		// Get memory for Filter structure
+	Filter = pvPortMalloc(capture_conf.channel_nbr*sizeof(*Filter));		// Get memory for Filter structure
 	
 	// Initialize PDM Decoder
-	PDMDecoder_Init(capture_conf.audio_freq,capture_conf.audio_channel_nbr,Filter);
+	PDMDecoder_Init(capture_conf.freq,capture_conf.channel_nbr,Filter);
 	
 	// Create DMA Interrup Handler Task
 	osThreadDef(DMAHandlerTask,		DMA_Interrup_Handler_Task, 		osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
@@ -113,7 +113,6 @@ uint8_t audioResume(void){
 //------------------------------------------------------------------------------
 //											PRIVATE AUDIO DRIVER CONTROL FUNCTIONS
 //------------------------------------------------------------------------------
-
 void PDMDecoder_Init(uint32_t AudioFreq, uint32_t ChnlNbr, PDMFilter_InitStruct *Filter){ 
   uint32_t i = 0;
 	
@@ -190,6 +189,9 @@ void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s){
 
 }
 
+//
+//------- CALLBACK TASK -------
+//
 void DMA_Interrup_Handler_Task (void const *pvParameters) {
 	
 	osEvent event;
@@ -209,13 +211,13 @@ void DMA_Interrup_Handler_Task (void const *pvParameters) {
 				case I2S_FIRST_HALF:
 				{
 					for(i=0; i<extend_buff; i++)		
-						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[i*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
+						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[i*pcm_buff_size],capture_conf.channel_nbr, capture_conf.volume, Filter);
 				}
 				break;
 				case I2S_SECOND_HALF:
 				{
 					for(i=extend_buff; i<extend_buff*2; i++)
-						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.audio_channel_nbr, capture_conf.audio_volume, Filter);
+						audioPDM2PCM((uint16_t*)&PDM[i*pdm_buff_size],pdm_buff_size,&PCM[(i-extend_buff)*pcm_buff_size],capture_conf.channel_nbr, capture_conf.volume, Filter);
 				}
 				break;
 				case I2S_ERROR:

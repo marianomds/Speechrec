@@ -24,6 +24,8 @@
 								DEFAULT CONFIGURATION PARAMETERS OF THE APPLICATION
 -----------------------------------------------------------------------------------*/
 
+#define AUDIO_FRAME_SIZE              512
+#define AUDIO_RING_BUFF_SIZE          4
 #define AUDIO_IN_FREQ                 16000		//[Hz]
 #define AUDIO_IN_BW_HIGH							8000		//[Hz]
 #define AUDIO_IN_BW_LOW								10			//[Hz]

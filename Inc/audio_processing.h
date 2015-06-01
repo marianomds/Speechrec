@@ -77,6 +77,12 @@ typedef struct{
 }CalibConf;
 
 typedef struct{
+	float32_t	energy;
+	float32_t	fmax;
+	float32_t	sp;
+}VAD_var;
+
+typedef struct{
 	float32_t *speech;			// Señal de audio escalada (tiene el largo de frame_net)
 	float32_t *FltSig;			// Señal de audio pasada por el Filtro de Pre-Enfasis (tiene el largo de frame_net)
 	float32_t *Frame;				// Frame con el overlap incluido (tiene el largo de frame_len)
@@ -110,7 +116,27 @@ typedef struct {
 	
 } Proc_files;
 
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Processing task arguments
+	*/
+typedef struct{
+	osMessageQId src_msg_id;
+	uint16_t *data;
+	ProcConf *proc_conf;
+	bool vad;
+	bool save_to_files;
+}Audio_Proc_args;
 
+/**
+	*	\enum
+  *	\brief Processing task messages
+	*/
+enum ProcessMsg{
+	NEW_FRAME,
+	FINISH,
+};
 
 
 //---------------------------------------
@@ -167,9 +193,10 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad);
 //---------------------------------------
 //			BASE PROCESSING FUNCTIONS
 //---------------------------------------	
-void			secondProcStage	(bool vad, Proc_var *saving_var);
-void			thirdProcStage	(float32_t *MFCC, Proc_var *saving_var);
-void			firstProcStage	(Proc_var *saving_var);
+void	firstProcStage	(float32_t *filt_signal, uint16_t *audio, Proc_var *saving_var);
+void	secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *saving_var);
+void	thirdProcStage	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var);
+void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
