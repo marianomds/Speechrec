@@ -14,19 +14,14 @@
 /* Includes ------------------------------------------------------------------*/
 
 
-#ifndef __ringBuf_H
-#define __ringBuf_H
+#ifndef RING_BUFFER_H
+#define RING_BUFFER_H
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <cmsis_os.h>
 
-
-typedef enum
-{
-	RING_BUFFER_READY,
-}	ringBufMsgs;
 
 typedef struct ringBufClient {
     uint8_t *ptr;
@@ -37,6 +32,7 @@ typedef struct ringBufClient {
     bool overrun;
 	
 	  osMessageQId msg_id;
+		uint32_t msg_val;
 } ringBufClient;
 
 typedef struct ringBuf {
@@ -72,7 +68,7 @@ ringBufStatus ringBuf_flush ( ringBuf *_this );
 static ringBufStatus ringBuf_read ( ringBuf* _this, uint8_t** ptr, uint32_t* count, size_t read_size, size_t shift_size, uint8_t* output );
 ringBufStatus ringBuf_write ( ringBuf* _this, const uint8_t* input, const size_t write_size );
 
-ringBufStatus ringBuf_registClient ( ringBuf *_this, size_t read_size, size_t shift_size, osMessageQId msg_id, uint8_t *client_num );
+ringBufStatus ringBuf_registClient ( ringBuf *_this, size_t read_size, size_t shift_size, osMessageQId msg_id, uint32_t msg_val, uint8_t *client_num );
 ringBufStatus ringBuf_unregistClient ( ringBuf *_this, const uint8_t client_num  );
 ringBufStatus ringBuf_findClient ( ringBuf *_this, const uint8_t client, uint8_t *idx );
 
@@ -88,4 +84,4 @@ bool  is_ringBuf_full ( ringBuf *_this );
 #endif
 
 
-#endif	// __ringBuf_H
+#endif	// RING_BUFFER_H

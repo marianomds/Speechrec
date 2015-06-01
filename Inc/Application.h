@@ -11,8 +11,8 @@
   ******************************************************************************
   */   
 
-#ifndef _APPLICATION_H
-#define _APPLICATION_H
+#ifndef APPLICATION_H
+#define APPLICATION_H
 
 #define FREERTOS
 
@@ -43,6 +43,69 @@
 //---------------------------------------------------------------------------------
 /**
 	*\typedef
+	*	\ENUM
+  *	\brief Audio Capture STATES
+	*/
+typedef enum{
+	START_CAPTURE,
+	RESUME_CAPTURE,
+	STOP_CAPTURE,
+	PAUSE_CAPTURE,
+	BUFFER_READY,
+	WAIT_FOR_MAIL,
+	KILL_CAPTURE,
+}Capture_states;
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief Application states
+	*/
+typedef enum {
+	CALIBRATION = 0,
+	PATTERN_STORING  = 1,
+	RECOGNITION = 2,
+}AppStates;
+
+/**
+	*	\enum
+  *	\brief Recognition task states
+	*/
+enum States{
+	RECORD_AUDIO,
+	RECOGNIZED,
+}Reco_states;
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief AudioSave states
+	*/
+typedef enum {
+	RING_BUFFER_READY,
+	FINISH,
+}AudioSave_states;
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief Common task messages
+	*/
+typedef enum {
+	FRAME_READY,
+	END_CAPTURE,
+	FAIL,
+	BUTTON_IRQ,	
+	BUTTON_RELEASE,
+	BUTTON_PRESS,
+	CHANGE_TASK,
+	FINISH_PROCESSING,
+	KILL_THREAD,
+}Common_task_Messages;
+
+
+/**
+	*\typedef
 	*	\struct
   *	\brief Audio Processing task arguments
 	*/
@@ -50,10 +113,11 @@ typedef struct{
 	osMessageQId src_msg_id;
 	char *file_path;
 	uint16_t *data;
-	ProcConf *proc_conf;
+	Proc_conf *proc_conf;
 	bool vad;
 	bool save_to_files;
 }Audio_Processing_args;
+
 /**
 	*\typedef
 	*	\struct
@@ -63,19 +127,21 @@ typedef struct{
 	osMessageQId src_msg_id;
 	char *file_name;
 	char *file_path;
-	ProcConf *proc_conf;
+	Proc_conf *proc_conf;
 	bool vad;
 	bool save_to_files;
 }File_Processing_args;
+
 /**
 	*\typedef
 	*	\struct
   *	\brief Audio Capture task arguments
 	*/
 typedef struct{
-	Auido_Capture_Config audio_conf;
+	Capt_conf audio_conf;
 	ringBuf *buff;
 }Audio_Capture_args;
+
 /**
 	*\typedef
 	*	\struct
@@ -97,11 +163,6 @@ typedef struct{
 	char *patterns_config_file_name;
 }Recognition_args;
 
-
-
-
-
-
 /**
 	*\typedef
 	*	\enum
@@ -113,41 +174,6 @@ typedef enum {
 	RECOG_LED 	= BLED,
 	EXECUTE_LED = RLED,
 }AppLEDS;
-/**
-	*\typedef
-	*	\enum
-  *	\brief Common task messages
-	*/
-typedef enum {
-	FRAME_READY,
-	END_CAPTURE,
-	FAIL,
-	BUTTON_IRQ,	
-	BUTTON_RELEASE,
-	BUTTON_PRESS,
-	CHANGE_TASK,
-	FINISH_PROCESSING,
-	KILL_THREAD,
-}Common_task_Messages;
-/**
-	*\typedef
-	*	\enum
-  *	\brief Application states
-	*/
-typedef enum {
-	CALIBRATION = 0,
-	PATTERN_STORING  = 1,
-	RECOGNITION = 2,
-}AppStates;
-
-/**
-	*	\enum
-  *	\brief Recognition task states
-	*/
-enum States{
-	RECORD_AUDIO,
-	RECOGNIZED,
-};
 
 typedef struct {
 	bool			debug;
@@ -155,21 +181,19 @@ typedef struct {
 	bool			save_clb_vars;
 	bool			save_dist;
 	uint32_t  usb_buff_size;
-}DebugConfig;
+}Debug_conf;
 
 
 typedef struct {
 	AppStates maintask;
-	bool 			vad;
 
-	Auido_Capture_Config audio_capture_conf;
-	ProcConf	proc_conf;	
-	CalibConf	calib_conf;
+	Capt_conf		capt_conf;
+	Proc_conf		proc_conf;	
+	Calib_conf	calib_conf;
+	Debug_conf		debug_conf;	
 	
 	char patdir[13];
 	char patfilename[13];
-	
-	DebugConfig		debug_conf;
 }AppConfig;
 
 
@@ -183,6 +207,7 @@ typedef struct {
 	uint8_t	pat_actv_num;										/*< Numero de activación */
 	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
 }Patterns;
+
 /**
 	*	\struct
   *	\brief Vector Cuantization
@@ -191,11 +216,6 @@ struct VC {
 //	float32_t Energy;
 	float32_t MFCC[LIFTER_LEGNTH];
 };
-
-
-
-
-
 
 /**
 	*\typedef
@@ -207,21 +227,6 @@ typedef struct {
 	char *file_name;
 	char *file_path;
 }Mail;
-/**
-	*\typedef
-	*	\ENUM
-  *	\brief Audio Capture STATES
-	*/
-typedef enum{
-	START_CAPTURE,
-	RESUME_CAPTURE,
-	STOP_CAPTURE,
-	PAUSE_CAPTURE,
-	BUFFER_READY,
-	WAIT_FOR_MAIL,
-	KILL_CAPTURE,
-}Capture_states;
-
 
 //---------------------------------------------------------------------------------
 //															GENERAL FUNCTIONS
@@ -300,10 +305,4 @@ void User_Button_EXTI (void);
 //																		TEST TASKS
 //---------------------------------------------------------------------------------
 
-
-
-
-
-
-
-#endif  // _APPLICATION_H
+#endif  // APPLICATION_H

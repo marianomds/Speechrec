@@ -11,8 +11,8 @@
   ******************************************************************************
   */   
 
-#ifndef _APPLICATION_CONFIG_H
-#define _APPLICATION_CONFIG_H
+#ifndef APPLICATION_CONFIG_H
+#define APPLICATION_CONFIG_H
 
 #define DEBUG	1
 
@@ -47,6 +47,7 @@
 #define MEL_BANKS											20
 #define DCT_LEN												32			// Tiene que ser mayor a 2*MEL_BANKS
 #define LIFTER_LEGNTH									12
+#define	VAD_ENABLE										true
 
 #define THD_Scl_ENERGY								2
 #define THD_Scl_SF										0.5f
@@ -68,4 +69,4 @@
 /*---------------------------------------------------------------------------------*/
 
 
-#endif  // _APPLICATION_CONFIG_H
+#endif  // APPLICATION_CONFIG_H

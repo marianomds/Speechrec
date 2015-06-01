@@ -12,8 +12,8 @@
   */  
 	
 
-#ifndef _ALE_STM32F4_DISCOVERY_AUDIO_H
-#define _ALE_STM32F4_DISCOVERY_AUDIO_H
+#ifndef ALE_STM32F4_DISCOVERY_AUDIO_H
+#define ALE_STM32F4_DISCOVERY_AUDIO_H
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -61,7 +61,7 @@ typedef struct{
 	uint8_t channel_nbr;			/*!< Number of channels for audio (Mono = 1, Stereo = 2) */
 	uint8_t volume;						/*!< Audio output volume */
 	
-}Auido_Capture_Config;
+}Capt_conf;
 
 /**	
 	*\typedef
@@ -84,7 +84,7 @@ typedef struct {
 	* @param  data_buff_size: Current size of the recorded buffer
   * @retval AUDIO_OK if correct communication, else wrong communication
   */
-uint8_t initCapture(const Auido_Capture_Config* config, uint16_t* data, uint16_t data_buff_size, osMessageQId message_QId, uint32_t message_val);
+uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_size, osMessageQId message_QId, uint32_t message_val);
 /**
   * @brief  De-initalized Audio Capture
   * @param  
@@ -179,5 +179,5 @@ void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s);
 
 void DMA_Interrup_Handler_Task (void const *pvParameters);
 	
-#endif //_ALE_STM32F4_DISCOVERY_AUDIO_H
+#endif //ALE_STM32F4_DISCOVERY_AUDIO_H
 

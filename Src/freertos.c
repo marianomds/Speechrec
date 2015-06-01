@@ -38,7 +38,7 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */     
-#include "Application.h"
+
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -56,7 +56,7 @@ extern void MX_USB_HOST_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* USER CODE BEGIN FunctionPrototypes */
-
+extern void Configure_Application(void);
 /* USER CODE END FunctionPrototypes */
 /* Hook prototypes */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);

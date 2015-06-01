@@ -16,7 +16,7 @@
 #include "stm32f4xx_hal_conf.h"
 
 
-Auido_Capture_Config capture_conf;
+Capt_conf capture_conf;
 uint32_t pdm_buff_size;
 uint32_t pcm_buff_size;
 uint32_t extend_buff;
@@ -32,7 +32,7 @@ uint32_t msg_val;
 //------------------------------------------------------------------------------
 //											PUBLIC AUDIO DRIVER CONTROL FUNCTIONS
 //------------------------------------------------------------------------------
-uint8_t initCapture(const Auido_Capture_Config* config, uint16_t* data, uint16_t data_buff_size, osMessageQId message_QId, uint32_t message_val){
+uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_size, osMessageQId message_QId, uint32_t message_val){
 	
 	// Save configuration
 	capture_conf = *config;

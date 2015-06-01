@@ -76,7 +76,7 @@ ringBufStatus ringBuf_flush ( ringBuf *_this )
     return BUFF_OK;
 }
 
-ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t shift_size, osMessageQId msg_id, uint8_t* client_num )
+ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t shift_size, osMessageQId msg_id, uint32_t msg_val, uint8_t* client_num )
 {
     // Me fijo que lo que quiera leer no sea mayor al tamaño del buffer
     assert(_this->buff_size > read_size);
@@ -99,6 +99,7 @@ ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t sh
     _this->clients[_this->num_clients-1].read_size = read_size;
     _this->clients[_this->num_clients-1].shift_size = shift_size;
 		_this->clients[_this->num_clients-1].msg_id = msg_id;
+		_this->clients[_this->num_clients-1].msg_val = msg_val;
 		
     return BUFF_OK;
 }
@@ -207,7 +208,7 @@ ringBufStatus ringBuf_write ( ringBuf *_this, const uint8_t *input, const size_t
             _this->clients[idx].overrun = true;
 				
 				if(_this->clients[idx].msg_id != NULL)
-					osMessagePut(_this->clients[idx].msg_id, RING_BUFFER_READY, 0);
+					osMessagePut(_this->clients[idx].msg_id, _this->clients[idx].msg_val, 0);
     }
 
     return BUFF_OK;
@@ -252,42 +253,50 @@ ringBufStatus ringBuf_read ( ringBuf *_this, uint8_t **ptr, uint32_t *count, siz
 
 ringBufStatus ringBuf_read_var ( ringBuf *_this, uint8_t client, size_t read_size, size_t shift_size, uint8_t *output )
 {
-    // Busco el cliente
+    ringBufStatus status;
+	
+		// Busco el cliente
     uint8_t idx = 0;
-    if (ringBuf_findClient ( _this,client, &idx ) == BUFF_NOT_A_CLIENT)
-        return BUFF_NOT_A_CLIENT;
+		status = ringBuf_findClient ( _this,client, &idx );
+	
+		// Si no hubo problemas leo el buffer
+    if ( status == BUFF_OK)
+			status = ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, read_size, shift_size, output);
     
-    // Leo
-    ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, read_size, shift_size, output);
-    
-    return BUFF_OK;
+    return status;
 }
 
 ringBufStatus ringBuf_read_const ( ringBuf *_this, uint8_t client, uint8_t *output )
 {
-    // Busco el cliente
+    ringBufStatus status;
+	
+		// Busco el cliente
     uint8_t idx = 0;
-    if (ringBuf_findClient ( _this,client, &idx ) == BUFF_NOT_A_CLIENT)
-        return BUFF_NOT_A_CLIENT;
-        
-    // Leo
-    ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, _this->clients[idx].read_size, _this->clients[idx].shift_size, output);
+		status = ringBuf_findClient ( _this,client, &idx );
+	
+		// Si no hubo problemas leo el buffer
+    if ( status == BUFF_OK)
+			status = ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, _this->clients[idx].read_size, _this->clients[idx].shift_size, output);
     
-    return BUFF_OK;
+    return status;
 }
 
 ringBufStatus ringBuf_read_all ( ringBuf *_this, uint8_t client, uint8_t *output, size_t *read_size )
 {
-    // Busco el cliente
+    ringBufStatus status;
+	
+		// Busco el cliente
     uint8_t idx = 0;
-    if (ringBuf_findClient ( _this,client, &idx ) == BUFF_NOT_A_CLIENT)
-        return BUFF_NOT_A_CLIENT;
+		status = ringBuf_findClient ( _this,client, &idx );
+	
+		// Si no hubo problemas leo el buffer
+    if ( status == BUFF_OK)
+		{
+			status = ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, _this->clients[idx].count, _this->clients[idx].count, output);
+			
+			// Devuelvo la cantidad leida
+			*read_size = _this->clients[idx].count;
+		}
     
-    // Leo
-    ringBuf_read(_this, &_this->clients[idx].ptr, &_this->clients[idx].count, _this->clients[idx].count, _this->clients[idx].count, output);
-    
-    // Devuelvo la cantidad leida
-    *read_size = _this->clients[idx].count;
-    
-    return BUFF_OK;
+    return status;
 }

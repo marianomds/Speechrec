@@ -20,53 +20,34 @@
 #include "arm_math.h"
 #include "ff.h"
 #include "stdbool.h"
+#include <ring_buffer.h>
 
-
-typedef enum
-{
-	No_Stage = 0x00,
-	First_Stage = 0x01,
-	Second_Stage = 0x02,
-	Third_Stage = 0x04,
-}ProcStages;
-														
-//enum{
-//	FINISH_PROCESSING,
-//};
-
-typedef enum{
-	VOICE,
-	NO_VOICE,
-	PROC_FAILURE
-}ProcStatus;
-
-typedef enum{
-	CALIB_INITIATED,
-	CALIB_IN_PROCESS,
-	CALIB_FINISH,
-	CALIB_FAILURE,
-	CALIB_OK,
-}CalibStatus;
 
  typedef struct{
 	 
-//	uint8_t		time_window;
-//	uint8_t		time_overlap;
-	 
-	uint16_t	frame_len;
-	uint16_t	frame_net;
-	uint16_t	frame_overlap;
-	uint16_t	zero_padding_left;
-	uint16_t	zero_padding_right;
-	 
+	// Audio Filtering
 	uint16_t	numtaps;
 	float32_t	alpha;
+
+	// Frame Blocking
+	uint16_t	frame_len;
+	uint16_t	frame_overlap;	 
+	 
+	// FFT
 	uint16_t	fft_len;
+	 
+	// Mel Filter
 	uint16_t	mel_banks;
+	 
+	// Compresion
 	uint16_t	dct_len;				// Tiene que ser 2^N y mayor que MEL_BANKS
-	uint16_t	lifter_legnth;
 	
-}ProcConf;
+	// Liftering
+	uint16_t	lifter_legnth;
+
+	// VAD
+	bool			vad;
+}Proc_conf;
  
 typedef struct{
 	uint16_t	calib_time;
@@ -74,7 +55,7 @@ typedef struct{
 	float32_t	thd_scl_eng;
 	uint32_t	thd_min_fmax;
 	float32_t	thd_scl_sf;
-}CalibConf;
+}Calib_conf;
 
 typedef struct{
 	float32_t	energy;
@@ -119,42 +100,56 @@ typedef struct {
 /**
 	*\typedef
 	*	\struct
-  *	\brief Audio Processing task arguments
+  *	\brief Processing task arguments
 	*/
 typedef struct{
+	Proc_conf *proc_conf;
+	bool save_to_files;	
+	ringBuf *audio_buff;
+	float32_t *features;
 	osMessageQId src_msg_id;
-	uint16_t *data;
-	ProcConf *proc_conf;
-	bool vad;
-	bool save_to_files;
-}Audio_Proc_args;
+	uint32_t	src_msg_val;
+}Proc_args;
+
+typedef enum
+{
+	No_Stage = 0x00,
+	First_Stage = 0x01,
+	Second_Stage = 0x02,
+	Third_Stage = 0x04,
+}Proc_stages;
 
 /**
 	*	\enum
   *	\brief Processing task messages
 	*/
-enum ProcessMsg{
-	NEW_FRAME,
-	FINISH,
-};
+typedef enum {
+	PROC_BUFF_READY,
+	PROC_FINISH,
+	PROC_KILL,
+}Proc_msg;
 
+typedef enum
+{
+	VOICE,
+	NO_VOICE,
+	PROC_FAILURE
+}Proc_status;
+
+typedef enum{
+	CALIB_INITIATED,
+	CALIB_IN_PROCESS,
+	CALIB_FINISH,
+	CALIB_FAILURE,
+	CALIB_OK,
+}Calib_status;
 
 //---------------------------------------
 //						USER FUNCTIONS
 //---------------------------------------
 
 
-void initBasics		(ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers);
-void finishBasics	(void);
-
-/**
-	*	Initialized Processing.
-  * @brief  Initialized Processing.
-	* @param[in]	configuration: processing configuration information
-	* @param[in]	vad:	if VAD will be use or not 
-	* @param[in]	save_vars: if it should save processing variables
-  */
-void		initProcessing				(float32_t **MFCC, uint32_t *MFCC_size, ProcConf *configuration, bool vad, Proc_var *ptr_vars_buffers);
+void initProcessing		(Proc_conf *configuration, Proc_var *ptr_vars_buffers);
 /**
   * @brief  De-Initialized Processing
   */
@@ -168,13 +163,13 @@ void		finishProcessing			(void);
 	* @param[in]  vad: If VAD should be used or no
 	* @param[out]  saving_var: Address of the vector with the Window to apply
   */
-ProcStatus		MFCC_float				(uint16_t *frame, ProcStages *stages, bool last_frame);
+Proc_status		MFCC_float				(uint16_t *frame, Proc_stages *stages, bool last_frame);
 
 // CALIBRATION
 
-CalibStatus		initCalibration		(uint32_t *num_frames, CalibConf *calib_config, ProcConf *configuration, Proc_var *ptr_vars_buffers);
-CalibStatus		Calibrate					(uint16_t *frame, uint32_t frame_num, ProcStages *stages);
-CalibStatus		endCalibration		(const bool save_calib_vars);
+Calib_status		initCalibration		(uint32_t *num_frames, Calib_conf *Proc_config, Proc_conf *configuration, Proc_var *ptr_vars_buffers);
+Calib_status		Calibrate					(uint16_t *frame, uint32_t frame_num, Proc_stages *stages);
+Calib_status		endCalibration		(const bool save_calib_vars);
 //---------------------------------------
 //						HELP FUNCTIONS
 //---------------------------------------
@@ -185,7 +180,7 @@ CalibStatus		endCalibration		(const bool save_calib_vars);
 	* @retval 	0	==> OK		!=0 ==> Error code
 	*/
 uint8_t Open_proc_files (Proc_files *files, const bool vad);
-uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool vad, ProcStages stage);
+uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool vad, Proc_stages stage);
 uint8_t Close_proc_files (Proc_files *files, const bool vad);
 
 
@@ -197,6 +192,7 @@ void	firstProcStage	(float32_t *filt_signal, uint16_t *audio, Proc_var *saving_v
 void	secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *saving_var);
 void	thirdProcStage	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var);
 void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy);
+void deltaCoeff				(float32_t *output, float32_t *input);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save

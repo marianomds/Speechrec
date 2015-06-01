@@ -37,7 +37,7 @@ osMessageQId recognition_msg;
 osMessageQId pattern_storring_msg;
 
 osMessageQId file_processing_msg;
-osMessageQId audio_processing_msg;
+//osMessageQId proc_msg;
 
 osMessageQId audio_capture_msg;
 osMessageQId audio_save_msg;
@@ -96,7 +96,7 @@ void Main_Thread (void const *pvParameters) {
 
 						
 						// Create Audio Capture Task
-						audio_cap_args.audio_conf = appconf.audio_capture_conf;
+						audio_cap_args.audio_conf = appconf.capt_conf;
 						audio_cap_args.buff	= &audio_ring_buffer;
 						osThreadDef(AudioCaptureTask, AudioCapture, osPriorityHigh,	1, configMINIMAL_STACK_SIZE*12);
 						audio_task_ID = osThreadCreate (osThread(AudioCaptureTask), &audio_cap_args);
@@ -340,7 +340,7 @@ void PatternStoring (void const *pvParameters) {
 				{		
 					if(recording && !appconf.debug_conf.debug)
 						// Send Message to Audio Processing Task
-						osMessagePut(audio_processing_msg, NEXT_FRAME, 0);
+						osMessagePut(proc_msg, NEXT_FRAME, 0);
 					
 					break;
 				}
@@ -351,7 +351,7 @@ void PatternStoring (void const *pvParameters) {
 					{
 						if(!appconf.debug_conf.debug)
 							// Send Message to Audio Processing Task
-							osMessagePut(audio_processing_msg, LAST_FRAME, 0);
+							osMessagePut(proc_msg, LAST_FRAME, 0);
 						else
 						{
 							/******** Create arguments for passing to Audio Processing Task ********/
@@ -399,7 +399,7 @@ void PatternStoring (void const *pvParameters) {
 					if(processing)
 					{
 						if(!appconf.debug_conf.debug)
-							osMessagePut (audio_processing_msg, KILL_THREAD, 0);
+							osMessagePut (proc_msg, KILL_THREAD, 0);
 						else
 							osMessagePut (file_processing_msg, KILL_THREAD, 0);
 						
@@ -541,7 +541,7 @@ void Recognition (void const *pvParameters) {
 				{
 					if(recording && !appconf.debug_conf.debug)
 						// Send Message to Audio Processing Task
-						osMessagePut(audio_processing_msg, NEXT_FRAME, 0);
+						osMessagePut(proc_msg, NEXT_FRAME, 0);
 					break;
 				}
 				
@@ -550,7 +550,7 @@ void Recognition (void const *pvParameters) {
 					if(recording)
 					{
 						if(!appconf.debug_conf.debug)
-							osMessagePut(audio_processing_msg, LAST_FRAME, 0);			// Send Message to Audio Processing Task
+							osMessagePut(proc_msg, LAST_FRAME, 0);			// Send Message to Audio Processing Task
 						else
 						{
 							/******** Create arguments for passing to Audio Processing Task ********/
@@ -683,7 +683,7 @@ void Recognition (void const *pvParameters) {
 					if(processing)
 					{
 						if(!appconf.debug_conf.debug)
-							osMessagePut (audio_processing_msg, KILL_THREAD, 0);
+							osMessagePut (proc_msg, KILL_THREAD, 0);
 						else
 							osMessagePut (file_processing_msg, KILL_THREAD, 0);
 						
@@ -725,8 +725,8 @@ void Calibration (void const * pvParameters) {
 	Proc_files *files = NULL;
 	FIL WaveFile;
 	UINT bytesread;
-	CalibStatus calib_status = CALIB_INITIATED;
-	ProcStages stages;
+	Calib_status calib_status = CALIB_INITIATED;
+	Proc_stages stages;
 	
 	bool processing = false;					// If Audio Processing Task is still processing then true
 	bool capture = false;
@@ -737,9 +737,9 @@ void Calibration (void const * pvParameters) {
 	
 	// Init Calibration configuration
 	if(appconf.debug_conf.debug && appconf.debug_conf.save_proc_vars)
-		calib_status = initCalibration	(&calib_length, &appconf.calib_conf, &appconf.proc_conf, &ptr_vars_buffers);
+		calib_status = initCalibration	(&calib_length, &appconf.Proc_conf, &appconf.proc_conf, &ptr_vars_buffers);
 	else
-		calib_status = initCalibration	(&calib_length, &appconf.calib_conf, &appconf.proc_conf, NULL);
+		calib_status = initCalibration	(&calib_length, &appconf.Proc_conf, &appconf.proc_conf, NULL);
 	
 	// Check if filename exist, otherwise update
 	for(; f_stat(file_name,NULL)!= FR_NO_FILE; updateFilename(file_name));
@@ -907,11 +907,11 @@ void audioProcessing (void const *pvParameters) {
 	uint32_t frameNum=0;
 	float32_t *MFCC;
 	uint32_t MFCC_size;
-	ProcStages stages;
+	Proc_stages stages;
 	
 	// Create Process Task State MessageQ
-	osMessageQDef(audio_processing_msg,10,uint32_t);
-	audio_processing_msg = osMessageCreate(osMessageQ(audio_processing_msg),NULL);	
+	osMessageQDef(proc_msg,10,uint32_t);
+	proc_msg = osMessageCreate(osMessageQ(proc_msg),NULL);	
 	
 	// Get arguments
 	args = (Audio_Processing_args*) pvParameters;
@@ -940,7 +940,7 @@ void audioProcessing (void const *pvParameters) {
 		// START PROCESSING
 		while(!finish)
 		{
-			event = osMessageGet(audio_processing_msg,osWaitForever);
+			event = osMessageGet(proc_msg,osWaitForever);
 			if(event.status == osEventMessage)
 			{
 				switch (event.value.v)
@@ -985,7 +985,7 @@ void audioProcessing (void const *pvParameters) {
 		LED_Off(BLED);
 		
 		// Destroy Message Que
-		audio_processing_msg = NULL;
+		proc_msg = NULL;
 		
 		// Elimino la tarea
 		osThreadTerminate(osThreadGetId());
@@ -1008,8 +1008,8 @@ void fileProcessing (void const *pvParameters) {
 	uint16_t *frame;
 	float32_t *MFCC;
 	uint32_t MFCC_size;
-	ProcStatus proc_output;
-	ProcStages stages_to_save;
+	Proc_status proc_output;
+	Proc_stages stages_to_save;
 	
 	// Create Process Task State MessageQ
 	osMessageQDef(file_processing_msg,10,uint32_t);
@@ -1144,15 +1144,15 @@ void AudioCapture (void const * pvParameters) {
 	args = (Audio_Capture_args*) pvParameters;
 	
 	// Allocate memory for audio frame
-	if( (audio_frame = pvPortMalloc( appconf.audio_capture_conf.frame_size * sizeof(*audio_frame) ) ) == NULL )
+	if( (audio_frame = pvPortMalloc( appconf.capt_conf.frame_size * sizeof(*audio_frame) ) ) == NULL )
 		Error_Handler();
 						
 	// Intialized Audio Driver
-	if(initCapture(&args->audio_conf, audio_frame, appconf.audio_capture_conf.frame_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
+	if(initCapture(&args->audio_conf, audio_frame, appconf.capt_conf.frame_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
 		Error_Handler();
 			
 	// Create buffer for audio
-	if( ringBuf_init(args->buff, appconf.audio_capture_conf.frame_size * appconf.audio_capture_conf.ring_buff_size * sizeof(*audio_frame), true) != BUFF_OK )
+	if( ringBuf_init(args->buff, appconf.capt_conf.frame_size * appconf.capt_conf.ring_buff_size * sizeof(*audio_frame), true) != BUFF_OK )
 		Error_Handler();
 	
 	/* START TASK */
@@ -1198,7 +1198,7 @@ void AudioCapture (void const * pvParameters) {
 				case BUFFER_READY:
 				{
 					// Copy frame to buffer
-					ringBuf_write ( args->buff, (uint8_t*) audio_frame, appconf.audio_capture_conf.frame_size * sizeof(*audio_frame) );
+					ringBuf_write ( args->buff, (uint8_t*) audio_frame, appconf.capt_conf.frame_size * sizeof(*audio_frame) );
 					
 					break;
 				}
@@ -1244,9 +1244,9 @@ void AudioSave (void const * pvParameters) {
 	WAVE_Audio_config wave_config;
 
 	// Set Wave Configuration
-	wave_config.SampleRate = appconf.audio_capture_conf.freq;
-	wave_config.NbrChannels = appconf.audio_capture_conf.channel_nbr;
-	wave_config.BitPerSample = appconf.audio_capture_conf.bit_resolution;
+	wave_config.SampleRate = appconf.capt_conf.freq;
+	wave_config.NbrChannels = appconf.capt_conf.channel_nbr;
+	wave_config.BitPerSample = appconf.capt_conf.bit_resolution;
 
 	// Create Message
 	osMessageQDef(audio_save_msg, 10, uint32_t);
@@ -1260,7 +1260,7 @@ void AudioSave (void const * pvParameters) {
 		Error_Handler();
 	
 	// Me registro en el ring buffer
-	ringBuf_registClient ( args->buff, args->usb_buff_size * sizeof(*usb_buff), args->usb_buff_size * sizeof(*usb_buff), audio_save_msg, &buff_client);
+	ringBuf_registClient ( args->buff, args->usb_buff_size * sizeof(*usb_buff), args->usb_buff_size * sizeof(*usb_buff), audio_save_msg, RING_BUFFER_READY, &buff_client);
 	
 	// Go to file path
 //	f_chdir (args->file_path);
@@ -1415,25 +1415,7 @@ void Configure_Application (void) {
   */
 void setEnvVar (void){
 	//TODO: Calcular las variables que va a utilizar el sistema y dejar de usar los defines
-	
-	uint32_t buff_n;
-	uint32_t padding;
-	
-	// SETEO OVERLAP IGUAL A NET POR EL PROBLEMA DE NO TENER BUFFER CIRCULAR
-	appconf.proc_conf.frame_overlap = appconf.proc_conf.frame_net;
-	
-	// Calculo la longitud necesaria del buffer (haciendo zero padding de ser necesario)
-	buff_n = ceil( log(appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2) / log(2) );
-	appconf.proc_conf.frame_len = pow(2,buff_n);
-	padding = appconf.proc_conf.frame_len - (appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2);
-	appconf.proc_conf.zero_padding_left  = padding / 2;
-	appconf.proc_conf.zero_padding_right = appconf.proc_conf.zero_padding_left + padding  % 2;
-	
-	// Calculo la longitud de la calibración según el tiempo seteado
-	appconf.calib_conf.calib_len		= (uint32_t)	(appconf.calib_conf.calib_time * appconf.audio_capture_conf.freq ) / appconf.proc_conf.frame_net;
-	
-	// Escalo el THD_min_FMAX a índices en el buffer
-	appconf.calib_conf.thd_min_fmax = (uint32_t)  appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.audio_capture_conf.freq;
+		
 }
 /**
   * @brief  Lee el archivo de configuración del sistema
@@ -1446,7 +1428,6 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	
 	// Read System configuration
 	config->maintask	= (AppStates) ini_getl	("System", "MAIN_TASK", PATTERN_STORING,	filename);
-	config->vad				= ini_getbool	("System", "VAD", 	true,		filename);
 	
 	// Read Debug configuration
 	config->debug_conf.debug					= ini_getbool	("Debug", "Debug",	false,	filename);
@@ -1456,38 +1437,33 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->debug_conf.usb_buff_size	= (uint32_t)	ini_getl("Debug", "usb_buff_size", 128, filename);
 	
 	// Read Auido configuration
-	
-	config->audio_capture_conf.frame_size			= (uint16_t)	ini_getl("AudioConf", "FRAME_SIZE",			AUDIO_FRAME_SIZE,				filename);
-	config->audio_capture_conf.ring_buff_size	= (uint16_t)	ini_getl("AudioConf", "RING_BUFF_SIZE",	AUDIO_RING_BUFF_SIZE,		filename);
-	config->audio_capture_conf.freq						= (uint16_t)	ini_getl("AudioConf", "FREQ",						AUDIO_IN_FREQ,					filename);
-	config->audio_capture_conf.bw_high				= (uint16_t) 	ini_getl("AudioConf", "BW_HIGH", 				AUDIO_IN_BW_HIGH,				filename);
-	config->audio_capture_conf.bw_low					= (uint16_t) 	ini_getl("AudioConf", "BW_LOW",					AUDIO_IN_BW_LOW,				filename);
-	config->audio_capture_conf.bit_resolution	= (uint8_t)		ini_getl("AudioConf", "BIT_RESOLUTION", AUDIO_IN_BIT_RESOLUTION,filename);
-	config->audio_capture_conf.channel_nbr		= (uint8_t)		ini_getl("AudioConf", "CHANNEL_NBR", 		AUDIO_IN_CHANNEL_NBR,		filename);
-	config->audio_capture_conf.volume					= (uint8_t)		ini_getl("AudioConf", "VOLUME",					AUDIO_IN_VOLUME,				filename);
-	config->audio_capture_conf.decimator			= (uint8_t)		ini_getl("AudioConf", "DECIMATOR", 			AUDIO_IN_DECIMATOR,			filename);
+	config->capt_conf.frame_size			= (uint16_t)	ini_getl("AudioConf", "FRAME_SIZE",			AUDIO_FRAME_SIZE,				filename);
+	config->capt_conf.ring_buff_size	= (uint16_t)	ini_getl("AudioConf", "RING_BUFF_SIZE",	AUDIO_RING_BUFF_SIZE,		filename);
+	config->capt_conf.freq						= (uint16_t)	ini_getl("AudioConf", "FREQ",						AUDIO_IN_FREQ,					filename);
+	config->capt_conf.bw_high					= (uint16_t) 	ini_getl("AudioConf", "BW_HIGH", 				AUDIO_IN_BW_HIGH,				filename);
+	config->capt_conf.bw_low					= (uint16_t) 	ini_getl("AudioConf", "BW_LOW",					AUDIO_IN_BW_LOW,				filename);
+	config->capt_conf.bit_resolution	= (uint8_t)		ini_getl("AudioConf", "BIT_RESOLUTION", AUDIO_IN_BIT_RESOLUTION,filename);
+	config->capt_conf.channel_nbr			= (uint8_t)		ini_getl("AudioConf", "CHANNEL_NBR", 		AUDIO_IN_CHANNEL_NBR,		filename);
+	config->capt_conf.volume					= (uint8_t)		ini_getl("AudioConf", "VOLUME",					AUDIO_IN_VOLUME,				filename);
+	config->capt_conf.decimator				= (uint8_t)		ini_getl("AudioConf", "DECIMATOR", 			AUDIO_IN_DECIMATOR,			filename);
 	
 
 	// Read Speech Processing configuration
-//	config->proc_conf.time_window		= (uint16_t) 	ini_getl("SPConf", "TIME_WINDOW", 	TIME_WINDOW,		filename);
-//	config->proc_conf.time_overlap	= (uint16_t) 	ini_getl("SPConf", "TIME_OVERLAP",	TIME_OVERLAP,		filename);
+	config->proc_conf.numtaps				= (uint16_t)		ini_getl		("SPConf", "NUMTAPS",					NUMTAPS,					filename);
+	config->proc_conf.alpha					= (float32_t)		ini_getf		("SPConf", "ALPHA",						ALPHA,						filename);
+	config->proc_conf.frame_len			= (uint16_t)		ini_getl		("SPConf", "FRAME_LEN", 			FRAME_LEN,				filename);
+	config->proc_conf.frame_overlap	= (uint16_t)		ini_getl		("SPConf", "FRAME_OVERLAP", 	FRAME_LEN,				filename);
+	config->proc_conf.fft_len				= (uint16_t)		ini_getl		("SPConf", "FFT_LEN", 				FFT_LEN,					filename);
+	config->proc_conf.mel_banks			= (uint16_t)		ini_getl		("SPConf", "MEL_BANKS",				MEL_BANKS,				filename);
+	config->proc_conf.dct_len				= (uint16_t)		ini_getl		("SPConf", "DCT_LEN", 				DCT_LEN,					filename);
+	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl		("SPConf", "LIFTER_LEGNTH",		LIFTER_LEGNTH,		filename);
+	config->proc_conf.vad						= 							ini_getbool	("SPConf", "VAD",							VAD_ENABLE,				filename);
 	
-	config->proc_conf.frame_net			= (uint16_t)		ini_getl("SPConf", "FRAME_NET", 		FRAME_LEN,			filename);
-	config->proc_conf.frame_overlap	= (uint16_t)		ini_getl("SPConf", "FRAME_OVERLAP", FRAME_LEN,			filename);
-	
-	config->proc_conf.numtaps				= (uint16_t)		ini_getl("SPConf", "NUMTAPS",				NUMTAPS,				filename);
-	config->proc_conf.alpha					= (float32_t)		ini_getf("SPConf", "ALPHA",					ALPHA,					filename);
-	config->proc_conf.fft_len				= (uint16_t)		ini_getl("SPConf", "FFT_LEN", 			FFT_LEN,				filename);
-	config->proc_conf.mel_banks			= (uint16_t)		ini_getl("SPConf", "MEL_BANKS",			MEL_BANKS,			filename);
-	config->proc_conf.dct_len				= (uint16_t)		ini_getl("SPConf", "DCT_LEN", 			DCT_LEN,				filename);
-	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl("SPConf", "LIFTER_LEGNTH",	LIFTER_LEGNTH,	filename);
-	
-	// Read Calibration configuration
+// Read Calibration configuration
 	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", 			CALIB_TIME, 			filename);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,			filename);
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
-	
 	
 	// Read Patterns configuration
 	ini_gets("PatConf", "PAT_DIR", 				PAT_DIR, 				config->patdir, 			sizeof(config->patdir), 			filename);

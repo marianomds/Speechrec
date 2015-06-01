@@ -1,3 +1,18 @@
+/**
+  ******************************************************************************
+  * @file    ale_dct2_f32.h
+  * @author  Alejandro Alvarez
+  * @version V1.0.0
+  * @date    22-Mayo-2015
+  * @brief   Application Tasks for ASR_DTW
+  ******************************************************************************
+  * @attention
+  *
+  ******************************************************************************
+  */ 
+
+#ifndef ALE_DCT2_F32_H
+#define ALE_DCT2_F32_H
 
 #include "arm_math.h"
 
@@ -20,3 +35,6 @@ arm_status dct2_init_f32(  ale_dct2_instance_f32 * S,  arm_rfft_fast_instance_f3
 														uint16_t N,  uint16_t Nby2,  float32_t normalize);
 
 void ale_dct2_f32(const ale_dct2_instance_f32 * S,  float32_t * pState,  float32_t * pInlineBuffer);
+
+#endif		// ALE_DCT2_F32_H
+

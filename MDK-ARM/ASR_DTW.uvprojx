@@ -53,7 +53,7 @@
           <CreateHexFile>0</CreateHexFile>
           <DebugInformation>1</DebugInformation>
           <BrowseInformation>1</BrowseInformation>
-          <ListingPath></ListingPath>
+          <ListingPath>.\@\</ListingPath>
           <HexFormatSelection>1</HexFormatSelection>
           <Merge32K>0</Merge32K>
           <CreateBatchFile>0</CreateBatchFile>
@@ -209,7 +209,7 @@
             <AdsLsun>1</AdsLsun>
             <AdsLven>1</AdsLven>
             <AdsLsxf>1</AdsLsxf>
-            <RvctClst>0</RvctClst>
+            <RvctClst>1</RvctClst>
             <GenPPlst>0</GenPPlst>
             <AdsCpuType>"Cortex-M4"</AdsCpuType>
             <RvctDeviceName></RvctDeviceName>
@@ -398,7 +398,7 @@
             <ScatterFile></ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
-            <Misc>--diag_suppress=L6329 --info sizes,totals</Misc>
+            <Misc>--diag_suppress=L6329</Misc>
             <LinkerInputFile></LinkerInputFile>
             <DisabledWarnings></DisabledWarnings>
           </LDads>
@@ -427,11 +427,6 @@
               <FileName>Application.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\Application.c</FilePath>
-            </File>
-            <File>
-              <FileName>MelBank.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\MelBank.c</FilePath>
             </File>
             <File>
               <FileName>audio_processing.c</FileName>
