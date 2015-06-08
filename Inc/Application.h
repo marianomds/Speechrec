@@ -14,14 +14,14 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#define FREERTOS
+//#define FREERTOS
 
-#ifdef FREERTOS
+//#ifdef FREERTOS
 
-#define malloc(size) pvPortMalloc(size)
-#define free(ptr) pvPortFree(ptr)
+//#define malloc(size) pvPortMalloc(size)
+//#define free(ptr) pvPortFree(ptr)
 
-#endif
+//#endif
 
 
 
@@ -41,6 +41,17 @@
 //---------------------------------------------------------------------------------
 //																		TASKS ARGUMENTS
 //---------------------------------------------------------------------------------
+
+
+typedef struct {
+	bool			debug;
+	bool			save_proc_vars;
+	bool			save_clb_vars;
+	bool			save_dist;
+	uint32_t  usb_buff_size;
+}Debug_conf;
+
+
 /**
 	*\typedef
 	*	\ENUM
@@ -100,6 +111,7 @@ typedef enum {
 	BUTTON_PRESS,
 	CHANGE_TASK,
 	FINISH_PROCESSING,
+	FINISH_READING,
 	KILL_THREAD,
 }Common_task_Messages;
 
@@ -138,9 +150,22 @@ typedef struct{
   *	\brief Audio Capture task arguments
 	*/
 typedef struct{
-	Capt_conf audio_conf;
+	Capt_conf capt_conf;
 	ringBuf *buff;
 }Audio_Capture_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Read task arguments
+	*/
+typedef struct{
+	Capt_conf capt_conf;
+	ringBuf *buff;
+	char * file_name;
+	osMessageQId src_msg;
+}Audio_Read_args;
+
 
 /**
 	*\typedef
@@ -151,7 +176,21 @@ typedef struct{
 	uint32_t usb_buff_size;
 	ringBuf *buff;
 	char *file_name;
+	Capt_conf capt_conf;
 }Audio_Save_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Recognition task arguments
+	*/
+typedef struct{
+	osMessageQId *msg_q;
+	ringBuf 		 *buff;
+	Debug_conf	 *debug_conf;
+	Capt_conf 	 *capt_conf;
+	Proc_conf		 *proc_conf;
+}Patern_Storing_args;
 
 /**
 	*\typedef
@@ -175,20 +214,12 @@ typedef enum {
 	EXECUTE_LED = RLED,
 }AppLEDS;
 
-typedef struct {
-	bool			debug;
-	bool			save_proc_vars;
-	bool			save_clb_vars;
-	bool			save_dist;
-	uint32_t  usb_buff_size;
-}Debug_conf;
-
 
 typedef struct {
 	AppStates maintask;
 
 	Capt_conf		capt_conf;
-	Proc_conf		proc_conf;	
+	Proc_conf		proc_conf;
 	Calib_conf	calib_conf;
 	Debug_conf		debug_conf;	
 	
@@ -214,7 +245,7 @@ typedef struct {
 	*/
 struct VC {
 //	float32_t Energy;
-	float32_t MFCC[LIFTER_LEGNTH];
+	float32_t MFCC[LIFTER_LENGTH];
 };
 
 /**
@@ -232,12 +263,11 @@ typedef struct {
 //															GENERAL FUNCTIONS
 //---------------------------------------------------------------------------------
 
-void Error_Handler(void);
 void Configure_Application (void);
 void setEnvVar (void);
 uint8_t readConfigFile (const char *filename, AppConfig *Conf);
 uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num);
-uint8_t loadPattern (Patterns *pat);
+uint8_t loadPattern (Patterns *pat, uint32_t vector_length);
 /* [OUT] File object to create */
 /* [IN]  File name to be opened */
 
@@ -294,6 +324,7 @@ void audioProcessing	(void const * pvParameters);
 
 void AudioSave (void const * pvParameters);
 
+void AudioRead (void const * pvParameters);
 //---------------------------------------------------------------------------------
 //																INTERRUPTION FUNCTIONS
 //---------------------------------------------------------------------------------

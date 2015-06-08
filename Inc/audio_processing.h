@@ -43,7 +43,7 @@
 	uint16_t	dct_len;				// Tiene que ser 2^N y mayor que MEL_BANKS
 	
 	// Liftering
-	uint16_t	lifter_legnth;
+	uint16_t	lifter_length;
 
 	// VAD
 	bool			vad;
@@ -106,9 +106,10 @@ typedef struct{
 	Proc_conf *proc_conf;
 	bool save_to_files;	
 	ringBuf *audio_buff;
-	float32_t *features;
+	ringBuf *features_buff;
 	osMessageQId src_msg_id;
 	uint32_t	src_msg_val;
+	char *path;
 }Proc_args;
 
 typedef enum
@@ -148,6 +149,7 @@ typedef enum{
 //						USER FUNCTIONS
 //---------------------------------------
 
+void audioProc (void const *pvParameters);
 
 void initProcessing		(Proc_conf *configuration, Proc_var *ptr_vars_buffers);
 /**

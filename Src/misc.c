@@ -13,26 +13,27 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "misc.h"
+#include  <ctype.h>
 
-char *updateFilename (char *Filename) {
+char *updateFilename (char *file_name) {
 	uint32_t indx,start;
 	
 	// Busco el inicio del número
-	for(indx=0; Filename[indx]<'0' || Filename[indx]>'9'; indx++)	{}
+	for(indx=0; !isdigit(file_name[indx]); indx++);
 	start = indx;
 	
 	// Busco el final del número
-	for(; Filename[indx]>='0' && Filename[indx]<='9'; indx++)	{}
+	for(; isdigit(file_name[indx]) ; indx++);
 	
 	// Hago un update del número
 	while(--indx>=start)
 	{
-		if(++Filename[indx] >'9')
-			Filename[indx] = '0';
+		if(++file_name[indx] > '9')
+			file_name[indx] = '0';
 		else
 			break;
 	}
-	return Filename;
+	return file_name;
 }
 FRESULT open_append (FIL* fp, const char* path) {
 	FRESULT fr;

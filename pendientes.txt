@@ -1,0 +1,28 @@
+BUSCAR QUE DICEN LOS TODO
+
+
+1- ¿Qué hacer con las variables de debug?
+2- Definir una función para obtener los bancos de filtros MEL
+3- Puedo hacer que los ring buffers se inicialicen cuando hay un cliente registrado (mientras no haya no se hace nada)
+
+
+/**
+  * @brief  Coefficients of the Hamming Window
+	* @param  Hamming: Address of the vector where the coefficients are going to be save
+	* @param  Length: Length of the Hamming Window
+  * @retval 
+  */
+void Mel ( MelFilt, nfilt, length, fch, fcl, fs) {
+	
+	uint16_t f_min,f_max,f;
+	
+	mel  = @(f)( 1127*log(1+f/700) );   // Hertz to mel warping function
+	imel = @(a)( 700*exp(a/1127)-700 ); // mel to Hertz warping function
+
+	f_min = 0;                          // filter coefficients start at this frequency (Hz)
+	f_max = fs/2;                       // filter coefficients end at this frequency (Hz)
+	f = linspace( f_min, f_max, N );    // frequency range (Hz), size 1xK
+
+	c = (0:M+1)';
+	c = imel((mel(fcl)+c/(M+1)*(mel(fch)-mel(fcl)))); // Central Frequenzy calculation
+}

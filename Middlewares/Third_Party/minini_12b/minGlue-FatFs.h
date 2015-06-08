@@ -59,7 +59,7 @@
 #define INI_READONLY									1			/* If this macro is defined, write access is disabled (and the code for writing
 																							 ini files is stripped from the minIni library).*/
 
-#define NDEBUG												1			/* If defined, the assert macro in the minIni source code is disabled. Typi-
+#define NDEBUG												0			/* If defined, the assert macro in the minIni source code is disabled. Typi-
 																							 cally developers build with assertions enabled during development and dis-
 																							 able them for a release version. If your platform lacks an assert macro,
 																							 you may want to define the NDEBUG macro in minGlue.h.*/

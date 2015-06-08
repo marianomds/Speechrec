@@ -21,8 +21,7 @@
 float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx){
 
 	// Assert error
-	if( a->numCols != b->numCols )
-		Error_Handler();
+	assert_param ( a->numCols == b->numCols );
 
 	// Variables
 	int32_t i,j;
@@ -44,7 +43,7 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 	if(dist_mtx == NULL)
 	{
 		if( (dtw_mtx = pvPortMalloc( costmtxrows * costmtxcols * sizeof(*dtw_mtx) ) ) == NULL)
-			Error_Handler();
+			Error_Handler("Error on malloc dtw_mtx in recognition");
 	}
 	else
 		dtw_mtx = dist_mtx;
@@ -110,8 +109,7 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx){
 
 	// Assert error
-	if( a->numCols != b->numCols )
-		Error_Handler();
+	assert_param ( a->numCols == b->numCols );
 
 	// Variables
 	int32_t i,j;
@@ -139,7 +137,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 		// Abro un archivo para salvar la matriz de distancia
 		for(; f_stat(dist_file_name,NULL)!= FR_NO_FILE; updateFilename(dist_file_name));
 		if ( f_open(&dist_mtx_file, dist_file_name ,FA_WRITE | FA_OPEN_ALWAYS) != FR_OK)
-			Error_Handler();
+			Error_Handler("Error on dtw_mtx write in recognition");
 	}
 	
 	// Adapt width
@@ -147,7 +145,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	
 	// Allocate memory for matrices used for calculation	
 	if( (dtw_mtx = pvPortMalloc( reduce_rows * costmtxcols * sizeof(*dtw_mtx) ) ) == NULL)
-		Error_Handler();
+		Error_Handler("Error on malloc dtw_mtx in recognition");
 		
 	// Start at (0,0) and initialized everithing in inf. I put costmtxcols, because it will be moved
 	dtw_mtx[costmtxcols] = 0;
@@ -163,7 +161,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 		// Escribo la nueva última fila
 		if(save_dist_mtx)
 			if ( f_write(&dist_mtx_file, &dtw_mtx[idx_dtw_mtx_last_row], costmtxcols * sizeof(*dtw_mtx), &byteswrite) != FR_OK)
-				Error_Handler();
+				Error_Handler("Error on dtw_mtx write in recognition");
 		
 		// Shifteo una fila hacia arriba y seteo la nueva última fila a infinito
 		memcpy(&dtw_mtx[0] , &dtw_mtx[costmtxcols] , (dtw_mtx_size - costmtxcols) * sizeof(*dtw_mtx));
@@ -238,7 +236,7 @@ uint32_t dist_blockSize;
 void init_dist (uint32_t blockSize){
 	// Allocate memory
 	if ( (pDst = pvPortMalloc(blockSize * sizeof(*pDst))) == NULL)
-		Error_Handler();
+		Error_Handler("Error on malloc pDst in recognition");
 	
 	// Set block size
 	dist_blockSize = blockSize;

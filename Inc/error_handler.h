@@ -22,6 +22,6 @@
 	* @param
   * @retval 
   */
-void Error_Handler(void);
+void Error_Handler(char * str);
 
 #endif // ERROR_HANDLER_H

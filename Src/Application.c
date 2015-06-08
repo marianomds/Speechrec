@@ -12,16 +12,17 @@
 */
 
 /* Includes ------------------------------------------------------------------*/
-#include "Application.h"
-#include "stm32f4xx_hal.h"
-#include "ff.h"
-#include "float.h"
-#include "usb_host.h"
-#include "string.h"
-#include "stdlib.h"
-#include "minIni.h"
-#include "misc.h"
-#include "recognition.h"
+#include <Application.h>
+#include <stm32f4xx_hal.h>
+#include <ff.h>
+#include <float.h>
+#include <usb_host.h>
+#include <string.h>
+#include <stdlib.h>
+#include <minIni.h>
+#include <misc.h>
+#include <recognition.h>
+#include <audio_processing.h>
 #include <ring_buffer.h>
 
 /* Private Variables used within Application ---------------------------------*/
@@ -31,22 +32,25 @@ FATFS USBDISKFatFs;           /* File system object for USB disk logical drive *
 
 osMessageQId appli_event;
 osMessageQId key_msg;
-
-osMessageQId calibration_msg;
-osMessageQId recognition_msg;
 osMessageQId pattern_storring_msg;
-
-osMessageQId file_processing_msg;
-//osMessageQId proc_msg;
-
 osMessageQId audio_capture_msg;
 osMessageQId audio_save_msg;
+extern osMessageQId proc_msg;
 
-AppConfig appconf;	/* Configuration structure */
-//uint16_t *audio;
+//--------------------------------
+// 					Debug info
+//--------------------------------
+size_t total_allocated = 0;
 
-int8_t test = 0;
-UINT bwrt;
+uint8_t Main_T = 0;
+uint8_t Keyboard_T = 0;
+uint8_t AudioCapture_T = 0;
+uint8_t AudioSave_T = 0;
+uint8_t AudioRead_T = 0;
+uint8_t PatStoring_T = 0;
+//---------------------------------
+
+AppConfig appconf;
 
 //---------------------------------------
 //						APPLICATIONS TASKS
@@ -56,16 +60,18 @@ void Main_Thread (void const *pvParameters) {
 	
 	// Message variables
 	osEvent event;
-	osMessageQId *msgID = NULL;
+	osMessageQId msgID = NULL;
 	
 	// Task variables
 	osThreadId current_task_ID  = NULL;
 	osThreadId audio_task_ID  = NULL;
-	Recognition_args reco_args = {NULL};
 	Audio_Capture_args audio_cap_args = {NULL};
 	bool appstarted = false;
 	ringBuf audio_ring_buffer;
 	
+	// Task arguments
+	Patern_Storing_args pat_stor_args;
+	Recognition_args reco_args = {NULL};
 	
 	//TODO: Titilar led
 	LED_On(OLED);
@@ -86,45 +92,31 @@ void Main_Thread (void const *pvParameters) {
 						
 						/* Register the file system object to the FatFs module */
 						if(f_mount(&USBDISKFatFs, (TCHAR const*)USBH_Path, 0) != FR_OK)
-							Error_Handler();	/* FatFs Initialization Error */
+							Error_Handler("Error on mount USB");	/* FatFs Initialization Error */
 
 						/* Read Configuration File */
 						readConfigFile(CONFIG_FILE_NAME,&appconf);
 
 						/* Set Environment variables */
 						setEnvVar();
-
 						
 						// Create Audio Capture Task
-						audio_cap_args.audio_conf = appconf.capt_conf;
+						audio_cap_args.capt_conf = appconf.capt_conf;
 						audio_cap_args.buff	= &audio_ring_buffer;
-						osThreadDef(AudioCaptureTask, AudioCapture, osPriorityHigh,	1, configMINIMAL_STACK_SIZE*12);
-						audio_task_ID = osThreadCreate (osThread(AudioCaptureTask), &audio_cap_args);
+						osThreadDef(AudioCapture, AudioCapture, osPriorityHigh,	1, configMINIMAL_STACK_SIZE*12);
+						audio_task_ID = osThreadCreate (osThread(AudioCapture), &audio_cap_args);
 					
-						
-						// Create Audio Save Task FOR TEST PORPUSE ONLY
-						Audio_Save_args audio_save;
-						char file_name_aux[] = "test.wav";
-						
-						audio_save.usb_buff_size = appconf.debug_conf.usb_buff_size;
-						audio_save.buff	= &audio_ring_buffer;
-						audio_save.file_name = file_name_aux;
-						
-						osThreadDef(AudioSaveTask, AudioSave, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*20);
-						audio_task_ID = osThreadCreate (osThread(AudioSaveTask), &audio_save);
-						
-						
 //						/* If VAD was configured*/
 //						if(appconf.vad)
 //						{
 //							/* Create Calibration Task */
-//							osThreadDef(CalibrationTask,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*10);
-//							current_task_ID = osThreadCreate (osThread(CalibrationTask), NULL);
+//							osThreadDef(Calibration,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*10);
+//							current_task_ID = osThreadCreate (osThread(Calibration), NULL);
 //							msgID = &calibration_msg;
 //						}
 //						else
 //						{
-//							osMessagePut(appli_event,CHANGE_TASK,osWaitForever);
+							osMessagePut(appli_event,CHANGE_TASK,osWaitForever);
 //						}
 						
 						appstarted = true;
@@ -134,60 +126,57 @@ void Main_Thread (void const *pvParameters) {
 					
 				case APPLICATION_DISCONNECT:
 				{
-					if(appstarted)
+					if(!appstarted)
+						break;
+					
+					// Send KILL message to running task
+					if (msgID != NULL)
 					{
-						// Send KILL message to running task
-					if (msgID != NULL && *msgID != NULL)
-					{
-						osMessagePut(*msgID,KILL_THREAD,0);
+						osMessagePut(msgID,KILL_THREAD,0);
 						msgID = NULL;
 						current_task_ID = NULL;
 					}
 
-						// Send KILL message to Auido Capture Task
-						osMessagePut (audio_capture_msg, KILL_CAPTURE, 0);
-						
-						// Kill message queue
-						msgID = NULL;
+					// Send KILL message to Auido Capture Task
+					osMessagePut (audio_capture_msg, KILL_CAPTURE, 0);
+					
+					// Release memory
+					vPortFree(reco_args.patterns_path);									reco_args.patterns_path = NULL;
+					vPortFree(reco_args.patterns_config_file_name);			reco_args.patterns_config_file_name = NULL;
+					
+					// Desmonto el FileSystem del USB
+					f_mount(NULL, (TCHAR const*)"", 0);
+					
+					//TODO: Secuencia de leds
+					//TODO: Titilar led
+					LED_On(OLED);
 
-						// Release memory
-//						vPortFree(audio);																		audio = NULL;
-						vPortFree(reco_args.patterns_path);									reco_args.patterns_path = NULL;
-						vPortFree(reco_args.patterns_config_file_name);			reco_args.patterns_config_file_name = NULL;
-						
-						// Desmonto el FileSystem del USB
-						f_mount(NULL, (TCHAR const*)"", 0);
-						
-						//TODO: Secuencia de leds
-						//TODO: Titilar led
-						LED_On(OLED);
-
-						// Set appstarted to false
-						appstarted = false;
-					}
+					// Set appstarted to false
+					appstarted = false;
+					
 					break;
 				}					
 				case BUTTON_RELEASE:
 				{
-//					if(appstarted && msgID != NULL)
-//						osMessagePut(*msgID,BUTTON_RELEASE,0);
-						osMessagePut(audio_capture_msg,STOP_CAPTURE,0);
-						osMessagePut(audio_save_msg,FINISH,0);
+					if(msgID != NULL)
+						osMessagePut(msgID,BUTTON_RELEASE, osWaitForever);
+//						osMessagePut(audio_capture_msg,STOP_CAPTURE,0);
+//						osMessagePut(audio_save_msg,FINISH,0);
 					break;
 				}
 				case BUTTON_PRESS:
 				{
-//					if(appstarted && msgID != NULL)
-//						osMessagePut(*msgID,BUTTON_PRESS,0);
-						osMessagePut(audio_capture_msg,START_CAPTURE,0);
+					if(msgID != NULL)
+						osMessagePut(msgID,BUTTON_PRESS,osWaitForever);
+//						osMessagePut(audio_capture_msg,START_CAPTURE,0);
 					break;
 				}
 				case CHANGE_TASK:
 				{
 					// Send kill to running task if necesary
-					if (msgID != NULL && *msgID != NULL)
+					if (msgID != NULL)
 					{
-						osMessagePut(*msgID,KILL_THREAD,0);
+						osMessagePut(msgID,KILL_THREAD,osWaitForever);
 						msgID = NULL;
 						current_task_ID = NULL;
 					}
@@ -197,26 +186,30 @@ void Main_Thread (void const *pvParameters) {
 					vPortFree(reco_args.patterns_config_file_name);			reco_args.patterns_config_file_name = NULL;
 					
 					// Set new task
-//					switch (appconf.maintask)
-//					{
+					switch (appconf.maintask)
+					{
 //						case CALIBRATION:
 //						{
 //							/* Create Calibration Task */
-//							osThreadDef(CalibrationTask,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*10);
-//							current_task_ID = osThreadCreate (osThread(CalibrationTask), NULL);
+//							osThreadDef(Calibration,		Calibration, 		osPriorityNormal,	1, configMINIMAL_STACK_SIZE*10);
+//							current_task_ID = osThreadCreate (osThread(Calibration), NULL);
 //							msgID = &calibration_msg;
 //							break;
 //						}
 //						
-//						case PATTERN_STORING:
-//						{
-//							/* Create Pattern_Storing Task */
-//							osThreadDef(PatternStoringTask,	PatternStoring, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
-//							current_task_ID = osThreadCreate (osThread(PatternStoringTask), NULL);
-//							msgID = &pattern_storring_msg;
+						case PATTERN_STORING:
+						{
+							/* Create Pattern_Storing Task */
+							pat_stor_args.msg_q = &msgID;
+							pat_stor_args.buff = &audio_ring_buffer;
+							pat_stor_args.debug_conf = &appconf.debug_conf;
+							pat_stor_args.capt_conf = &appconf.capt_conf;
+							pat_stor_args.proc_conf = &appconf.proc_conf;
+							osThreadDef(PatternStoring,	PatternStoring, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
+							current_task_ID = osThreadCreate (osThread(PatternStoring), &pat_stor_args);
 
-//							break;
-//						}
+							break;
+						}
 //						case RECOGNITION:
 //						{
 //							// Set task arguments to pass
@@ -226,15 +219,15 @@ void Main_Thread (void const *pvParameters) {
 //							strcpy(reco_args.patterns_config_file_name, appconf.patfilename);
 //							
 //							/* Create Tasks*/
-//							osThreadDef(RecognitionTask, 		Recognition, 		osPriorityNormal, 1, configMINIMAL_STACK_SIZE*8);
-//							current_task_ID = osThreadCreate (osThread(RecognitionTask), &reco_args);
+//							osThreadDef(Recognition, 		Recognition, 		osPriorityNormal, 1, configMINIMAL_STACK_SIZE*8);
+//							current_task_ID = osThreadCreate (osThread(Recognition), &reco_args);
 //							msgID = &recognition_msg;
 
 //							break;
 //						}
-//						default:
-//							break;
-//					}
+						default:
+							break;
+					}
 				break;
 				}
 				default:
@@ -243,23 +236,46 @@ void Main_Thread (void const *pvParameters) {
 		}
 	}
 }
-#ifdef ahora_no
+
 void PatternStoring (void const *pvParameters) {
 
 	// Message variables
 	osEvent event;
-	Mail *mail;
-	Audio_Processing_args args_audio = {NULL};
-	File_Processing_args args_file = {NULL};
+	Patern_Storing_args *args;
+	Audio_Save_args audio_save = {NULL};
+	Audio_Read_args audio_read = {NULL};
+	Proc_args audio_proc_args = {NULL};
 	
 	// Task Variables
-	char file_name[] = {"PTRN_00"};
+	ringBuf audio_read_buff, features_buff;
+	char file_path[] = {"PTRN_00"};
+	char file_name[ (strlen(file_path)+1)*2 + strlen(AUDIO_FILE_EXTENSION) ];
 	bool processing = false;					// If Audio Processing Task is still processing then true
 	bool recording = false;
 	
-		// Create Pattern Sotring Message Queue
-	osMessageQDef(pattern_storring_msg,10,uint32_t);
+		
+	
+	//PARA PROBAR DESPUES BORRAR
+	FIL features_file;
+	UINT bytes_written;
+	f_open(&features_file, "0:/features.bin", FA_CREATE_ALWAYS | FA_WRITE );
+	f_write(&features_file, features, (1+proc_conf.lifter_length) * 3, &bytes_written);
+	f_close(&features_file);
+	
+	
+	
+	// Get arguments
+	args = (Patern_Storing_args *) pvParameters;
+	
+	// Create Pattern Sotring Message Queue
+	osMessageQDef(pattern_storring_msg,5,uint32_t);
 	pattern_storring_msg = osMessageCreate(osMessageQ(pattern_storring_msg),NULL);
+	*(args->msg_q) = pattern_storring_msg;
+	
+	// Define all posible Threads to create
+	osThreadDef(AudioSave, AudioSave, osPriorityAboveNormal,	1, configMINIMAL_STACK_SIZE*5);
+	osThreadDef(AudioRead, AudioRead, osPriorityNormal,	1, configMINIMAL_STACK_SIZE*5);
+	osThreadDef(AudioProc, audioProc, osPriorityHigh,	  1, configMINIMAL_STACK_SIZE*25);
 	
 	// Turn on LED
 	LED_On((Led_TypeDef)PATTERN_LED);
@@ -276,118 +292,96 @@ void PatternStoring (void const *pvParameters) {
 				case BUTTON_PRESS:
 				{
 					// check if it is still processing audio
-					if (processing)
-						continue;
+					if (processing || recording)
+						break;
 						
 					// Check if filename exist, otherwise update
-					for(; f_stat(file_name,NULL)!= FR_NO_FILE; updateFilename(file_name));
+					for(; f_stat(file_path,NULL)!= FR_NO_FILE; updateFilename(file_path));
 					
 					// Create subdirectory for saving files here
-					f_mkdir (file_name);
+					f_mkdir (file_path);
 
-					//Send mail to Audio Capture Task to start
-					mail = osMailAlloc(audio_capture_mail, osWaitForever); 															// Allocate memory
-					if (appconf.debug_conf.debug)
+					// Set file_name "PTRN_xx/PTR_xx.WAV"
+					strcpy(file_name, file_path);
+					strcat(file_name, "/");
+					strcat(file_name, file_path);
+					strcat(file_name, AUDIO_FILE_EXTENSION);
+					
+					// Record audio and then process file
+					if (args->debug_conf->debug)
 					{
-						mail->file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory for file_path
-						strcpy(mail->file_path, file_name);																									// Set file_path
-						mail->file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory for file_name
-						strcat(strcpy(mail->file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name with extension		
+				 		// Create Audio Save Task
+						audio_save.usb_buff_size = args->debug_conf->usb_buff_size;
+						audio_save.buff	= args->buff;
+						audio_save.capt_conf = *args->capt_conf;
+						audio_save.file_name = file_name;
+						osThreadCreate (osThread(AudioSave), &audio_save);
 					}
+					// Process Audio in Real Time
 					else
 					{
-						mail->file_path = NULL;
-						mail->file_name = NULL;
+						// Start Processing Audio
+						audio_proc_args.audio_buff = args->buff;
+						audio_proc_args.features_buff = &features_buff;
+						audio_proc_args.proc_conf = args->proc_conf;
+						audio_proc_args.save_to_files = false;
+						audio_proc_args.src_msg_id =  pattern_storring_msg;
+						audio_proc_args.src_msg_val = FINISH_PROCESSING;
+						audio_proc_args.path = NULL;
+						osThreadCreate (osThread(AudioProc), &audio_proc_args);
 					}
-					mail->src_msg_id = pattern_storring_msg;																						// Set Message ID
-					osMessagePut(audio_capture_msg, START_CAPTURE, osWaitForever);											// Send Message to Audio Capture Task
-					osMailPut(audio_capture_mail, mail);																								// Send Mail
 					
-					// Set recording state
+					// Start capturing audio
+					osMessagePut(audio_capture_msg,START_CAPTURE,osWaitForever);
 					recording = true;
-
-					if(!appconf.debug_conf.debug)
-					{
-						// Create arguments for passing to Audio Processing Task
-						args_audio.file_path = pvPortMalloc(strlen(file_name)+1);				// Allocate memory
-						strcpy(args_audio.file_path, file_name);												// Set file_path
-						args_audio.src_msg_id = pattern_storring_msg;										// Set Message ID
-						args_audio.data = audio;																				// Audio buffer
-						args_audio.proc_conf = &appconf.proc_conf;											// Processing configuration
-						args_audio.vad  = appconf.vad;																	// Set VAD variable
-						args_audio.save_to_files  = false;															// Set if it should save to files
-						
-						//Create Audio Processing Task
-						osThreadDef(ProcessTask, audioProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
-						osThreadCreate (osThread(ProcessTask), &args_audio);
-						
-						// Set processing state
-						processing = true;
-					}
+					
 					break;
 				}
 				
 				case BUTTON_RELEASE:
 				{
-					if(recording)
-						// Send Message to Auido Capture Task
-						osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
+					if( !recording)
+						break;
 					
-					break;
-				}
-				
-				case FRAME_READY:
-				{		
-					if(recording && !appconf.debug_conf.debug)
-						// Send Message to Audio Processing Task
-						osMessagePut(proc_msg, NEXT_FRAME, 0);
+					// Send Message to Auido Capture Task
+					osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
+					osMessagePut(audio_save_msg, FINISH, osWaitForever);
 					
-					break;
-				}
-				
-				case END_CAPTURE:
-				{
-					if(recording)
+					if (args->debug_conf->debug)
 					{
-						if(!appconf.debug_conf.debug)
-							// Send Message to Audio Processing Task
-							osMessagePut(proc_msg, LAST_FRAME, 0);
-						else
-						{
-							/******** Create arguments for passing to Audio Processing Task ********/
-							// File path
-							args_file.file_path = pvPortMalloc(strlen(file_name)+1);																// Allocate memory
-							strcpy(args_file.file_path, file_name);																									// Set file_path
-							
-							// File name
-							args_file.file_name = pvPortMalloc(strlen(file_name)+strlen(AUDIO_FILE_EXTENSION)+1);		// Allocate memory
-							strcat(strcpy(args_file.file_name, file_name),AUDIO_FILE_EXTENSION);										// Set file_name (copy file_name and add extension)
-							
-							args_file.src_msg_id = pattern_storring_msg;										// Set Message ID
-							args_file.proc_conf = &appconf.proc_conf;												// Processing Configuration
-							args_file.vad = appconf.vad;																		// VAD
-							args_file.save_to_files = appconf.debug_conf.save_proc_vars;		// Save to files
-							
-							//Create Audio Processing Task
-							osThreadDef(ProcessTask, fileProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
-							osThreadCreate (osThread(ProcessTask), &args_file);
-							
-							processing = true;
-						}
-							
-						recording = false;
+						// Espero a que termine de grabar el audio
+						osDelay(100);
+
+						// Create Read Audio Task
+						audio_read.buff = &audio_read_buff;
+						audio_read.capt_conf = *args->capt_conf;
+						audio_read.file_name = file_name;
+						audio_read.src_msg = pattern_storring_msg;
+						osThreadCreate (osThread(AudioRead), &audio_read);
+						
+						// Start Processing Audio
+						audio_proc_args.audio_buff = &audio_read_buff;
+						audio_proc_args.proc_conf = args->proc_conf;
+						audio_proc_args.save_to_files = args->debug_conf->save_proc_vars;
+						audio_proc_args.src_msg_id =  pattern_storring_msg;
+						audio_proc_args.src_msg_val = FINISH_PROCESSING;
+						audio_proc_args.path = file_path;
+						osThreadCreate (osThread(AudioProc), &audio_proc_args);
 					}
+					
+					recording = false;
 					break;
 				}
-				
+				case FINISH_READING:
+				{
+					// Send finish message
+					osMessagePut(proc_msg, PROC_FINISH, osWaitForever);
+					break;
+				}
 				case FINISH_PROCESSING:
 				{
 					if(processing)
 					{
-						// Free memory
-						vPortFree(args_audio.file_path);				args_audio.file_path = NULL;
-						vPortFree(args_file.file_path);					args_file.file_path = NULL;
-						vPortFree(args_file.file_name);					args_file.file_name = NULL;
 
 						processing = false;
 					}
@@ -398,18 +392,9 @@ void PatternStoring (void const *pvParameters) {
 					// Send Message to Processing Task
 					if(processing)
 					{
-						if(!appconf.debug_conf.debug)
-							osMessagePut (proc_msg, KILL_THREAD, 0);
-						else
-							osMessagePut (file_processing_msg, KILL_THREAD, 0);
 						
 						processing = false;
 					}
-					
-					// Free memory
-					vPortFree(args_audio.file_path);				args_audio.file_path = NULL;
-					vPortFree(args_file.file_path);					args_file.file_path = NULL;
-					vPortFree(args_file.file_name);					args_file.file_name = NULL;
 					
 					// Turn off LED
 					LED_Off((Led_TypeDef)PATTERN_LED);
@@ -429,6 +414,7 @@ void PatternStoring (void const *pvParameters) {
 	}
 }
 
+#ifdef ahora_no
 void Recognition (void const *pvParameters) {
 
 	// Message variables
@@ -519,8 +505,8 @@ void Recognition (void const *pvParameters) {
 						args_audio.save_to_files  = false;														// Set if it should save to files
 						
 						//Create Audio Processing Task
-						osThreadDef(ProcessTask, audioProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
-						osThreadCreate (osThread(ProcessTask), &args_audio);
+						osThreadDef(Process, audioProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
+						osThreadCreate (osThread(Process), &args_audio);
 						
 						// Set processing state
 						processing = true;
@@ -568,8 +554,8 @@ void Recognition (void const *pvParameters) {
 							args_file.save_to_files = appconf.debug_conf.save_proc_vars;		// Save to files
 							
 							//Create Audio Processing Task
-							osThreadDef(ProcessTask, fileProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
-							osThreadCreate (osThread(ProcessTask), &args_file);
+							osThreadDef(Process, fileProcessing,	osPriorityAboveNormal, 1, configMINIMAL_STACK_SIZE * 22);
+							osThreadCreate (osThread(Process), &args_file);
 							
 							processing = true;
 						}
@@ -599,7 +585,7 @@ void Recognition (void const *pvParameters) {
 						utterance_data = pvPortMalloc(utterance_size);																												// Allocate memory
 						if(f_read (&utterance_file, utterance_data, utterance_size, &bytesread) != FR_OK)	Error_Handler();		// Read data
 						f_close(&utterance_file);																																							// Close file
-						arm_mat_init_f32 (&utterance_mtx, (utterance_size / sizeof(*utterance_data)) / appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, utterance_data);
+						arm_mat_init_f32 (&utterance_mtx, (utterance_size / sizeof(*utterance_data)) / appconf.proc_conf.lifter_length , appconf.proc_conf.lifter_length, utterance_data);
 						if (f_chdir ("..") != FR_OK)																											Error_Handler();		// Go back to original directory					 
 						
 						
@@ -1144,16 +1130,16 @@ void AudioCapture (void const * pvParameters) {
 	args = (Audio_Capture_args*) pvParameters;
 	
 	// Allocate memory for audio frame
-	if( (audio_frame = pvPortMalloc( appconf.capt_conf.frame_size * sizeof(*audio_frame) ) ) == NULL )
-		Error_Handler();
+	if( (audio_frame = pvPortMalloc( args->capt_conf.frame_size * sizeof(*audio_frame) ) ) == NULL )
+		Error_Handler("Error on pvPortMalloc audio_frame in AudioCapture");
 						
 	// Intialized Audio Driver
-	if(initCapture(&args->audio_conf, audio_frame, appconf.capt_conf.frame_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
-		Error_Handler();
+	if(initCapture(&args->capt_conf, audio_frame, args->capt_conf.frame_size, audio_capture_msg, BUFFER_READY) != AUDIO_OK)
+		Error_Handler("Error on initCapturein AudioCapture");
 			
 	// Create buffer for audio
-	if( ringBuf_init(args->buff, appconf.capt_conf.frame_size * appconf.capt_conf.ring_buff_size * sizeof(*audio_frame), true) != BUFF_OK )
-		Error_Handler();
+	if( ringBuf_init(args->buff, args->capt_conf.frame_size * args->capt_conf.ring_buff_size * sizeof(*audio_frame), true) != BUFF_OK )
+		Error_Handler("Error on ring buffer init in AudioCapture");
 	
 	/* START TASK */
 	for (;;) {
@@ -1174,12 +1160,12 @@ void AudioCapture (void const * pvParameters) {
 					// Pause Audio Record
 					audioPause();
 					// TODO: Que titile el led
-					
 					break;
 				}
 							
 				case RESUME_CAPTURE:
 				{
+					// Resume Audio Record
 					audioResume();
 					break;
 				}
@@ -1198,7 +1184,7 @@ void AudioCapture (void const * pvParameters) {
 				case BUFFER_READY:
 				{
 					// Copy frame to buffer
-					ringBuf_write ( args->buff, (uint8_t*) audio_frame, appconf.capt_conf.frame_size * sizeof(*audio_frame) );
+					ringBuf_write ( args->buff, (uint8_t*) audio_frame, args->capt_conf.frame_size * sizeof(*audio_frame) );
 					
 					break;
 				}
@@ -1230,7 +1216,6 @@ void AudioSave (void const * pvParameters) {
 	
 	// Task Variables
 	uint16_t *usb_buff;
-	bool finish = false;
 	uint8_t buff_client;
 	size_t read_size;
 	Audio_Save_args *args;
@@ -1243,111 +1228,158 @@ void AudioSave (void const * pvParameters) {
 	uint32_t byteswritten;     							// File write/read counts
 	WAVE_Audio_config wave_config;
 
-	// Set Wave Configuration
-	wave_config.SampleRate = appconf.capt_conf.freq;
-	wave_config.NbrChannels = appconf.capt_conf.channel_nbr;
-	wave_config.BitPerSample = appconf.capt_conf.bit_resolution;
-
-	// Create Message
-	osMessageQDef(audio_save_msg, 10, uint32_t);
-	audio_save_msg = osMessageCreate(osMessageQ(audio_save_msg),NULL);
-
 	// Get arguments
 	args = (Audio_Save_args*) pvParameters;
 	
+	// Create Message
+	osMessageQDef(audio_save_msg, 5, uint32_t);
+	audio_save_msg = osMessageCreate(osMessageQ(audio_save_msg),NULL);
+
+	// Set Wave Configuration
+	wave_config.SampleRate = args->capt_conf.freq;
+	wave_config.NbrChannels = args->capt_conf.channel_nbr;
+	wave_config.BitPerSample = args->capt_conf.bit_resolution;
+	
 	// Allocate memory for buffer
 	if ( (usb_buff = pvPortMalloc(args->usb_buff_size * sizeof(*usb_buff))) == NULL)
-		Error_Handler();
+		Error_Handler("Error on pvPortMalloc usb_buff in Audio Save");
 	
 	// Me registro en el ring buffer
 	ringBuf_registClient ( args->buff, args->usb_buff_size * sizeof(*usb_buff), args->usb_buff_size * sizeof(*usb_buff), audio_save_msg, RING_BUFFER_READY, &buff_client);
-	
-	// Go to file path
-//	f_chdir (args->file_path);
 
 	// Create New Wave File
 	if(newWavFile(args->file_name,&WaveFormat,&WavFile, wave_config) != FR_OK)
-		Error_Handler();
-
-	// Go back to original directory
-//	if (f_chdir ("..") != FR_OK)
-//		Error_Handler();
+		Error_Handler("Error on newWavFile in Audio Save");
 
 	/* START TASK */
 	for (;;)
 	{
-		
-		while (!finish)
+		event = osMessageGet(audio_save_msg,osWaitForever);
+		if(event.status == osEventMessage)
+		switch(event.value.v)
 		{
-			event = osMessageGet(audio_save_msg,osWaitForever);
-			if(event.status == osEventMessage)
-			switch(event.value.v)
+			case RING_BUFFER_READY:
 			{
-				case RING_BUFFER_READY:
-				{
-					// Copio los datos al buffer del USB
-					ringBuf_read_const ( args->buff, buff_client, (uint8_t*) usb_buff);
-					
-					// Grabo lo último que me quedo en el buffer
-					if(f_write(&WavFile, usb_buff, args->usb_buff_size * sizeof(*usb_buff), &byteswritten) != FR_OK)
-					{
-						f_close(&WavFile);
-						Error_Handler();
-					}
-					file_size += byteswritten;
-					
-					break;
-				}
-				case FINISH:
-				{
-					finish = true;
-					
-					// Copio los datos que quedan del buffer
-					ringBuf_read_all ( args->buff, buff_client, (uint8_t*) usb_buff, &read_size);
-					
-					// Grabo lo último que me quedo en el buffer
-					if(f_write(&WavFile, usb_buff, read_size, &byteswritten) != FR_OK)
-					{
-						f_close(&WavFile);
-						Error_Handler();
-					}
-					file_size += byteswritten;
-					
-					// Close file
-					closeWavFile(&WavFile, &WaveFormat, file_size);
-					
-					// Kill Thread
-					osMessagePut(audio_save_msg,KILL_THREAD,0);
-					
-					break;
-				}
-				case KILL_THREAD:
-				{
-					// Free memroy
-					vPortFree(usb_buff);
-					
-					// Kill message queue
-					audio_save_msg = NULL;
-					
-					// Unregister from ring buffer
-					ringBuf_unregistClient ( args->buff, buff_client );
-					
-					// Elimino la tarea
-					osThreadTerminate(osThreadGetId());
-
-					break;
-				}
-				default:
-					break;
+				// Copio los datos al buffer del USB
+				ringBuf_read_const ( args->buff, buff_client, (uint8_t*) usb_buff);
+				
+				// Grabo lo último que me quedo en el buffer
+				f_write(&WavFile, usb_buff, args->usb_buff_size * sizeof(*usb_buff), &byteswritten);
+				file_size += byteswritten;
+				
+				break;
 			}
+			case FINISH:
+			{
+				// Copio los datos que quedan del buffer
+				ringBuf_read_all ( args->buff, buff_client, (uint8_t*) usb_buff, &read_size);
+				
+				// Grabo lo último que me quedo en el buffer
+				f_write(&WavFile, usb_buff, read_size, &byteswritten);
+				file_size += byteswritten;
+				
+				// Close file
+				closeWavFile(&WavFile, &WaveFormat, file_size);
+				
+				// Kill Thread
+				osMessagePut(audio_save_msg,KILL_THREAD,0);
+				
+				break;
+			}
+			case KILL_THREAD:
+			{
+				// Free memroy
+				vPortFree(usb_buff);
+				
+				// Kill message queue
+				audio_save_msg = NULL;
+				
+				// Unregister from ring buffer
+				ringBuf_unregistClient ( args->buff, buff_client );
+				
+				// Elimino la tarea
+				osThreadTerminate(osThreadGetId());
+
+				break;
+			}
+			default:
+				break;
 		}
 	}
 }
+void AudioRead (void const * pvParameters) {
+
+	// Function variables
+	uint16_t *audio_frame;
+	Audio_Read_args *args;
+	FIL WaveFile;
+	UINT bytesread;
+	ringBufStatus ring_status;
+	
+	// Get arguments
+	args = (Audio_Read_args*) pvParameters;
+	
+	// Allocate memory for audio frame
+	if( (audio_frame = pvPortMalloc( args->capt_conf.frame_size * sizeof(*audio_frame) ) ) == NULL )
+		Error_Handler("Error on pvPortMalloc audio_frame in AudioCapture");
+						
+	// Create buffer for audio
+	if( ringBuf_init(args->buff, args->capt_conf.frame_size * args->capt_conf.ring_buff_size * sizeof(*audio_frame), false) != BUFF_OK )
+		Error_Handler("Error on ring buffer init in AudioCapture");
+	
+	/* START TASK */
+	for (;;)
+	{
+		// Open audio file
+		if(f_open(&WaveFile,args->file_name,FA_READ) != FR_OK)
+			Error_Handler("Unable to open file");
+		
+		// Go where audio starts
+		if(f_lseek(&WaveFile,44) != FR_OK)						
+			Error_Handler("Unable to seek file");
+		
+		// Read audio file until end
+		while(!f_eof(&WaveFile))
+		{
+			// Leo un Frame del archivo
+			if(f_read (&WaveFile, audio_frame, args->capt_conf.frame_size * sizeof(*audio_frame), &bytesread) != FR_OK)
+				Error_Handler("Error al leer el archivo");
+			
+			do
+			{
+				// Copy frame to buffer
+				ring_status = ringBuf_write ( args->buff, (uint8_t*) audio_frame, bytesread );
+			}while (ring_status != BUFF_OK);
+		}
+		
+		// Envío mensaje inidicando que termine
+		osMessagePut(args->src_msg, FINISH_READING, osWaitForever);
+		
+		// Espero a que todos los clinetes terminen de leer el buffer
+		while( !is_ringBuf_empty ( args->buff ) )
+			osDelay(10);
+
+		// Elimino el buffer
+		ringBuf_deinit(args->buff);
+		
+		// Release memory
+		vPortFree(audio_frame);
+		
+		// Turn off led
+		LED_Off((Led_TypeDef)EXECUTE_LED);
+		
+		// Elimino la tarea
+		osThreadTerminate(osThreadGetId());
+	}
+}
 void Keyboard (void const * pvParameters) {
+	
 	osEvent event;
 	static uint8_t state=0;
 	uint8_t var;
-	for(;;) {
+	
+	for(;;)
+	{
 		event = osMessageGet(key_msg,osWaitForever);
 		if(event.status == osEventMessage) {
 			
@@ -1359,11 +1391,11 @@ void Keyboard (void const * pvParameters) {
 			{
 				state = var;
 				if(var)
-					osMessagePut(appli_event,BUTTON_PRESS,0);
+					osMessagePut(appli_event,BUTTON_PRESS,osWaitForever);
 				else
-					osMessagePut(appli_event,BUTTON_RELEASE,0);
+					osMessagePut(appli_event,BUTTON_RELEASE,osWaitForever);
 			}
-//				
+
 //			event = osMessageGet(key_msg,1000);
 //			switch(event.status) {
 //				case osEventMessage:
@@ -1401,12 +1433,12 @@ void Configure_Application (void) {
 	key_msg = osMessageCreate(osMessageQ(key_msg),NULL);
 	
 	/* Create Keyboard Task*/
-	osThreadDef(KeyboardTask, Keyboard, osPriorityRealtime, 1, configMINIMAL_STACK_SIZE);
-	osThreadCreate (osThread(KeyboardTask), NULL);
+	osThreadDef(Keyboard, Keyboard, osPriorityRealtime, 1, configMINIMAL_STACK_SIZE);
+	osThreadCreate (osThread(Keyboard), NULL);
 	
 	/* Create Main Task*/
-	osThreadDef(MainTask, Main_Thread, osPriorityNormal, 1, configMINIMAL_STACK_SIZE * 5);
-	osThreadCreate (osThread(MainTask), NULL);
+	osThreadDef(Main, Main_Thread, osPriorityNormal, 1, configMINIMAL_STACK_SIZE * 7);
+	osThreadCreate (osThread(Main), NULL);
 }
 /**
   * @brief  
@@ -1456,7 +1488,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config) {
 	config->proc_conf.fft_len				= (uint16_t)		ini_getl		("SPConf", "FFT_LEN", 				FFT_LEN,					filename);
 	config->proc_conf.mel_banks			= (uint16_t)		ini_getl		("SPConf", "MEL_BANKS",				MEL_BANKS,				filename);
 	config->proc_conf.dct_len				= (uint16_t)		ini_getl		("SPConf", "DCT_LEN", 				DCT_LEN,					filename);
-	config->proc_conf.lifter_legnth	= (uint16_t)		ini_getl		("SPConf", "LIFTER_LEGNTH",		LIFTER_LEGNTH,		filename);
+	config->proc_conf.lifter_length	= (uint16_t)		ini_getl		("SPConf", "LIFTER_LENGTH",		LIFTER_LENGTH,		filename);
 	config->proc_conf.vad						= 							ini_getbool	("SPConf", "VAD",							VAD_ENABLE,				filename);
 	
 // Read Calibration configuration
@@ -1509,7 +1541,7 @@ uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *p
 	* @param  Filename to read
   * @retval OK-->"1"  Error-->"0"
   */
-uint8_t loadPattern (Patterns *pat) {
+uint8_t loadPattern (Patterns *pat, uint32_t vector_length) {
 	
 	FIL File;
 	UINT bytesread;
@@ -1534,7 +1566,9 @@ uint8_t loadPattern (Patterns *pat) {
 				if(f_read (&File, ptr, file_size, &bytesread) == FR_OK)
 				{
 					output = 1;
-					arm_mat_init_f32 (&pat->pattern_mtx, VC_length/ appconf.proc_conf.lifter_legnth , appconf.proc_conf.lifter_legnth, (float32_t *) ptr);
+					arm_mat_init_f32 (&pat->pattern_mtx, VC_length / vector_length , vector_length, (float32_t *) ptr);
+					
+					//TODO: se reemplazo appconf.proc_conf.lifter_length por vector_length
 				}
 			
 			// Cierro el archivo
@@ -1574,3 +1608,13 @@ void User_Button_EXTI (void) {
 //f_close(&nosirve);	//TODO de prueba
 
 //	osMessagePut(calibration_msg, END_CAPTURE, osWaitForever);		// BORRAR ESTA LINEA DE ABAJO
+
+
+//						// Create Audio Save Task for copy
+//						audio_save.usb_buff_size = args->debug_conf->usb_buff_size;
+//						audio_save.buff	= &audio_read_buff;
+//						audio_save.capt_conf = *args->capt_conf;
+//						audio_save.file_name = "PTRN_00/copy.wav";
+//						for(; f_stat(audio_save.file_name ,NULL)!= FR_NO_FILE; updateFilename(audio_save.file_name));
+//						osThreadCreate (osThread(AudioSave), &audio_save);
+

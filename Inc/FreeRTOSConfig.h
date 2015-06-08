@@ -98,8 +98,8 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
-#define configTOTAL_HEAP_SIZE                    ((size_t)81920)
-#define configMAX_TASK_NAME_LEN                  ( 16 )
+#define configTOTAL_HEAP_SIZE                    ((size_t)71680)		//81920
+#define configMAX_TASK_NAME_LEN                  ( 30 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
 #define configUSE_MUTEXES                        1
@@ -151,7 +151,11 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
 /* USER CODE BEGIN 1 */   
-#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 
+//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 
+
+#include <stm32f4xx_hal.h>
+#define configASSERT( x ) assert_param( x );
+
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
@@ -163,8 +167,60 @@ standard names. */
               to prevent overwriting SysTick_Handler defined within STM32Cube HAL */
 /* #define xPortSysTickHandler SysTick_Handler */
 
-/* USER CODE BEGIN Defines */   	      
+
+
+
+
+
+
+/* USER CODE BEGIN Defines */  
+
+//#if NDEBUG == 0
+
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+/* Define a couple of the trace macros to set and clear variables that are
+displayed on the logic analyzer.*/
+
+extern uint8_t Main_T;
+extern uint8_t Keyboard_T;
+extern uint8_t AudioCapture_T;
+extern uint8_t AudioSave_T;
+extern uint8_t AudioRead_T;
+extern uint8_t PatStoring_T;
+
+#define traceTASK_SWITCHED_IN() 	{																										\
+	if( strncmp(pxCurrentTCB->pcTaskName, "Main", 					strlen("Main")) )							Main_T = 1;								\
+	if( strncmp(pxCurrentTCB->pcTaskName, "Keyboard", 			strlen("Keyboard")) )					Keyboard_T = 1;						\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioCapture", 	strlen("AudioCapture")) )			AudioCapture_T = 1;				\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioSave", 			strlen("AudioSave")) )				AudioSave_T = 1;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioRead", 			strlen("AudioRead")) )				AudioRead_T = 1;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "PatternStoring", strlen("PatternStoring")) )		PatStoring_T = 1;			\
+																																											\
+/*	printf("Switch In %s\n",pxCurrentTCB->pcTaskName);*/																	\
+}
+
+#define traceTASK_SWITCHED_OUT() 	{																										\
+	if( strncmp(pxCurrentTCB->pcTaskName, "Main", 					strlen("Main")) )							Main_T = 0;								\
+	if( strncmp(pxCurrentTCB->pcTaskName, "Keyboard", 			strlen("Keyboard")) )					Keyboard_T = 0;						\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioCapture", 	strlen("AudioCapture")) )			AudioCapture_T = 0;				\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioSave", 			strlen("AudioSave")) )				AudioSave_T = 0;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioRead", 			strlen("AudioRead")) )				AudioRead_T = 0;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "PatternStoring", strlen("PatternStoring")) )		PatStoring_T = 0;			\
+																																											\
+	/*printf("Switch Out %s\n",pxCurrentTCB->pcTaskName);*/																\
+}
+
+
+
+// Memory debug
+extern size_t total_allocated;
+#define traceMALLOC( pvAddress, uiSize )	{total_allocated += uiSize;}
+#define traceFREE( pvAddress, uiSize )		{total_allocated -= uiSize;}
+
+//#endif
+
 /* USER CODE END Defines */ 
+
+
 
 #endif /* FREERTOS_CONFIG_H */

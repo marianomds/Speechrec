@@ -14,7 +14,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
 #include "stm32f4xx_hal_conf.h"
-
+#include <stdlib.h>
 
 Capt_conf capture_conf;
 uint32_t pdm_buff_size;
@@ -222,7 +222,7 @@ void DMA_Interrup_Handler_Task (void const *pvParameters) {
 				break;
 				case I2S_ERROR:
 				{
-					Error_Handler();
+					Error_Handler("Error on I2S in Driver");
 				}
 				break;
 			}

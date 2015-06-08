@@ -34,7 +34,9 @@
 #if defined NDEBUG
   #define assert(e)
 #else
-  #include <assert.h>
+//  #include <assert.h>
+	#include <stm32f4xx_hal.h>
+	#define assert(e) assert_param(e)
 #endif
 
 #if !defined __T
