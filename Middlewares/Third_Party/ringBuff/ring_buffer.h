@@ -24,8 +24,8 @@
 
 #ifdef __cplusplus
 extern "C" {
-    #endif
-    
+#endif
+
 typedef struct ringBufClient {
     uint8_t *ptr;
     uint32_t count;
@@ -44,6 +44,7 @@ typedef struct ringBuf {
     uint8_t *head;
     uint32_t count;
     bool can_override;
+    osMutexId rw_mutex_id;
 
     ringBufClient *clients;
     uint32_t num_clients;
@@ -55,7 +56,9 @@ typedef enum {
     BUFF_EMPTY,
     BUFF_FULL,
     BUFF_ERROR,
+    BUFF_NOT_ENOGH_SPACE,
     BUFF_NOT_READY,
+    BUFF_NO_CLIENTS,
     BUFF_NOT_A_CLIENT,
     BUFF_OK,
 } ringBufStatus;
@@ -64,7 +67,7 @@ typedef enum {
 ringBufStatus ringBuf_init ( ringBuf* _this, const size_t buff_size, bool can_override );
 ringBufStatus ringBuf_deinit ( ringBuf *_this );
 ringBufStatus ringBuf_flush ( ringBuf *_this );
-static void ringBuf_updateCount (ringBuf *_this);
+static void ringBuf_updateCount ( ringBuf *_this );
 
 static ringBufStatus ringBuf_read ( ringBuf* _this, uint8_t** ptr, uint32_t* count, size_t read_size, size_t shift_size, uint8_t* output );
 ringBufStatus ringBuf_write ( ringBuf* _this, const uint8_t* input, const size_t write_size );

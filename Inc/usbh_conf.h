@@ -35,7 +35,10 @@
 #ifndef __USBH_CONF__H__
 #define __USBH_CONF__H__
 #include <stdio.h>
+
 #include <stdlib.h>
+#include <ale_stdlib.h>
+
 #include <string.h>
 #ifdef __cplusplus
  extern "C" {

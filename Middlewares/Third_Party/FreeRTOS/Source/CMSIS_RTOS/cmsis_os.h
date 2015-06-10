@@ -750,6 +750,10 @@ const osMessageQDef_t os_messageQ_def_##name = \
 /// \note MUST REMAIN UNCHANGED: \b osMessageCreate shall be consistent in every CMSIS-RTOS.
 osMessageQId osMessageCreate (const osMessageQDef_t *queue_def, osThreadId thread_id);
 
+// Delete MessageQ
+void osMessageDelete (osMessageQId *queue_id);
+	
+
 /// Put a Message to a Queue.
 /// \param[in]     queue_id      message queue ID obtained with \ref osMessageCreate.
 /// \param[in]     info          message information.

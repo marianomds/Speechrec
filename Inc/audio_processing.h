@@ -110,6 +110,9 @@ typedef struct{
 	osMessageQId src_msg_id;
 	uint32_t	src_msg_val;
 	char *path;
+	
+	osMessageQId proc_msg_id;
+	bool init_complete;
 }Proc_args;
 
 typedef enum
@@ -151,7 +154,7 @@ typedef enum{
 
 void audioProc (void const *pvParameters);
 
-void initProcessing		(Proc_conf *configuration, Proc_var *ptr_vars_buffers);
+void initProcessing (Proc_conf *configuration);
 /**
   * @brief  De-Initialized Processing
   */
@@ -182,7 +185,7 @@ Calib_status		endCalibration		(const bool save_calib_vars);
 	* @retval 	0	==> OK		!=0 ==> Error code
 	*/
 uint8_t Open_proc_files (Proc_files *files, const bool vad);
-uint8_t Append_proc_files (Proc_files *files, const Proc_var *data, const bool vad, Proc_stages stage);
+uint8_t Append_proc_files (Proc_files *files, const Proc_var *var, const bool vad, Proc_stages stage);
 uint8_t Close_proc_files (Proc_files *files, const bool vad);
 
 

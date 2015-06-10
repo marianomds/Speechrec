@@ -12,9 +12,12 @@
   */  
 	
 /* Includes ------------------------------------------------------------------*/
-#include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
-#include "stm32f4xx_hal_conf.h"
+#include <ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h>
+#include <stm32f4xx_hal_conf.h>
 #include <stdlib.h>
+#include <ale_stdlib.h>
+
+
 
 Capt_conf capture_conf;
 uint32_t pdm_buff_size;
@@ -29,6 +32,9 @@ osMessageQId I2SmsgQID;
 osMessageQId msgQId;
 uint32_t msg_val;
 
+osThreadDef(DMAHandlerTask,	DMA_Interrup_Handler_Task, 	osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
+osMessageQDef(I2SmsgQID, 4, uint32_t);
+
 //------------------------------------------------------------------------------
 //											PUBLIC AUDIO DRIVER CONTROL FUNCTIONS
 //------------------------------------------------------------------------------
@@ -41,7 +47,7 @@ uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_
 	
 	// Calculate buffer sizes
 	pdm_buff_size = capture_conf.freq/1000*capture_conf.decimator*capture_conf.channel_nbr/8;		// El size de PDM vale como mínimo AudioFreq en [KHz]
-	pcm_buff_size = capture_conf.freq/1000*capture_conf.channel_nbr;																	// El size de PCM vale como mínimo AudioFreq en [KHz]
+	pcm_buff_size = capture_conf.freq/1000*capture_conf.channel_nbr;														// El size de PCM vale como mínimo AudioFreq en [KHz]
 	
 	// Tengo que extender los buffers para llenar data_buff_size y que solo interrumpa 1 vez
 	assert_param( (data_buff_size % pcm_buff_size) == 0 );
@@ -49,14 +55,13 @@ uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_
 	
 	// Create buffers
 	PCM = data;
-	PDM = pvPortMalloc(pdm_buff_size*extend_buff*2);													// Es 2 porque es un buffer circular
-	Filter = pvPortMalloc(capture_conf.channel_nbr*sizeof(*Filter));		// Get memory for Filter structure
+	PDM = malloc(pdm_buff_size*extend_buff*2);													// Es 2 porque es un buffer circular
+	Filter = malloc(capture_conf.channel_nbr*sizeof(*Filter));		// Get memory for Filter structure
 	
 	// Initialize PDM Decoder
 	PDMDecoder_Init(capture_conf.freq,capture_conf.channel_nbr,Filter);
 	
 	// Create DMA Interrup Handler Task
-	osThreadDef(DMAHandlerTask,		DMA_Interrup_Handler_Task, 		osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
 	osThreadCreate (osThread(DMAHandlerTask), NULL);
 							
 	return AUDIO_OK;
@@ -64,8 +69,9 @@ uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_
 
 
 void deinitCapture (void){
-	vPortFree(PDM);
-	vPortFree(Filter);
+	osMessagePut(I2SmsgQID,I2S_KILL,osWaitForever);
+	free(PDM);
+	free(Filter);
 }
 
 uint8_t audioRecord(void){
@@ -198,7 +204,6 @@ void DMA_Interrup_Handler_Task (void const *pvParameters) {
 	int i;
 	
 	// Create Message
-	osMessageQDef(I2SmsgQID, 4, uint32_t);
 	I2SmsgQID = osMessageCreate(osMessageQ(I2SmsgQID),NULL);
 	
 	for(;;) {
@@ -223,6 +228,12 @@ void DMA_Interrup_Handler_Task (void const *pvParameters) {
 				case I2S_ERROR:
 				{
 					Error_Handler("Error on I2S in Driver");
+				}
+				break;
+				case I2S_KILL:
+				{
+					osMessageDelete(&I2SmsgQID);
+					osThreadTerminate(osThreadGetId());
 				}
 				break;
 			}

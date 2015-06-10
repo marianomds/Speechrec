@@ -40,7 +40,8 @@ enum {
 enum {
 	I2S_ERROR,						/*!< */
 	I2S_FIRST_HALF,				/*!< */
-	I2S_SECOND_HALF				/*!< */
+	I2S_SECOND_HALF,			/*!< */
+	I2S_KILL,
 };
 
 /**

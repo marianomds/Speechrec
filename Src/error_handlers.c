@@ -14,8 +14,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "error_handler.h"
 #include "cmsis_os.h"
-//#include "ff.h"
-//#include "misc.h"
+#include "ff.h"
+#include "misc.h"
 
 int fputc( int c, FILE *pxNotUsed ) 
 {
@@ -61,6 +61,7 @@ void HardFault_Handler(void)
 		if((SCB->CFSR & 0x000000FF) != 0)
 			printMemErrorMsg(SCB->CFSR);
 	}
+	Error_Handler("In Hard Fault Handler\n");
 	__ASM volatile("BKPT #01");
 	while(1);
 }
@@ -69,11 +70,11 @@ void HardFault_Handler(void)
 void Error_Handler(char * str) {
 
 	// Go to root directory
-//	FIL log_file;
-//	f_chdir ("0:/");
-//	open_append(&log_file,"log.txt");
-//	f_printf(&log_file, "%s\r\n", str);
-//	f_close(&log_file);
+	FIL log_file;
+	f_chdir ("0:/");
+	open_append(&log_file,"log.txt");
+	f_printf(&log_file, "%s\r\n", str);
+	f_close(&log_file);
 	
 	// Imprimo
 	printf ("%s\r\n", str);

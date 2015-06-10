@@ -98,7 +98,7 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
-#define configTOTAL_HEAP_SIZE                    ((size_t)71680)		//81920
+#define configTOTAL_HEAP_SIZE                    ((size_t)100*1024)		//81920
 #define configMAX_TASK_NAME_LEN                  ( 30 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -186,6 +186,7 @@ extern uint8_t Keyboard_T;
 extern uint8_t AudioCapture_T;
 extern uint8_t AudioSave_T;
 extern uint8_t AudioRead_T;
+extern uint8_t AudioProc_T;
 extern uint8_t PatStoring_T;
 
 #define traceTASK_SWITCHED_IN() 	{																										\
@@ -194,9 +195,10 @@ extern uint8_t PatStoring_T;
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioCapture", 	strlen("AudioCapture")) )			AudioCapture_T = 1;				\
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioSave", 			strlen("AudioSave")) )				AudioSave_T = 1;					\
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioRead", 			strlen("AudioRead")) )				AudioRead_T = 1;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioProc", 			strlen("AudioProc")) )				AudioProc_T = 1;					\
 	if( strncmp(pxCurrentTCB->pcTaskName, "PatternStoring", strlen("PatternStoring")) )		PatStoring_T = 1;			\
 																																											\
-/*	printf("Switch In %s\n",pxCurrentTCB->pcTaskName);*/																	\
+	/*printf("Switch In %s\n",pxCurrentTCB->pcTaskName);*/																	\
 }
 
 #define traceTASK_SWITCHED_OUT() 	{																										\
@@ -205,6 +207,7 @@ extern uint8_t PatStoring_T;
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioCapture", 	strlen("AudioCapture")) )			AudioCapture_T = 0;				\
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioSave", 			strlen("AudioSave")) )				AudioSave_T = 0;					\
 	if( strncmp(pxCurrentTCB->pcTaskName, "AudioRead", 			strlen("AudioRead")) )				AudioRead_T = 0;					\
+	if( strncmp(pxCurrentTCB->pcTaskName, "AudioProc", 			strlen("AudioProc")) )				AudioProc_T = 0;					\
 	if( strncmp(pxCurrentTCB->pcTaskName, "PatternStoring", strlen("PatternStoring")) )		PatStoring_T = 0;			\
 																																											\
 	/*printf("Switch Out %s\n",pxCurrentTCB->pcTaskName);*/																\
@@ -213,9 +216,16 @@ extern uint8_t PatStoring_T;
 
 
 // Memory debug
-extern size_t total_allocated;
-#define traceMALLOC( pvAddress, uiSize )	{total_allocated += uiSize;}
-#define traceFREE( pvAddress, uiSize )		{total_allocated -= uiSize;}
+extern size_t freertos_mem_allocated, max_allocated, allocated, freed;
+#define traceMALLOC( pvAddress, uiSize )	{																			\
+																						freertos_mem_allocated += uiSize; \
+																						max_allocated = freertos_mem_allocated > max_allocated ? freertos_mem_allocated : max_allocated;	\
+																						allocated = uiSize;								\
+																					}
+#define traceFREE( pvAddress, uiSize )		{	\
+																						freertos_mem_allocated -= uiSize;	\
+																						freed = uiSize;								\
+																					}
 
 //#endif
 

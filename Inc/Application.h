@@ -82,7 +82,7 @@ typedef enum {
 	*	\enum
   *	\brief Recognition task states
 	*/
-enum States{
+typedef enum {
 	RECORD_AUDIO,
 	RECOGNIZED,
 }Reco_states;
@@ -110,6 +110,7 @@ typedef enum {
 	BUTTON_RELEASE,
 	BUTTON_PRESS,
 	CHANGE_TASK,
+	FINISH_SAVING,
 	FINISH_PROCESSING,
 	FINISH_READING,
 	KILL_THREAD,
@@ -164,6 +165,7 @@ typedef struct{
 	ringBuf *buff;
 	char * file_name;
 	osMessageQId src_msg;
+	bool init_complete;
 }Audio_Read_args;
 
 
@@ -177,6 +179,7 @@ typedef struct{
 	ringBuf *buff;
 	char *file_name;
 	Capt_conf capt_conf;
+	osMessageQId src_msg;
 }Audio_Save_args;
 
 /**
@@ -211,7 +214,8 @@ typedef enum {
 	CALIB_LED   = OLED,
 	PATTERN_LED = GLED,
 	RECOG_LED 	= BLED,
-	EXECUTE_LED = RLED,
+	SAVE_LED 		= RLED,
+	PROC_LED 		= BLED,
 }AppLEDS;
 
 

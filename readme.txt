@@ -76,3 +76,13 @@ Cada vez que se genera el proyecto:
 
 	-en cmsis_os.c
 		#if 1 /* Mail Queue Management Functions are not supported in this cmsis_os version, will be added in the next release  */
+
+
+
+AGREGAR UN MessageQDelete
+
+void osMessageDelete (osMessageQId *queue_id)
+{
+  vQueueDelete (*queue_id);
+	queue_id = NULL;
+}

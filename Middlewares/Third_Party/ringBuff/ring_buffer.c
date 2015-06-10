@@ -18,16 +18,13 @@
 //#include <assert.h>
 #include <stm32f4xx_hal.h>
 
+#include <ale_stdlib.h>
+
 #undef assert
 #define assert(expr) assert_param(expr)
 
-//#ifdef FREERTOS
 
-//#define malloc(size) pvPortMalloc(size)
-//#define free(ptr) pvPortFree(ptr)
-
-//#endif
-
+osMutexDef ( rw_mutex );
 
 ringBufStatus ringBuf_init ( ringBuf* _this, const size_t buff_size, bool can_override )
 {
@@ -43,6 +40,9 @@ ringBufStatus ringBuf_init ( ringBuf* _this, const size_t buff_size, bool can_ov
     _this->count = 0;
     _this->client_num_assign = 0;
 
+    // Creo el mutex
+    _this->rw_mutex_id = osMutexCreate ( osMutex ( rw_mutex ) );
+	
     return BUFF_OK;
 }
 
@@ -59,6 +59,8 @@ ringBufStatus ringBuf_deinit ( ringBuf *_this )
     _this->count = 0;
     _this->client_num_assign = 0;
 
+    osMutexDelete ( _this->rw_mutex_id );
+	
     return BUFF_OK;
 }
 
@@ -85,11 +87,19 @@ ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t sh
     *client_num = ++_this->client_num_assign;
 
     // Alloco memoria para el cliente
+    ringBufClient *aux = malloc ( _this->num_clients * sizeof ( ringBufClient ) );
+    memcpy ( aux, _this->clients, ( _this->num_clients-1 ) * sizeof ( ringBufClient ) );
+    // Solo hay que liberar memoria mientras no sea el primer cliente
     if ( _this->num_clients > 1 ) {
-        _this->clients = realloc ( _this->clients, _this->num_clients * sizeof ( ringBufClient ) );
-    } else {
-        _this->clients = malloc ( sizeof ( ringBufClient ) );
+        free ( _this->clients );
     }
+    _this->clients = aux;
+
+//     if ( _this->num_clients > 1 ) {
+//         _this->clients = realloc ( _this->clients, _this->num_clients * sizeof ( ringBufClient ) );
+//     } else {
+//         _this->clients = malloc ( sizeof ( ringBufClient ) );
+//     }
 
     // Inicializo las variables del cliente
     _this->clients[_this->num_clients-1].client_num = *client_num;
@@ -123,6 +133,7 @@ ringBufStatus ringBuf_unregistClient ( ringBuf *_this, const uint8_t client_num 
         free ( aux );
     } else {
         free ( _this->clients );
+				_this->clients = NULL;
     }
 
 
@@ -168,13 +179,29 @@ ringBufStatus ringBuf_write ( ringBuf *_this, const uint8_t *input, const size_t
     // leerlos
     assert ( _this->buff_size >= write_size );
 
-    // Pregunto si el buffer esta lleno o si puedo sobreescribir
-    if ( is_ringBuf_full ( _this ) && !_this->can_override ) {
-        return BUFF_FULL;
+    // Pregunto si puedo sobreescribir
+    if ( !_this->can_override ) {
+        // Pregunto si el buffer esta lleno
+        if ( is_ringBuf_full ( _this ) ) {
+            return BUFF_FULL;
+        }
+        // Pregunto si hay espacio disponible
+        if ( write_size > _this->buff_size - _this->count && !_this->can_override ) {
+            return BUFF_NOT_ENOGH_SPACE;
+        }
     }
+
+    // Pregunto si existen clientes
+    if ( _this->num_clients == 0 ) {
+        return BUFF_NO_CLIENTS;
+    }
+
 
     // Obtengo el espacio que queda hacia la derecha del buffer
     uint32_t right_space = _this->buff_size - ( _this->head - _this->buff );
+
+    //Bloqueo el mutex aca
+    osMutexWait ( _this->rw_mutex_id, osWaitForever );
 
     // Pregunto si lo que hay para escribir es menor que lo que queda hacia la derecha
     if ( write_size < right_space ) {
@@ -191,6 +218,9 @@ ringBufStatus ringBuf_write ( ringBuf *_this, const uint8_t *input, const size_t
         // Actualizo el puntero
         _this->head = &_this->buff[ write_size - right_space ];
     }
+
+    // Libero el mutex aca
+    osMutexRelease ( _this->rw_mutex_id );
 
     // Update info de clientes
     for ( uint8_t idx=0; idx < _this->num_clients ; idx++ ) {
@@ -224,6 +254,9 @@ ringBufStatus ringBuf_read ( ringBuf *_this, uint8_t **ptr, uint32_t *count, siz
     // Obtengo el espacio que queda hacia la derecha del buffer
     uint32_t right_space = _this->buff_size - ( *ptr - _this->buff );
 
+    //Bloqueo el mutex aca
+    osMutexWait ( _this->rw_mutex_id, osWaitForever );
+
     // Pregunto si lo que se quiere leer es menor que lo que hay a la derecha
     if ( read_size < right_space ) {
         // Copio el dato
@@ -233,6 +266,9 @@ ringBufStatus ringBuf_read ( ringBuf *_this, uint8_t **ptr, uint32_t *count, siz
         memcpy ( output, *ptr, right_space );
         memcpy ( &output[right_space], _this->buff, read_size - right_space );
     }
+
+    // Libero el mutex aca
+    osMutexRelease ( _this->rw_mutex_id );
 
     // Actualizo el puntero (no con la cantidad de datos que leyó, sino con lo que quiera shiftear)
     if ( shift_size < right_space ) {

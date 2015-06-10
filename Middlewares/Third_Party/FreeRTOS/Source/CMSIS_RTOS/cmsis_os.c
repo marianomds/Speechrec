@@ -819,6 +819,12 @@ osMessageQId osMessageCreate (const osMessageQDef_t *queue_def, osThreadId threa
   return xQueueCreate(queue_def->queue_sz, (uint32_t) sizeof(queue_def->item_sz));
 }
 
+void osMessageDelete (osMessageQId *queue_id)
+{
+  vQueueDelete (*queue_id);
+	*queue_id = NULL;
+}
+
 /**
 * @brief Put a Message to a Queue.
 * @param  queue_id  message queue ID obtained with \ref osMessageCreate.
