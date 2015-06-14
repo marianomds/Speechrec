@@ -20,13 +20,6 @@
 #include <ApplicationConfig.h>
 
 //---------------------------------------
-//							TASKS STATES
-//---------------------------------------
-
-Proc_states proc_state = NOT_PROCESSING;
-Calib_states calib_state = NOT_CALIBRATING;
-
-//---------------------------------------
 //				MESSAGE QUEUE VARIALBES
 //---------------------------------------
 
@@ -38,7 +31,7 @@ static osMessageQId calib_msg;
 //---------------------------------------
 
 static Proc_conf	*proc_conf;						// Processing configurartion
-static Calib_conf *calib_conf;					// Calibration configurartion
+static Calib_conf *calib_conf;					// AudioCalib configurartion
 
 //---------------------------------------
 //				SPEECH PROCESSING VARIALBES
@@ -119,10 +112,10 @@ static float32_t THD_SF;
 //
 //--------	PROCESSING FUNCTIONS --------
 //
-void audioProc (void const *pvParameters)
+void featureExtraction (void const *pvParameters)
 {
 	// Task variables
-	Proc_args *args;
+	Feature_Extraction_args *args;
 	osEvent event;
 	uint8_t *aux;
 	uint32_t read_size;
@@ -139,7 +132,7 @@ void audioProc (void const *pvParameters)
 	uint8_t packg_mfcc_client, packg_delta_client, packg_delta2_client;
 	
 	// Get arguments
-	args = (Proc_args*) pvParameters;
+	args = (Feature_Extraction_args*) pvParameters;
 	
 	// Create Process Task State MessageQ
 	osMessageQDef(proc_msg,5,uint32_t);
@@ -190,8 +183,6 @@ void audioProc (void const *pvParameters)
 		if(res == FR_OK)
 			f_chdir("..");
 	}
-	
-	proc_state = PROCESSING;
 	
 	args->init_complete = true;
 	
@@ -287,8 +278,6 @@ void audioProc (void const *pvParameters)
 					// Elimino el buffer
 					ringBuf_deinit(args->features_buff);
 					
-					proc_state = NOT_PROCESSING;
-					
 					// Elimino la tarea
 					osThreadTerminate(osThreadGetId());
 				}
@@ -347,7 +336,7 @@ void audioProc (void const *pvParameters)
 	}
 }
 
-void audioCalib (void const *pvParameters)
+void calibration (void const *pvParameters)
 {
 	// Task variables
 	Calib_args *args;
@@ -405,8 +394,6 @@ void audioCalib (void const *pvParameters)
 		if(res == FR_OK)
 			f_chdir("..");
 	}
-	
-	calib_state = CALIBRATING;
 	
 	//---------------------------- START TASK ----------------------------
 	for(;;)
@@ -517,8 +504,6 @@ void audioCalib (void const *pvParameters)
 					// Envío mensaje inidicando que termine
 					osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
 					
-					calib_state = NOT_CALIBRATING;
-					
 					// Elimino la tarea
 					osThreadTerminate(osThreadGetId());
 				}
@@ -570,7 +555,7 @@ void initCalibration	(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t
 	SilFrecmax = malloc(aprox_calib_len * sizeof(*SilFrecmax));
 	SilSpFlat  = malloc(aprox_calib_len * sizeof(*SilSpFlat));
 	if(SilEnergy == NULL || SilFrecmax == NULL || SilSpFlat == NULL )
-		Error_Handler("Cannot allocate Sil variables in Calibration");
+		Error_Handler("Cannot allocate Sil variables in AudioCalib");
 }
 void finishCalibration	(void)
 {

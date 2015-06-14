@@ -72,8 +72,7 @@ void Error_Handler(char * str)
 
 	// Go to root directory
 	FIL log_file;
-	f_chdir ("0:/");
-	open_append(&log_file,"log.txt");
+	open_append(&log_file,"0:/log.txt");
 	f_printf(&log_file, "%s\r\n", str);
 	f_close(&log_file);
 	

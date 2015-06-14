@@ -37,24 +37,9 @@
 #include "ff.h"
 #include <ring_buffer.h>
 
-
 //---------------------------------------------------------------------------------
-//																		TASKS ARGUMENTS
+//																		APPLICATION STATES
 //---------------------------------------------------------------------------------
-
-/**
-	*\typedef
-	*	\enum
-  *	\brief Application LEDs
-	*/
-typedef enum {
-	CALIB_LED   = OLED,
-	PATTERN_LED = GLED,
-	RECOG_LED 	= BLED,
-	
-	CAPTURE_LED = RLED,
-	PROC_LED 		= BLED,
-}AppLEDS;
 
 
 /**
@@ -62,13 +47,11 @@ typedef enum {
 	*	\ENUM
   *	\brief Audio Capture STATES
 	*/
-typedef enum{
-	START_CAPTURE,
-	RESUME_CAPTURE,
-	STOP_CAPTURE,
-	PAUSE_CAPTURE,
-	BUFFER_READY,
-	KILL_CAPTURE,
+typedef enum
+{
+	CAPTURING,
+	PAUSE,
+	NOT_CAPTURING,
 }Capture_states;
 
 /**
@@ -76,57 +59,41 @@ typedef enum{
 	*	\enum
   *	\brief Application states
 	*/
-typedef enum {
-	CALIBRATION,
-	PATTERN_STORING,
-	RECOGNITION,
-	APP_STOP,
-	APP_READY,
+typedef enum
+{
+	APP_STOP = 0,
+	APP_PATTERN_STORING = 1,
+	APP_RECOGNITION = 2,
+	APP_CALIBRATION = 3,
 }App_states;
 
-/**
-	*	\enum
-  *	\brief Recognition task states
-	*/
-typedef enum {
-	RECORD_AUDIO,
-	RECOGNIZED,
-}Reco_states;
 
 /**
 	*\typedef
 	*	\enum
   *	\brief AudioSave states
 	*/
-typedef enum {
-	RING_BUFFER_READY,
-	FINISH,
-}AudioSave_states;
+typedef enum
+{
+	PROCESSING,
+	CALIBRATING,
+	RECOGNIZING,
+	NOTHING,
+}Proc_states;
+
+
+//---------------------------------------------------------------------------------
+//																		APPLICATION TYPEDEF
+//---------------------------------------------------------------------------------
+
 
 /**
 	*\typedef
-	*	\enum
-  *	\brief Common task messages
+	*	\ENUM
+  *	\brief Audio Capture STATES
 	*/
-typedef enum {
-	BUTTON_RELEASE=4,
-	BUTTON_PRESS,
-	CHANGE_TASK,
-	FRAME_READY,
-	FAIL,
-	BUTTON_IRQ,
-	FINISH_CALIB,
-	FINISH_SAVING,
-	FINISH_PROCESSING,
-	FINISH_READING,
-	KILL_THREAD,
-}Common_task_Messages;
-
-
-
-
-
-typedef struct {
+typedef struct
+{
 	bool			debug;
 	bool			save_proc_vars;
 	bool			save_clb_vars;
@@ -137,90 +104,11 @@ typedef struct {
 
 /**
 	*\typedef
-	*	\struct
-  *	\brief Audio Capture task arguments
+	*	\ENUM
+  *	\brief Audio Capture STATES
 	*/
-typedef struct{
-	Capt_conf capt_conf;
-	ringBuf *buff;
-}Audio_Capture_args;
-
-/**
-	*\typedef
-	*	\struct
-  *	\brief Audio Read task arguments
-	*/
-typedef struct{
-	Capt_conf capt_conf;
-	ringBuf *buff;
-	char * file_name;
-	osMessageQId src_msg;
-	bool init_complete;
-}Audio_Read_args;
-
-/**
-	*\typedef
-	*	\struct
-  *	\brief Audio Save task arguments
-	*/
-typedef struct{
-	uint32_t usb_buff_size;
-	ringBuf *buff;
-	char *file_name;
-	Capt_conf capt_conf;
-	osMessageQId src_msg;
-}Audio_Save_args;
-
-/**
-	*\typedef
-	*	\struct
-  *	\brief Pattern Storing task arguments
-	*/
-typedef struct{
-	osMessageQId *msg_q;
-	ringBuf 		 *buff;
-	Debug_conf	 *debug_conf;
-	Capt_conf 	 *capt_conf;
-	Proc_conf		 *proc_conf;
-}Patern_Storing_args;
-
-/**
-	*\typedef
-	*	\struct
-  *	\brief Calibration task
-	*/
-typedef struct{
-	osMessageQId *msg_q;
-	ringBuf 		 *buff;
-	Debug_conf	 *debug_conf;
-	Capt_conf 	 *capt_conf;
-	Proc_conf		 *proc_conf;
-	Calib_conf	 *calib_conf;
-	
-	osMessageQId src_msg_id;
-	uint32_t 		 src_msg_val;
-}Calibration_args;
-
-/**
-	*\typedef
-	*	\struct
-  *	\brief Recognition task arguments
-	*/
-typedef struct{
-	osMessageQId *msg_q;
-	ringBuf 		 *buff;
-	Debug_conf	 *debug_conf;
-	Capt_conf 	 *capt_conf;
-	Proc_conf		 *proc_conf;
-	char 				*patterns_path;
-	char 				*patterns_config_file_name;
-}Recognition_args;
-
-
-
-
-
-typedef struct {
+typedef struct
+{
 	App_states maintask;
 
 	Capt_conf		capt_conf;
@@ -228,8 +116,7 @@ typedef struct {
 	Calib_conf	calib_conf;
 	Debug_conf	debug_conf;	
 	
-	char patdir[13];
-	char patfilename[13];
+	char patpath[15];
 }AppConfig;
 
 
@@ -238,7 +125,8 @@ typedef struct {
 	*	\struct
   *	\brief Audio Capture task arguments
 	*/
-typedef struct {
+typedef struct
+{
 	char pat_name[PATERN_MAX_NAME_SIZE];		/*< Nombre del Patron */
 	uint8_t	pat_actv_num;										/*< Numero de activación */
 	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
@@ -248,23 +136,57 @@ typedef struct {
 	*	\struct
   *	\brief Vector Cuantization
 	*/
-typedef struct {
+typedef struct
+{
 	float32_t Energy;
 	float32_t MFCC[LIFTER_LENGTH];
 }VC;
 
 
 //---------------------------------------------------------------------------------
+//																INTERRUPTION FUNCTIONS
+//---------------------------------------------------------------------------------
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void User_Button_EXTI (void);
+
+//---------------------------------------------------------------------------------
 //															GENERAL FUNCTIONS
 //---------------------------------------------------------------------------------
 
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 void Configure_Application (void);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 void setEnvVar (void);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 uint8_t readConfigFile (const char *filename, AppConfig *Conf);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 uint8_t loadPattern (Patterns *pat, uint32_t vector_length);
-/* [OUT] File object to create */
-/* [IN]  File name to be opened */
 
 
 //---------------------------------------------------------------------------------
@@ -277,49 +199,182 @@ uint8_t loadPattern (Patterns *pat, uint32_t vector_length);
   */
 void Main_Thread 			(void const * pvParameters);
 /**
-  * @brief  PatternStoring Task
+  * @brief  AudioProcess Task
 	* @param  
   * @retval 
   */
-void PatternStoring		(void const * pvParameters);
+void AudioProcess		(void const * pvParameters);
 /**
   * @brief  Recognitiond Task
 	* @param  
   * @retval 
   */
 void Recognition			(void const * pvParameters);
-
-void Calibration (void const *pvParameters);
-	
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void AudioCalib (void const *pvParameters);
 /**
   * @brief  KeyBoard Handler Task
 	* @param  
   * @retval 
   */
 void Keyboard 				(void const * pvParameters);
-
 /**
 	* @brief  Audio Capture Task
 	* @param  
 	* @retval 
 	*/
 void AudioCapture 		(void const * pvParameters);
-
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 void AudioSave (void const * pvParameters);
-
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 void AudioRead (void const * pvParameters);
-
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
 void Leds (void const * pvParameters);
 
-//---------------------------------------------------------------------------------
-//																INTERRUPTION FUNCTIONS
-//---------------------------------------------------------------------------------
-void User_Button_EXTI (void);
 
 //---------------------------------------------------------------------------------
-//																TIME FUNCTIONS
+//																		TASKS MESSAGES
 //---------------------------------------------------------------------------------
-void Led_Timer  (void const *arg);                   // prototypes for timer callback function
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief Common task messages
+	*/
+typedef enum {
+	BUTTON_RELEASE=4,
+	BUTTON_PRESS,
+	FRAME_READY,
+	FAIL,
+	BUTTON_IRQ,
+	FINISH_CALIBRATION,
+	FINISH_SAVING,
+	FINISH_PROCESSING,
+	FINISH_RECOGNIZING,
+	FINISH_READING,
+	KILL_THREAD,
+	START_CAPTURE,
+	RESUME_CAPTURE,
+	STOP_CAPTURE,
+	PAUSE_CAPTURE,
+	BUFFER_READY,
+	KILL_CAPTURE,
+	RING_BUFFER_READY,
+	FINISH,
+}Tasks_Messages;
+
+
+
+
+//---------------------------------------------------------------------------------
+//																		TASKS ARGUMENTS
+//---------------------------------------------------------------------------------
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Capture task arguments
+	*/
+typedef struct
+{
+	Capt_conf capt_conf;
+	ringBuf *buff;
+}Audio_Capture_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Read task arguments
+	*/
+typedef struct
+{
+	Capt_conf capt_conf;
+	ringBuf *buff;
+	char * file_name;
+	osMessageQId src_msg;
+	bool init_complete;
+}Audio_Read_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Audio Save task arguments
+	*/
+typedef struct
+{
+	uint32_t usb_buff_size;
+	ringBuf *buff;
+	char *file_name;
+	Capt_conf capt_conf;
+	osMessageQId src_msg;
+}Audio_Save_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Pattern Storing task arguments
+	*/
+typedef struct
+{
+	osMessageQId *msg_q;
+	ringBuf 		 *buff;
+	Debug_conf	 *debug_conf;
+	Capt_conf 	 *capt_conf;
+	Proc_conf		 *proc_conf;
+	bool				recognize;
+}Audio_Process_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief AudioCalib task
+	*/
+typedef struct
+{
+	osMessageQId *msg_q;
+	ringBuf 		 *buff;
+	Debug_conf	 *debug_conf;
+	Capt_conf 	 *capt_conf;
+	Proc_conf		 *proc_conf;
+	Calib_conf	 *calib_conf;
+	
+	osMessageQId src_msg_id;
+	uint32_t 		 src_msg_val;
+}Audio_Calibration_args;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Recognition task arguments
+	*/
+typedef struct
+{
+	Proc_conf		 *proc_conf;
+	char 				 *utterance_path;
+	char 				 *patterns_path;
+	bool         save_dist;
+	osMessageQId src_msg_id;
+	uint32_t 		 src_msg_val;
+}Recognition_args;
+
 
 
 #endif  // APPLICATION_H
+
+

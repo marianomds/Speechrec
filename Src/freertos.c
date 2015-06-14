@@ -38,7 +38,7 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */     
-
+#include <Error_Handler.h>
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -67,8 +67,11 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
+	char msg[80];
 	
-	printf ("Stack overflow en %s\n", pcTaskName);
+	sprintf (msg,"Stack overflow en %s\n", pcTaskName);
+	Error_Handler(msg);
+	
 }
 /* USER CODE END 4 */
 

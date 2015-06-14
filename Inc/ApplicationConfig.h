@@ -17,7 +17,7 @@
 #define DEBUG	1
 
 #define CONFIG_FILE_NAME				"Config.ini"
-#define PATERN_MAX_NAME_SIZE		12
+#define PATERN_MAX_NAME_SIZE		20
 #define AUDIO_FILE_EXTENSION		".wav"
 
 /*---------------------------------------------------------------------------------
@@ -60,8 +60,8 @@
 #define CALIB_TIME										10 //segundos
 #define CALIB_LEN 										CALIB_TIME*AUDIO_IN_FREQ/FRAME_LEN
 
-#define PAT_DIR												"Pat"
-#define PAT_CONF_FILE									"Pat.ini"
+#define PAT_DIR												"Patterns"
+#define PAT_CONF_FILE									"patterns.ini"
 
 #define PAT_NAME											""
 #define	PAT_NUM												0
