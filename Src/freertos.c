@@ -118,7 +118,8 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osThreadTerminate(osThreadGetId());
+    
+		osThreadTerminate(osThreadGetId());
   }
   /* USER CODE END StartDefaultTask */
 }

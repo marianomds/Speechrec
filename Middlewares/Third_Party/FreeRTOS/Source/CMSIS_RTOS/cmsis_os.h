@@ -752,7 +752,9 @@ osMessageQId osMessageCreate (const osMessageQDef_t *queue_def, osThreadId threa
 
 // Delete MessageQ
 void osMessageDelete (osMessageQId *queue_id);
-	
+
+// Reset MessageQ
+void osMessageReset (osMessageQId queue_id);
 
 /// Put a Message to a Queue.
 /// \param[in]     queue_id      message queue ID obtained with \ref osMessageCreate.

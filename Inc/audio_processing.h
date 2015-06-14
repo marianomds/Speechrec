@@ -22,6 +22,9 @@
 #include "stdbool.h"
 #include <ring_buffer.h>
 
+//-------------------------------------------------------
+//									PROCESSING TYPEDEF
+//-------------------------------------------------------
 
  typedef struct{
 	 
@@ -48,14 +51,6 @@
 	// VAD
 	bool			vad;
 }Proc_conf;
- 
-typedef struct{
-	uint16_t	calib_time;
-	uint32_t	calib_len;
-	float32_t	thd_scl_eng;
-	uint32_t	thd_min_fmax;
-	float32_t	thd_scl_sf;
-}Calib_conf;
 
 typedef struct{
 	float32_t	energy;
@@ -110,10 +105,10 @@ typedef struct{
 	osMessageQId src_msg_id;
 	uint32_t	src_msg_val;
 	char *path;
-	
 	osMessageQId proc_msg_id;
 	bool init_complete;
 }Proc_args;
+
 
 typedef enum
 {
@@ -123,16 +118,12 @@ typedef enum
 	Third_Stage = 0x04,
 }Proc_stages;
 
-/**
-	*	\enum
-  *	\brief Processing task messages
-	*/
 typedef enum {
 	PROC_BUFF_READY,
 	PROC_FINISH,
 	PROC_KILL,
 }Proc_msg;
-
+ 
 typedef enum
 {
 	VOICE,
@@ -140,19 +131,63 @@ typedef enum
 	PROC_FAILURE
 }Proc_status;
 
-typedef enum{
-	CALIB_INITIATED,
-	CALIB_IN_PROCESS,
+/**
+	*\typedef
+	*	\enum
+  *	\brief AudioSave states
+	*/
+typedef enum {
+	PROCESSING,
+	NOT_PROCESSING,
+}Proc_states;
+
+
+//-------------------------------------------------------
+//								CALIBRATION TYPEDEF
+//-------------------------------------------------------
+
+typedef struct{
+	uint16_t	calib_time;
+	float32_t	thd_scl_eng;
+	uint32_t	thd_min_fmax;
+	float32_t	thd_scl_sf;
+}Calib_conf;
+
+typedef struct{
+	Proc_conf *proc_conf;
+	Calib_conf *calib_conf;
+	uint32_t audio_freq;
+	bool save_to_files;	
+	bool save_calib_vars;
+	ringBuf *audio_buff;
+	osMessageQId src_msg_id;
+	uint32_t	src_msg_val;
+	char *path;	
+	osMessageQId calib_msg_id;
+}Calib_args;
+
+typedef enum {
+	CALIB_BUFF_READY,
 	CALIB_FINISH,
-	CALIB_FAILURE,
-	CALIB_OK,
-}Calib_status;
+	CALIB_KILL,
+}Calib_msg;
+
+/**
+	*\typedef
+	*	\enum
+  *	\brief AudioSave states
+	*/
+typedef enum {
+	CALIBRATING,
+	NOT_CALIBRATING,
+}Calib_states;
 
 //---------------------------------------
 //						USER FUNCTIONS
 //---------------------------------------
 
 void audioProc (void const *pvParameters);
+void audioCalib (void const *pvParameters);
 
 void initProcessing (Proc_conf *configuration);
 /**
@@ -172,9 +207,8 @@ Proc_status		MFCC_float				(uint16_t *frame, Proc_stages *stages, bool last_fram
 
 // CALIBRATION
 
-Calib_status		initCalibration		(uint32_t *num_frames, Calib_conf *Proc_config, Proc_conf *configuration, Proc_var *ptr_vars_buffers);
-Calib_status		Calibrate					(uint16_t *frame, uint32_t frame_num, Proc_stages *stages);
-Calib_status		endCalibration		(const bool save_calib_vars);
+void		initCalibration			(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t audio_freq);
+void		finishCalibration		(void);
 //---------------------------------------
 //						HELP FUNCTIONS
 //---------------------------------------
@@ -193,6 +227,8 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad);
 //---------------------------------------
 //			BASE PROCESSING FUNCTIONS
 //---------------------------------------	
+void initBasics (Proc_conf *configuration);
+void finishBasics	(void);
 void	firstProcStage	(float32_t *filt_signal, uint16_t *audio, Proc_var *saving_var);
 void	secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *saving_var);
 void	thirdProcStage	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var);

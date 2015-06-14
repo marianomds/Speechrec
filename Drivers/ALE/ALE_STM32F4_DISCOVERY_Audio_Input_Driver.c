@@ -19,21 +19,21 @@
 
 
 
-Capt_conf capture_conf;
-uint32_t pdm_buff_size;
-uint32_t pcm_buff_size;
-uint32_t extend_buff;
+static Capt_conf capture_conf;
+static uint32_t pdm_buff_size;
+static uint32_t pcm_buff_size;
+static uint32_t extend_buff;
 
-uint8_t  *PDM;
-uint16_t *PCM;
-PDMFilter_InitStruct *Filter;
+static osMessageQId msgQId;
+static uint32_t msg_val;
+static osMessageQId I2SmsgQID;
 
-osMessageQId I2SmsgQID;
-osMessageQId msgQId;
-uint32_t msg_val;
+static uint8_t  *PDM;
+static uint16_t *PCM;
+static PDMFilter_InitStruct *Filter;
 
-osThreadDef(DMAHandlerTask,	DMA_Interrup_Handler_Task, 	osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
-osMessageQDef(I2SmsgQID, 4, uint32_t);
+static osThreadDef(DMAHandlerTask,	DMA_Interrup_Handler_Task, 	osPriorityRealtime,	1, configMINIMAL_STACK_SIZE);
+static osMessageQDef(I2SmsgQID, 4, uint32_t);
 
 //------------------------------------------------------------------------------
 //											PUBLIC AUDIO DRIVER CONTROL FUNCTIONS
@@ -70,8 +70,8 @@ uint8_t initCapture(const Capt_conf* config, uint16_t* data, uint16_t data_buff_
 
 void deinitCapture (void){
 	osMessagePut(I2SmsgQID,I2S_KILL,osWaitForever);
-	free(PDM);
 	free(Filter);
+	free(PDM);
 }
 
 uint8_t audioRecord(void){

@@ -16,27 +16,42 @@
 #include <misc.h>
 #include <error_handler.h>
 #include <ale_dct2_f32.h>
-#include <Application.h>
+//#include <Application.h>
+#include <ApplicationConfig.h>
 
-osMessageQId proc_msg;
+//---------------------------------------
+//							TASKS STATES
+//---------------------------------------
+
+Proc_states proc_state = NOT_PROCESSING;
+Calib_states calib_state = NOT_CALIBRATING;
+
+//---------------------------------------
+//				MESSAGE QUEUE VARIALBES
+//---------------------------------------
+
+static osMessageQId proc_msg;
+static osMessageQId calib_msg;
 
 //---------------------------------------
 //				CONFIGURATION VARIALBES
 //---------------------------------------
-	Proc_conf	proc_conf;						// Processing configurartion
-	Calib_conf calib_conf;					// Calibration configurartion
+
+static Proc_conf	*proc_conf;						// Processing configurartion
+static Calib_conf *calib_conf;					// Calibration configurartion
+
 //---------------------------------------
 //				SPEECH PROCESSING VARIALBES
 //---------------------------------------
 
-	float32_t *pState = NULL;							// [proc_conf.numtaps + proc_conf.frame_net - 1]
-	float32_t *Pre_enfasis_Coeef = NULL;	// [proc_conf.numtaps]
+static float32_t *pState = NULL;							// [proc_conf->numtaps + proc_conf->frame_net - 1]
+static float32_t *Pre_enfasis_Coeef = NULL;	// [proc_conf->numtaps]
 
-	float32_t *aux1 = NULL; 							// [ max(proc_conf.frame_len,proc_conf.fft_len) ];
-	float32_t *aux2 = NULL; 							// [ max(proc_conf.frame_len,proc_conf.fft_len) ];
+static float32_t *aux1 = NULL; 							// [ max(proc_conf->frame_len,proc_conf->fft_len) ];
+static float32_t *aux2 = NULL; 							// [ max(proc_conf->frame_len,proc_conf->fft_len) ];
 	
-	float32_t *HamWin = NULL; 						// [proc_conf.frame_len];
-	float32_t *CepWeight = NULL; 					// [LIFTER_length];
+static float32_t *HamWin = NULL; 						// [proc_conf->frame_len];
+static float32_t *CepWeight = NULL; 					// [LIFTER_length];
 
 	static float32_t MelBank [256*20] = {
 	0,0,0,0,0,0,0,0,0,0,1.8776061e-01f,6.1692772e-01f,9.5704521e-01f,5.5711352e-01f,1.5718182e-01f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -61,43 +76,43 @@ osMessageQId proc_msg;
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5.8370915e-02f,1.7069036e-01f,2.8300981e-01f,3.9532926e-01f,5.0764871e-01f,6.1996815e-01f,7.3228760e-01f,8.4460705e-01f,9.5692650e-01f,9.3547118e-01f,8.3080307e-01f,7.2613497e-01f,6.2146687e-01f,5.1679876e-01f,4.1213066e-01f,3.0746255e-01f,2.0279445e-01f,9.8126347e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	};
 
-	arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBank};
+static arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBank};
 		
-	arm_matrix_instance_f32 				MagFFTMtx, MelWinMtx;
-	arm_fir_instance_f32 						FirInst;	
-	arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
-	ale_dct2_instance_f32						DCTinst;
+static arm_matrix_instance_f32 				MagFFTMtx, MelWinMtx;
+static arm_fir_instance_f32 						FirInst;	
+static arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
+static ale_dct2_instance_f32						DCTinst;
 
 //---------------------------------------
 //							VAD VARIALBES
 //---------------------------------------
 	__align(8)
 
-		float32_t Energy;
-		uint32_t  Frecmax;
-		float32_t SpFlat;
+static float32_t Energy;
+static uint32_t  Frecmax;
+static float32_t SpFlat;
 	//	float32_t SilZeroCross;
 
 //---------------------------------------
 //				CALIBRATION VARIABLES
 //---------------------------------------
-		float32_t *SilEnergy  = NULL;
-		uint32_t  *SilFrecmax = NULL;
-		float32_t *SilSpFlat  = NULL;
+static float32_t *SilEnergy  = NULL;
+static uint32_t  *SilFrecmax = NULL;
+static float32_t *SilSpFlat  = NULL;
 		
-		float32_t SilEnergyMean;
-		uint32_t	SilFmaxMean;
-		float32_t SilSpFlatMean;
+static float32_t SilEnergyMean;
+static uint32_t	SilFmaxMean;
+static float32_t SilSpFlatMean;
 	//	float32_t SilZeroCrossMean;
 
-		float32_t SilEnergyDev;
-		uint32_t	SilFmaxDev;
-		float32_t SilSpFlatDev;
+static float32_t SilEnergyDev;
+static uint32_t	SilFmaxDev;
+static float32_t SilSpFlatDev;
 	//	float32_t SilZeroCrossDev;
 
-		float32_t THD_E;
-		uint32_t	THD_FMX;
-		float32_t THD_SF;
+static float32_t THD_E;
+static uint32_t	THD_FMX;
+static float32_t THD_SF;
 
 	
 
@@ -135,7 +150,7 @@ void audioProc (void const *pvParameters)
 	initProcessing (args->proc_conf);
 
 	// Allocate space for aux variable
-	if ( (aux = pvPortMalloc(args->proc_conf->frame_len * sizeof(float32_t) )) == NULL)
+	if ( (aux = malloc(args->proc_conf->frame_len * sizeof(float32_t) )) == NULL)
 		Error_Handler("Error on malloc aux in audio processing");
 	
 	// Init Ring Buffers
@@ -160,11 +175,11 @@ void audioProc (void const *pvParameters)
 	if ( args->save_to_files )
 	{
 		// Allocate space for debug variables
-		if ( (debug_vars = pvPortMalloc(sizeof(*debug_vars) )) == NULL)
+		if ( (debug_vars = malloc(sizeof(*debug_vars) )) == NULL)
 			Error_Handler("Error on malloc debug_vars in audio processing");
 	
 		// Allocate space for debug files
-		if ( (debug_files = pvPortMalloc(sizeof(*debug_files) )) == NULL)
+		if ( (debug_files = malloc(sizeof(*debug_files) )) == NULL)
 			Error_Handler("Error on malloc debug_files in audio processing");
 	
 		FRESULT res = f_chdir(args->path);
@@ -176,8 +191,7 @@ void audioProc (void const *pvParameters)
 			f_chdir("..");
 	}
 	
-	// Turn on Processing LED
-	LED_On((Led_TypeDef)PROC_LED);
+	proc_state = PROCESSING;
 	
 	args->init_complete = true;
 	
@@ -202,7 +216,7 @@ void audioProc (void const *pvParameters)
 							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
 						
 						// Guardamos la info en el buffer
-						ringBuf_write  ( &flt_buff, aux, proc_conf.frame_overlap * sizeof(float32_t));
+						ringBuf_write  ( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
 					}
 									
 					break;
@@ -218,7 +232,7 @@ void audioProc (void const *pvParameters)
 					if(read_size > 0)
 					{
 						// Hago zero padding de ser necesario
-						memset(&aux[read_size], 0, proc_conf.frame_overlap * sizeof(uint16_t) - read_size);	
+						memset(&aux[read_size], 0, proc_conf->frame_overlap * sizeof(uint16_t) - read_size);	
 						
 						 // Procesamos la primera parte
 						firstProcStage 	( (float32_t*) aux, (uint16_t*) aux, debug_vars);
@@ -228,7 +242,7 @@ void audioProc (void const *pvParameters)
 							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
 							
 						// Guardamos la info en el buffer
-						ringBuf_write 	( &flt_buff, aux, proc_conf.frame_overlap * sizeof(float32_t));
+						ringBuf_write 	( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
 					}
 					
 					break;
@@ -254,7 +268,7 @@ void audioProc (void const *pvParameters)
 					ringBuf_deinit ( &flt_buff );
 											
 					// Libero memoria
-					vPortFree(aux);
+					free(aux);
 					
 					// Finicializo el proceso
 					finishProcessing();
@@ -272,10 +286,9 @@ void audioProc (void const *pvParameters)
 
 					// Elimino el buffer
 					ringBuf_deinit(args->features_buff);
-		
-					// Turn on Processing LED
-					LED_Off((Led_TypeDef)PROC_LED);
-										
+					
+					proc_state = NOT_PROCESSING;
+					
 					// Elimino la tarea
 					osThreadTerminate(osThreadGetId());
 				}
@@ -304,28 +317,28 @@ void audioProc (void const *pvParameters)
 					Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, Third_Stage );
 				
 				ringBuf_write (&mfcc_buff, (uint8_t*) &Energy, sizeof(float32_t));
-				ringBuf_write (&mfcc_buff, (uint8_t*) aux, proc_conf.lifter_length * sizeof(float32_t));
+				ringBuf_write (&mfcc_buff, (uint8_t*) aux, proc_conf->lifter_length * sizeof(float32_t));
 			}
 			
 			// Process mfcc while it's posible
 			while (ringBuf_read_const ( &mfcc_buff, proc_mfcc_client, aux ) == BUFF_OK)
 			{
 				deltaCoeff ( (float32_t*) aux, (float32_t*) aux);
-				ringBuf_write (&delta_buff, aux, (proc_conf.lifter_length+1) * sizeof(float32_t));
+				ringBuf_write (&delta_buff, aux, (proc_conf->lifter_length+1) * sizeof(float32_t));
 			}
 
 			// Process delta_mfcc while it's posible
 			while (ringBuf_read_const ( &delta_buff, proc_delta_client, aux ) == BUFF_OK)
 			{
 				deltaCoeff ( (float32_t*) aux, (float32_t*) aux);
-				ringBuf_write (&delta2_buff, aux, (proc_conf.lifter_length+1) * sizeof(float32_t));
+				ringBuf_write (&delta2_buff, aux, (proc_conf->lifter_length+1) * sizeof(float32_t));
 			}
 			
 			//Package mfcc, delta & delta2 and save in a buff
-			if ( ringBuf_read_const ( &mfcc_buff, packg_mfcc_client, (uint8_t*) &aux[ (1+proc_conf.lifter_length) * 0] ) == BUFF_OK )
-				if ( ringBuf_read_const ( &delta_buff, packg_delta_client, (uint8_t*) &aux[ (1+proc_conf.lifter_length) * 1] ) == BUFF_OK )
-					if ( ringBuf_read_const ( &delta2_buff, packg_delta2_client, (uint8_t*) &aux[ (1+proc_conf.lifter_length) * 2] ) == BUFF_OK )
-						ringBuf_write (args->features_buff, (uint8_t*) aux, (proc_conf.lifter_length+1)*3 * sizeof(float32_t));
+			if ( ringBuf_read_const ( &mfcc_buff, packg_mfcc_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 0] ) == BUFF_OK )
+				if ( ringBuf_read_const ( &delta_buff, packg_delta_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 1] ) == BUFF_OK )
+					if ( ringBuf_read_const ( &delta2_buff, packg_delta2_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 2] ) == BUFF_OK )
+						ringBuf_write (args->features_buff, (uint8_t*) aux, (proc_conf->lifter_length+1)*3 * sizeof(float32_t));
 						
 			// Finish task
 			if(finish)
@@ -334,171 +347,306 @@ void audioProc (void const *pvParameters)
 	}
 }
 
+void audioCalib (void const *pvParameters)
+{
+	// Task variables
+	Calib_args *args;
+	osEvent event;
+	uint8_t *aux;
+	VAD_var vad_vars;
+	uint32_t frame_num = 0;
+	
+	// Degug variables
+	Proc_var *debug_vars = NULL;
+	Proc_files *debug_files = NULL;
+
+	// Buffers variables
+	ringBuf flt_buff;
+	uint8_t calib_audio_client, calib_flt_client;
+	
+	// Get arguments
+	args = (Calib_args*) pvParameters;
+	
+	// Create Process Task State MessageQ
+	osMessageQDef(calib_msg,5,uint32_t);
+	calib_msg = osMessageCreate(osMessageQ(calib_msg),NULL);	
+	args->calib_msg_id = calib_msg;
+	
+	// Init processing
+	initCalibration (args->calib_conf, args->proc_conf, args->audio_freq);
+
+	// Allocate space for aux variable
+	if ( (aux = malloc(args->proc_conf->frame_len * sizeof(float32_t) )) == NULL)
+		Error_Handler("Error on malloc aux in audio processing");
+	
+	// Init Ring Buffers
+	ringBuf_init ( &flt_buff, args->proc_conf->frame_overlap * 5 * sizeof(float32_t), false);
+
+	// Register Proc Clients in Ring Buffers
+	ringBuf_registClient ( args->audio_buff,	args->proc_conf->frame_overlap * sizeof(uint16_t),	args->proc_conf->frame_overlap * sizeof(uint16_t),	calib_msg, CALIB_BUFF_READY,	&calib_audio_client);
+	ringBuf_registClient ( &flt_buff,					args->proc_conf->frame_len     * sizeof(float32_t),	args->proc_conf->frame_overlap * sizeof(float32_t), NULL, 		NULL, 						&calib_flt_client);
+	
+	// Allocate space for debug variables
+	if ( args->save_to_files )
+	{
+		// Allocate space for debug variables
+		if ( (debug_vars = malloc(sizeof(*debug_vars) )) == NULL)
+			Error_Handler("Error on malloc debug_vars in audio processing");
+	
+		// Allocate space for debug files
+		if ( (debug_files = malloc(sizeof(*debug_files) )) == NULL)
+			Error_Handler("Error on malloc debug_files in audio processing");
+	
+		FRESULT res = f_chdir(args->path);
+		
+		Open_proc_files ( debug_files, args->proc_conf->vad);
+		allocateProcVariables	(debug_vars);
+		
+		if(res == FR_OK)
+			f_chdir("..");
+	}
+	
+	calib_state = CALIBRATING;
+	
+	//---------------------------- START TASK ----------------------------
+	for(;;)
+	{
+		event = osMessageGet(calib_msg,osWaitForever);
+		if(event.status == osEventMessage)
+		{
+			switch (event.value.v)
+			{
+				case CALIB_BUFF_READY:
+				{
+					// Leemos del buffer de audio y procesamos la primera parte
+					while ( ringBuf_read_const( args->audio_buff, calib_audio_client, aux ) == BUFF_OK)
+					{
+						// Procesamos la primera parte
+						firstProcStage ( (float32_t*) aux, (uint16_t*) aux, debug_vars);
+						
+						// Save info if necesary
+						if(args->save_to_files)
+							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
+						
+						// Guardamos la info en el buffer
+						ringBuf_write  ( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
+					}
+									
+					break;
+				}
+				case CALIB_FINISH:
+				{
+					// Calculate Mean of Features
+					arm_mean_f32 (SilEnergy, frame_num, &SilEnergyMean);
+					arm_mean_q31 ((q31_t*)SilFrecmax, frame_num,(q31_t*) &SilFmaxMean);
+					arm_mean_f32 (SilSpFlat, frame_num, &SilSpFlatMean);
+
+					// Calculate Deviation of Features
+					arm_std_f32 (SilEnergy, frame_num, &SilEnergyDev);
+					arm_std_q31 ((q31_t*)SilFrecmax, frame_num,(q31_t*) &SilFmaxDev);
+					arm_std_f32 (SilSpFlat, frame_num, &SilSpFlatDev);
+					
+					// Set Thresholds
+					THD_E   = SilEnergyMean + calib_conf->thd_scl_eng * SilEnergyDev;
+					THD_FMX = SilFmaxMean > calib_conf->thd_min_fmax ? SilFmaxMean : calib_conf->thd_min_fmax;
+					THD_SF  = fabs(SilSpFlatMean) + calib_conf->thd_scl_sf * SilSpFlatDev;
+
+					if(args->save_calib_vars)
+					{
+						FIL CalibFile;
+						uint32_t byteswritten;     							/* File write/read counts */	
+						
+						f_chdir(args->path);
+						
+						// Guardo la Energía
+						if(f_open(&CalibFile, "CLB_ENR.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilEnergyMean,sizeof(SilEnergyMean),(void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilEnergyDev,	sizeof(SilEnergyDev), (void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &THD_E, 				sizeof(THD_E), 				(void*)&byteswritten) != FR_OK) Error_Handler("");
+						f_close(&CalibFile);
+							
+						// Guardo la Frecuencia Máxima
+						if(f_open(&CalibFile, "CLB_FMX.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilFmaxMean,sizeof(SilFmaxMean),(void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilFmaxDev, sizeof(SilFmaxDev),	(void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &THD_FMX,		sizeof(THD_FMX),		(void*)&byteswritten) != FR_OK) Error_Handler("");
+						f_close(&CalibFile);
+						
+								// Guardo el Spectral Flatness
+						if(f_open(&CalibFile, "CLB_SF.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilSpFlatMean,sizeof(SilSpFlatMean),(void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &SilSpFlatDev,	sizeof(SilSpFlatDev),	(void*)&byteswritten) != FR_OK) Error_Handler("");
+						if(f_write(&CalibFile, &THD_SF, 			sizeof(THD_SF),				(void*)&byteswritten) != FR_OK) Error_Handler("");
+						f_close(&CalibFile);
+						
+						f_chdir("..");
+					}
+					
+					osMessageReset(calib_msg);
+					osMessagePut(calib_msg,CALIB_KILL,0);
+					
+					break;
+				}
+				case CALIB_KILL:
+				{					
+					// Free debug space
+					if ( args->save_to_files )
+					{
+						Close_proc_files ( debug_files, args->proc_conf->vad);
+						free(debug_files);
+						freeProcVariables (debug_vars);
+						free(debug_vars);
+					}
+
+					// Me desregistro del bufer de audio
+					ringBuf_unregistClient(args->audio_buff, calib_audio_client);
+
+					// Elimino los buffers
+					ringBuf_deinit ( &flt_buff );
+											
+					// Libero memoria
+					free(aux);
+					
+					// Finicializo el proceso
+					finishCalibration();
+							
+					// Destroy Message Que
+					osMessageDelete(&calib_msg);
+					args->calib_msg_id = NULL;
+					
+					// Envío mensaje inidicando que termine
+					osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
+					
+					calib_state = NOT_CALIBRATING;
+					
+					// Elimino la tarea
+					osThreadTerminate(osThreadGetId());
+				}
+				default:
+					break;
+			}
+			
+			// Process filt audio while it's posible
+			while (ringBuf_read_const ( &flt_buff, calib_flt_client, aux ) == BUFF_OK)
+			{
+				// Process Second stage
+				secondProcStage	( (float32_t*) aux, (float32_t*) aux, debug_vars);
+				
+				// Save info if necesary
+				if(args->save_to_files)
+					Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, Second_Stage );
+				
+				// Process VAD
+				VADFeatures ( &vad_vars, (float32_t*) aux, Energy);
+				
+				// Save variables
+				SilEnergy[frame_num] = vad_vars.energy;
+				SilFrecmax[frame_num] = vad_vars.fmax;
+				SilSpFlat[frame_num] = vad_vars.sp;
+				
+				frame_num++;
+			}
+			
+		}
+	}
+}
+
 //
 //-------- CALIBRATION FUNCTIONS --------
 //
-#ifdef ahora_no
-Calib_status initCalibration	(uint32_t *num_frames,Calib_conf *Proc_config, Proc_conf *configuration, Proc_var *ptr_vars_buffers)
+void initCalibration	(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t audio_freq)
 {
+	// Copio la configuración de calibración
+	calib_conf = calib_config;
+	
 	// Initialized basic configuration
-	initBasics (configuration, true, ptr_vars_buffers);
+	initBasics (proc_config);
 	
-	// Copy Calibration configuration
-	Proc_conf = *Proc_config;
-	
+	// Calculo la longitud de la calibraci?n seg?n el tiempo seteado
+	uint32_t aprox_calib_len		= (uint32_t)	(calib_conf->calib_time * audio_freq ) / proc_conf->frame_overlap + 5;
+
 	// Allocate space for variables
-	SilEnergy  = pvPortMalloc(Proc_conf.calib_len * sizeof(*SilEnergy));
-	SilFrecmax = pvPortMalloc(Proc_conf.calib_len * sizeof(*SilFrecmax));
-	SilSpFlat  = pvPortMalloc(Proc_conf.calib_len * sizeof(*SilSpFlat));
+	SilEnergy  = malloc(aprox_calib_len * sizeof(*SilEnergy));
+	SilFrecmax = malloc(aprox_calib_len * sizeof(*SilFrecmax));
+	SilSpFlat  = malloc(aprox_calib_len * sizeof(*SilSpFlat));
 	if(SilEnergy == NULL || SilFrecmax == NULL || SilSpFlat == NULL )
-		Error_Handler();
-	
-	// Initialize frame count
-	*num_frames = Proc_conf.calib_len;
-	
-	return CALIB_INITIATED;
+		Error_Handler("Cannot allocate Sil variables in Calibration");
 }
-Calib_status Calibrate (uint16_t *frame, uint32_t frame_num, Proc_stages *stages)
+void finishCalibration	(void)
 {
-	//TODO: ARREGLAR CALIBRATION QUE ESTA MAL
-	if ( frame_num < Proc_conf.calib_len)
-	{
-		// Copio el puntero del nuevo frame al que usa audio_processing
-		new_frame = frame;
-	
-		// Ejecuto la primera parte del procesamiento
-		firstProcStage (vars_buffers);
-		frame_num++;
-		*stages = First_Stage;
-		
-		if (frame_num >1)
-		{
-			secondProcStage (true, vars_buffers);
-			*stages |= Second_Stage;
-			
-			/* Check if it is a Voiced Frame */
-			SilEnergy[frame_num] = Energy;
-			SilFrecmax[frame_num] = Frecmax;
-			SilSpFlat[frame_num] = SpFlat;
-		}
-	}
-	
-	if ( frame_num < Proc_conf.calib_len-1)
-		return CALIB_IN_PROCESS;
-	else
-		return CALIB_FINISH;
-	
-}
-Calib_status endCalibration	(const bool save_calib_vars)
-	{
-
-	// Calculate Mean of Features
-	arm_mean_f32 (SilEnergy, Proc_conf.calib_len, &SilEnergyMean);
-	arm_mean_q31 ((q31_t*)SilFrecmax, Proc_conf.calib_len,(q31_t*) &SilFmaxMean);
-	arm_mean_f32 (SilSpFlat, Proc_conf.calib_len, &SilSpFlatMean);
-
-	// Calculate Deviation of Features
-	arm_std_f32 (SilEnergy, Proc_conf.calib_len, &SilEnergyDev);
-	arm_std_q31 ((q31_t*)SilFrecmax, Proc_conf.calib_len,(q31_t*) &SilFmaxDev);
-	arm_std_f32 (SilSpFlat, Proc_conf.calib_len, &SilSpFlatDev);
-
 	// Free memory
-	vPortFree(SilEnergy);		SilEnergy = NULL;
-	vPortFree(SilFrecmax);	SilFrecmax = NULL;
-	vPortFree(SilSpFlat);		SilSpFlat = NULL;
-	
-	// Set Thresholds
-	THD_E   = SilEnergyMean + Proc_conf.thd_scl_eng * SilEnergyDev;
-	THD_FMX = SilFmaxMean > Proc_conf.thd_min_fmax ? SilFmaxMean : Proc_conf.thd_min_fmax;
-	THD_SF  = fabs(SilSpFlatMean) + Proc_conf.thd_scl_sf * SilSpFlatDev;
+	free(SilEnergy);		SilEnergy = NULL;
+	free(SilFrecmax);	SilFrecmax = NULL;
+	free(SilSpFlat);		SilSpFlat = NULL;
 
-	if(save_calib_vars)
-	{
-		FIL CalibFile;
-		uint32_t byteswritten;     							/* File write/read counts */	
-		
-		// Guardo la Energía
-		if(f_open(&CalibFile, "CLB_ENR.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilEnergyMean,sizeof(SilEnergyMean),(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilEnergyDev,	sizeof(SilEnergyDev), (void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_E, 				sizeof(THD_E), 				(void*)&byteswritten) != FR_OK) Error_Handler();
-		f_close(&CalibFile);
-			
-		// Guardo la Frecuencia Máxima
-		if(f_open(&CalibFile, "CLB_FMX.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilFmaxMean,sizeof(SilFmaxMean),(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilFmaxDev, sizeof(SilFmaxDev),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_FMX,		sizeof(THD_FMX),		(void*)&byteswritten) != FR_OK) Error_Handler();
-		f_close(&CalibFile);
-		
-				// Guardo el Spectral Flatness
-		if(f_open(&CalibFile, "CLB_SF.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilSpFlatMean,sizeof(SilSpFlatMean),(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &SilSpFlatDev,	sizeof(SilSpFlatDev),	(void*)&byteswritten) != FR_OK) Error_Handler();
-		if(f_write(&CalibFile, &THD_SF, 			sizeof(THD_SF),				(void*)&byteswritten) != FR_OK) Error_Handler();
-		f_close(&CalibFile);
-	}
-	
 	// Finish basics
 	finishBasics();	
-	
-	return CALIB_OK;
 }
-#endif
 //
 //-----	INIT PROCESSING FUNCTIONS	-------
 //
 void initProcessing (Proc_conf *configuration)
 {	
-	// Copio la configuración de procesamiento
-	proc_conf = *configuration;
+	 initBasics (configuration);
 	
-	// Alloco memoria para aux1 y aux2
-	//TODO: EN REALIDAD TENGO QUE ALOCAR LA MEMORIA MAXIMA ENTRE (FRAME_LEN,FFT_LEN, etc)
-	if( (aux1 = pvPortMalloc( max(proc_conf.frame_len,proc_conf.fft_len) * sizeof(*aux1) ) ) == NULL )
-		Error_Handler("Error on malloc aux1 in audio processing");
-	if( (aux2 = pvPortMalloc( max(proc_conf.frame_len,proc_conf.fft_len) * sizeof(*aux2) ) ) == NULL )
-		Error_Handler("Error on malloc aux2 in audio processing");
-	
-	// Armo el filtro de Preénfasis
-	// Los coeficientes tienen que estar almacenados en tiempo invertido (leer documentación)
-	if( (Pre_enfasis_Coeef = pvPortMalloc( proc_conf.numtaps * sizeof(*Pre_enfasis_Coeef) ) ) == NULL )
-		Error_Handler("Error on malloc pre_enfasis_coeef in audio processing");
-	Pre_enfasis_Coeef[0] = -proc_conf.alpha;
-	Pre_enfasis_Coeef[1]= 1;
-	
-	// Alloco memoria para el state del filtro de Preénfasis
-	if( (pState = pvPortMalloc( (proc_conf.numtaps + proc_conf.frame_overlap - 1) * sizeof(*pState) ) ) == NULL )
-		Error_Handler("Error on malloc pstate in audio processing");
-	arm_fir_init_f32 (&FirInst, proc_conf.numtaps, Pre_enfasis_Coeef, pState, proc_conf.frame_overlap);
-	
-	// Creo la ventana de Hamming
-	if( (HamWin = pvPortMalloc(proc_conf.frame_len* sizeof(*HamWin))) == NULL)
-		Error_Handler("Error on malloc HamWin in audio processing");
-	Hamming_float(HamWin,proc_conf.frame_len);
-	
-	// Instance FFT
-	if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf.fft_len) == ARM_MATH_ARGUMENT_ERROR)
-		Error_Handler("Error on RFFT instance in audio processing");
-	
-	// Creo el Lifter (filtro de Cepstrum)
-	if( (CepWeight = pvPortMalloc(proc_conf.lifter_length * sizeof(*CepWeight))) == NULL)
-		Error_Handler("Error on malloc CepWeight in audio processing");
-	Lifter_float (CepWeight,proc_conf.lifter_length);
-
 	// Instance DCT
-	if(dct2_init_f32(&DCTinst, &DCTinst_rfft, proc_conf.dct_len, proc_conf.dct_len/2, sqrt(2.0f/proc_conf.dct_len)) == ARM_MATH_ARGUMENT_ERROR)
+	if(dct2_init_f32(&DCTinst, &DCTinst_rfft, proc_conf->dct_len, proc_conf->dct_len/2, sqrt(2.0f/proc_conf->dct_len)) == ARM_MATH_ARGUMENT_ERROR)
 		Error_Handler("Error on dct2 instance in audio processing");
+
+	// Creo el Lifter (filtro de Cepstrum)
+	if( (CepWeight = malloc(proc_conf->lifter_length * sizeof(*CepWeight))) == NULL)
+		Error_Handler("Error on malloc CepWeight in audio processing");
+	Lifter_float (CepWeight,proc_conf->lifter_length);
+
 }
 void finishProcessing	(void)
 {
 	// Libero memoria
-	vPortFree(CepWeight);								CepWeight = NULL;
-	vPortFree(HamWin);									HamWin = NULL;
-	vPortFree(pState);									pState = NULL;
-	vPortFree(Pre_enfasis_Coeef);				Pre_enfasis_Coeef = NULL;
-	vPortFree(aux2);										aux2 = NULL;
-	vPortFree(aux1);										aux1 = NULL;
+	free(CepWeight);								CepWeight = NULL;
+	finishBasics();
+}
+void initBasics (Proc_conf *configuration)
+{	
+	// Copio la configuración de procesamiento
+	proc_conf = configuration;
+	
+	// Alloco memoria para aux1 y aux2
+	//TODO: EN REALIDAD TENGO QUE ALOCAR LA MEMORIA MAXIMA ENTRE (FRAME_LEN,FFT_LEN, etc)
+	if( (aux1 = malloc( max(proc_conf->frame_len,proc_conf->fft_len) * sizeof(*aux1) ) ) == NULL )
+		Error_Handler("Error on malloc aux1 in audio processing");
+	if( (aux2 = malloc( max(proc_conf->frame_len,proc_conf->fft_len) * sizeof(*aux2) ) ) == NULL )
+		Error_Handler("Error on malloc aux2 in audio processing");
+	
+	// Armo el filtro de Preénfasis
+	// Los coeficientes tienen que estar almacenados en tiempo invertido (leer documentación)
+	if( (Pre_enfasis_Coeef = malloc( proc_conf->numtaps * sizeof(*Pre_enfasis_Coeef) ) ) == NULL )
+		Error_Handler("Error on malloc pre_enfasis_coeef in audio processing");
+	Pre_enfasis_Coeef[0] = -proc_conf->alpha;
+	Pre_enfasis_Coeef[1]= 1;
+	
+	// Alloco memoria para el state del filtro de Preénfasis
+	if( (pState = malloc( (proc_conf->numtaps + proc_conf->frame_overlap - 1) * sizeof(*pState) ) ) == NULL )
+		Error_Handler("Error on malloc pstate in audio processing");
+	arm_fir_init_f32 (&FirInst, proc_conf->numtaps, Pre_enfasis_Coeef, pState, proc_conf->frame_overlap);
+	
+	// Creo la ventana de Hamming
+	if( (HamWin = malloc(proc_conf->frame_len* sizeof(*HamWin))) == NULL)
+		Error_Handler("Error on malloc HamWin in audio processing");
+	Hamming_float(HamWin,proc_conf->frame_len);
+	
+	// Instance FFT
+	if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf->fft_len) == ARM_MATH_ARGUMENT_ERROR)
+		Error_Handler("Error on RFFT instance in audio processing");
+	
+}
+void finishBasics	(void)
+{
+	// Libero memoria
+	free(HamWin);									HamWin = NULL;
+	free(pState);									pState = NULL;
+	free(Pre_enfasis_Coeef);				Pre_enfasis_Coeef = NULL;
+	free(aux2);										aux2 = NULL;
+	free(aux1);										aux1 = NULL;
 }
 void Hamming_float (float32_t *Hamming, uint32_t length)
 {
@@ -527,16 +675,16 @@ void firstProcStage 	(float32_t *filt_signal, uint16_t *audio, Proc_var *saving_
 {
 	
 	/* Convierto a Float y escalo */
-	arm_q15_to_float((q15_t*)audio, aux1, proc_conf.frame_overlap);
+	arm_q15_to_float((q15_t*)audio, aux1, proc_conf->frame_overlap);
 
 	/* Se aplica un filtro de Pre-énfais al segmento de señal obtenida */	
-	arm_fir_f32 (&FirInst, aux1, filt_signal, proc_conf.frame_overlap);
+	arm_fir_f32 (&FirInst, aux1, filt_signal, proc_conf->frame_overlap);
 
 	// Copio las variables de ser necesario
 	if(saving_var != NULL)
 	{
-		arm_copy_f32 (aux1, saving_var->speech, proc_conf.frame_overlap);
-		arm_copy_f32 (filt_signal, saving_var->FltSig, proc_conf.frame_overlap);
+		arm_copy_f32 (aux1, saving_var->speech, proc_conf->frame_overlap);
+		arm_copy_f32 (filt_signal, saving_var->FltSig, proc_conf->frame_overlap);
 	}
 }
 
@@ -544,66 +692,66 @@ void secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *savin
 {
 	
 	/* Se le aplica la ventana de Hamming al segmento obtenido */
-	arm_mult_f32 (frame_block, HamWin, aux1, proc_conf.frame_len);
+	arm_mult_f32 (frame_block, HamWin, aux1, proc_conf->frame_len);
 	
 	// Copio las variables de ser necesario
 	if(saving_var != NULL)
 	{
-		arm_copy_f32 (frame_block, saving_var->Frame, proc_conf.frame_len);
-		arm_copy_f32 (aux1, saving_var->WinSig, proc_conf.frame_len);
+		arm_copy_f32 (frame_block, saving_var->Frame, proc_conf->frame_len);
+		arm_copy_f32 (aux1, saving_var->WinSig, proc_conf->frame_len);
 	}
 		
 	/* Calculo la energía */
-	arm_power_f32 (aux1, proc_conf.frame_len, &Energy);
-	Energy /= proc_conf.frame_len;
+	arm_power_f32 (aux1, proc_conf->frame_len, &Energy);
+	Energy /= proc_conf->frame_len;
 	
 	/* Se calcula la STFT */
 	arm_rfft_fast_f32(&RFFTinst,aux1,aux2,0);
 	aux2[0] += aux2[1];				//Sumo las componentes reales
 
 	/* Calculo el módulo de la FFT */
-	arm_cmplx_mag_squared_f32  (aux2, MagFFT, proc_conf.fft_len/2);
+	arm_cmplx_mag_squared_f32  (aux2, MagFFT, proc_conf->fft_len/2);
 
 	// Copio las variables de ser necesario
 	if(saving_var != NULL)
 	{
-		arm_copy_f32 (aux2, saving_var->STFTWin, proc_conf.frame_len);
-		arm_copy_f32 (MagFFT, saving_var->MagFFT,  proc_conf.fft_len/2);
+		arm_copy_f32 (aux2, saving_var->STFTWin, proc_conf->frame_len);
+		arm_copy_f32 (MagFFT, saving_var->MagFFT,  proc_conf->fft_len/2);
 	}
 }
 void thirdProcStage 	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var)
 {
 	
 	/* Se pasa el espectro por los filtros del banco de Mel y se obtienen los coeficientes */
-	arm_mat_init_f32 (&MagFFTMtx, proc_conf.fft_len/2, 1, MagFFT);																				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
-	arm_mat_init_f32 (&MelWinMtx, proc_conf.mel_banks, 1, aux1);																				// Se crea una matriz para almacenar el resultado
+	arm_mat_init_f32 (&MagFFTMtx, proc_conf->fft_len/2, 1, MagFFT);																				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
+	arm_mat_init_f32 (&MelWinMtx, proc_conf->mel_banks, 1, aux1);																				// Se crea una matriz para almacenar el resultado
 	if(arm_mat_mult_f32(&MelFilt, &MagFFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)
 		Error_Handler("Error on thirdProcStage");
-	// MelFilt[MEL_BANKS,proc_conf.fft_len] * MagFFTMtx[proc_conf.fft_len,1] = MelWinMtx [MEL_BANKS,1]
+	// MelFilt[MEL_BANKS,proc_conf->fft_len] * MagFFTMtx[proc_conf->fft_len,1] = MelWinMtx [MEL_BANKS,1]
 	
 	/* Se obtienen los valores logaritmicos de los coeficientes */
-	arm_fill_f32 	(0, aux2, proc_conf.dct_len);
-	for (uint32_t i=0; i<proc_conf.mel_banks; i++)
+	arm_fill_f32 	(0, aux2, proc_conf->dct_len);
+	for (uint32_t i=0; i<proc_conf->mel_banks; i++)
 		aux2[i] = log10f(aux1[i]);
 	
 	// Copio las variables
 	if(saving_var != NULL)
 	{
-		arm_copy_f32 (aux1, saving_var->MelWin, proc_conf.mel_banks);
-		arm_copy_f32 (aux2, saving_var->LogWin, proc_conf.dct_len);
+		arm_copy_f32 (aux1, saving_var->MelWin, proc_conf->mel_banks);
+		arm_copy_f32 (aux2, saving_var->LogWin, proc_conf->dct_len);
 	}
 	
 	/* Se Anti-transforma aplicando la DCT-II */
 	ale_dct2_f32(&DCTinst, aux1, aux2);
 	
 	/* Se pasa la señal por un filtro en el campo Cepstral */
-	arm_mult_f32 (aux2, CepWeight, MFCC, proc_conf.lifter_length);
+	arm_mult_f32 (aux2, CepWeight, MFCC, proc_conf->lifter_length);
 
 	// Copio las variables
 	if(saving_var != NULL)
 	{
-		arm_copy_f32 (aux2, saving_var->CepWin, proc_conf.dct_len/2);
-		arm_copy_f32 (MFCC, saving_var->CepWin, proc_conf.lifter_length);
+		arm_copy_f32 (aux2, saving_var->CepWin, proc_conf->dct_len/2);
+		arm_copy_f32 (MFCC, saving_var->CepWin, proc_conf->lifter_length);
 	}
 	
 }
@@ -613,13 +761,13 @@ void VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy)
 	float32_t AM,GM;
 	
 	/* Obtengo la Fmax */
-	arm_max_f32 (MagFFT, proc_conf.fft_len/2, aux1, &Index);									// no me interesa el valor máximo, sino en que lugar se encuentra
+	arm_max_f32 (MagFFT, proc_conf->fft_len/2, aux1, &Index);									// no me interesa el valor máximo, sino en que lugar se encuentra
 	Frecmax = Index;
 	
 	/* Calculo el Spectral Flatness */
-	arm_mean_f32 (MagFFT, proc_conf.fft_len/2, &AM);	// Arithmetic Mean
-	sumlog(MagFFT, &GM, proc_conf.fft_len/2);
-	GM = expf(GM/(proc_conf.fft_len/2));													// Geometric Mean
+	arm_mean_f32 (MagFFT, proc_conf->fft_len/2, &AM);	// Arithmetic Mean
+	sumlog(MagFFT, &GM, proc_conf->fft_len/2);
+	GM = expf(GM/(proc_conf->fft_len/2));							// Geometric Mean
 	SpFlat = 10*log10f(GM/AM);
 	
 	vad->energy = Energy;
@@ -628,9 +776,9 @@ void VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy)
 }
 void deltaCoeff				(float32_t *output, float32_t *input)
 {
-	int step = proc_conf.lifter_length+1;
+	int step = proc_conf->lifter_length+1;
 	
-	for(int i=0; i < proc_conf.lifter_length+1; i++)
+	for(int i=0; i < proc_conf->lifter_length+1; i++)
 		output[i] = ( (input[3*step+i] - input[1*step+i]) + 2 * (input[4*step+i] - input[0*step+i]) ) / 10;
 }
 //
@@ -638,19 +786,19 @@ void deltaCoeff				(float32_t *output, float32_t *input)
 //
 void allocateProcVariables (Proc_var *var)
 {
-	var->speech		= pvPortMalloc(proc_conf.frame_overlap * sizeof(*(var->speech)));		// Señal de audio escalada
-	var->FltSig		= pvPortMalloc(proc_conf.frame_overlap * sizeof(*(var->FltSig)));		// Señal de audio pasada por el Filtro de Pre-Enfasis
+	var->speech		= malloc(proc_conf->frame_overlap * sizeof(*(var->speech)));		// Señal de audio escalada
+	var->FltSig		= malloc(proc_conf->frame_overlap * sizeof(*(var->FltSig)));		// Señal de audio pasada por el Filtro de Pre-Enfasis
 	
-	var->Frame		= pvPortMalloc(proc_conf.frame_len * sizeof(*(var->Frame)));		// Frame de señal
-	var->WinSig		= pvPortMalloc(proc_conf.frame_len * sizeof(*(var->WinSig)));		// Señal de filtrada multiplicada por la ventana de Hamming
+	var->Frame		= malloc(proc_conf->frame_len * sizeof(*(var->Frame)));		// Frame de señal
+	var->WinSig		= malloc(proc_conf->frame_len * sizeof(*(var->WinSig)));		// Señal de filtrada multiplicada por la ventana de Hamming
 	
-	var->STFTWin	= pvPortMalloc(proc_conf.fft_len   * sizeof(*(var->STFTWin)));	// Transformada de Fourier en Tiempo Corto
-	var->MagFFT		= pvPortMalloc(proc_conf.fft_len/2 * sizeof(*(var->MagFFT)));		// Módulo del espectro
+	var->STFTWin	= malloc(proc_conf->fft_len   * sizeof(*(var->STFTWin)));	// Transformada de Fourier en Tiempo Corto
+	var->MagFFT		= malloc(proc_conf->fft_len/2 * sizeof(*(var->MagFFT)));		// Módulo del espectro
 	
-	var->MelWin		= pvPortMalloc(proc_conf.mel_banks * sizeof(*(var->MelWin)));		// Espectro pasado por los filtros de Mel
+	var->MelWin		= malloc(proc_conf->mel_banks * sizeof(*(var->MelWin)));		// Espectro pasado por los filtros de Mel
 	
-	var->LogWin		= pvPortMalloc(proc_conf.dct_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
-	var->CepWin		= pvPortMalloc(proc_conf.dct_len/2* sizeof(*(var->CepWin)));		// Señal cepstral
+	var->LogWin		= malloc(proc_conf->dct_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
+	var->CepWin		= malloc(proc_conf->dct_len/2* sizeof(*(var->CepWin)));		// Señal cepstral
 	
 	if(var->speech == NULL || var->FltSig == NULL || var->WinSig == NULL || var->STFTWin == NULL || 
 		 var->MagFFT == NULL || var->MelWin == NULL || var->LogWin == NULL || var->CepWin == NULL)
@@ -658,15 +806,15 @@ void allocateProcVariables (Proc_var *var)
 }
 void freeProcVariables (Proc_var *var)
 {
-	vPortFree(var->speech);				var->speech = NULL;
-	vPortFree(var->FltSig);				var->FltSig = NULL;
-	vPortFree(var->Frame);				var->Frame = NULL;
-	vPortFree(var->WinSig);				var->WinSig = NULL;
-	vPortFree(var->STFTWin);			var->STFTWin = NULL;
-	vPortFree(var->MagFFT);				var->MagFFT = NULL;
-	vPortFree(var->MelWin);				var->MelWin = NULL;
-	vPortFree(var->LogWin);				var->LogWin = NULL;
-	vPortFree(var->CepWin);				var->CepWin = NULL;
+	free(var->speech);				var->speech = NULL;
+	free(var->FltSig);				var->FltSig = NULL;
+	free(var->Frame);				var->Frame = NULL;
+	free(var->WinSig);				var->WinSig = NULL;
+	free(var->STFTWin);			var->STFTWin = NULL;
+	free(var->MagFFT);				var->MagFFT = NULL;
+	free(var->MelWin);				var->MelWin = NULL;
+	free(var->LogWin);				var->LogWin = NULL;
+	free(var->CepWin);				var->CepWin = NULL;
 }
 uint8_t Open_proc_files (Proc_files *files, const bool vad)
 {
@@ -675,12 +823,12 @@ uint8_t Open_proc_files (Proc_files *files, const bool vad)
 	
 	// Escribo un archivo con los coeficientes de la ventana de Hamming			
 	if(f_open(&files->HamWinFile, "HamWin.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)Error_Handler("Error on HamWinFile open");
-	if(f_write(&files->HamWinFile, HamWin, proc_conf.frame_len * sizeof(*HamWin), &byteswritten) != FR_OK)	Error_Handler("Error on HamWinFile write");
+	if(f_write(&files->HamWinFile, HamWin, proc_conf->frame_len * sizeof(*HamWin), &byteswritten) != FR_OK)	Error_Handler("Error on HamWinFile write");
 	f_close(&files->HamWinFile);
 
 	// Escribo un archivo con los coeficientes del Filtro Cepstral
 	if(f_open(&files->CepWeiFile, "CepWei.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler("Error on CepWeiFile open");
-	if(f_write(&files->CepWeiFile, CepWeight, proc_conf.lifter_length * sizeof(*CepWeight), &byteswritten) != FR_OK)	Error_Handler("Error on CepWeiFile write");
+	if(f_write(&files->CepWeiFile, CepWeight, proc_conf->lifter_length * sizeof(*CepWeight), &byteswritten) != FR_OK)	Error_Handler("Error on CepWeiFile write");
 	f_close(&files->CepWeiFile);
 					
 	//Abro los archivos
@@ -714,23 +862,23 @@ uint8_t Append_proc_files (Proc_files *files, const Proc_var *var, const bool va
 	
 	if (stage & First_Stage)
 	{
-		if(f_write(&files->SpeechFile,  var->speech, proc_conf.frame_overlap * sizeof(*var->speech),  &byteswritten) != FR_OK)	Error_Handler("Error on SpeechFile write");
-		if(f_write(&files->FltSigFile,  var->FltSig, proc_conf.frame_overlap * sizeof(*var->FltSig),  &byteswritten) != FR_OK)	Error_Handler("Error on FltSigFile write");
+		if(f_write(&files->SpeechFile,  var->speech, proc_conf->frame_overlap * sizeof(*var->speech),  &byteswritten) != FR_OK)	Error_Handler("Error on SpeechFile write");
+		if(f_write(&files->FltSigFile,  var->FltSig, proc_conf->frame_overlap * sizeof(*var->FltSig),  &byteswritten) != FR_OK)	Error_Handler("Error on FltSigFile write");
 	}
 	
 	if(stage & Second_Stage)
 	{
-		if(f_write(&files->FrameFile,  	var->Frame,  proc_conf.frame_len * sizeof(*var->Frame), 	&byteswritten) != FR_OK)	Error_Handler("Error on FrameFile write");
-		if(f_write(&files->WinSigFile,  var->WinSig, proc_conf.frame_len * sizeof(*var->WinSig),  &byteswritten) != FR_OK)	Error_Handler("Error on WinSigFile write");
-		if(f_write(&files->STFTWinFile, var->STFTWin,proc_conf.fft_len		* sizeof(*var->STFTWin), &byteswritten) != FR_OK)	Error_Handler("Error on STFTWinFile write");
-		if(f_write(&files->MagFFTFile,  var->MagFFT, proc_conf.fft_len/2 * sizeof(*var->MagFFT),  &byteswritten) != FR_OK)	Error_Handler("Error on MagFFTFile write");
+		if(f_write(&files->FrameFile,  	var->Frame,  proc_conf->frame_len * sizeof(*var->Frame), 	&byteswritten) != FR_OK)	Error_Handler("Error on FrameFile write");
+		if(f_write(&files->WinSigFile,  var->WinSig, proc_conf->frame_len * sizeof(*var->WinSig),  &byteswritten) != FR_OK)	Error_Handler("Error on WinSigFile write");
+		if(f_write(&files->STFTWinFile, var->STFTWin,proc_conf->fft_len		* sizeof(*var->STFTWin), &byteswritten) != FR_OK)	Error_Handler("Error on STFTWinFile write");
+		if(f_write(&files->MagFFTFile,  var->MagFFT, proc_conf->fft_len/2 * sizeof(*var->MagFFT),  &byteswritten) != FR_OK)	Error_Handler("Error on MagFFTFile write");
 	}
 	
 	if(stage & Third_Stage)
 	{
-		if(f_write(&files->MelWinFile,  var->MelWin, proc_conf.mel_banks * sizeof(*var->MelWin),  &byteswritten) != FR_OK)	Error_Handler("Error on MelWinFile write");
-		if(f_write(&files->LogWinFile,  var->LogWin, proc_conf.dct_len   *	sizeof(*var->LogWin),  &byteswritten) != FR_OK)	Error_Handler("Error on LogWinFile write");
-		if(f_write(&files->CepWinFile,  var->CepWin, proc_conf.dct_len/2 * sizeof(*var->CepWin),  &byteswritten) != FR_OK)	Error_Handler("Error on CepWinFile write");
+		if(f_write(&files->MelWinFile,  var->MelWin, proc_conf->mel_banks * sizeof(*var->MelWin),  &byteswritten) != FR_OK)	Error_Handler("Error on MelWinFile write");
+		if(f_write(&files->LogWinFile,  var->LogWin, proc_conf->dct_len   *	sizeof(*var->LogWin),  &byteswritten) != FR_OK)	Error_Handler("Error on LogWinFile write");
+		if(f_write(&files->CepWinFile,  var->CepWin, proc_conf->dct_len/2 * sizeof(*var->CepWin),  &byteswritten) != FR_OK)	Error_Handler("Error on CepWinFile write");
 	}
 	
 	if(vad)
@@ -793,9 +941,9 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad)
 
 //		// Shifteo la ventana FRAME_OVERLAP veces
 //		// Para ello, shifteo lo viejo y copio el nuevo frame al final
-////		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
-////		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], saving_var->FltSig, proc_conf.frame_net * sizeof(*saving_var->FltSig));
+////		memcpy(&frame_block[proc_conf->zero_padding_left], &frame_block[proc_conf->zero_padding_left + proc_conf->frame_overlap], (proc_conf->frame_net + proc_conf->frame_overlap) * sizeof(*frame_block));
+////		memcpy(&frame_block[proc_conf->zero_padding_left + proc_conf->frame_overlap + proc_conf->frame_net], saving_var->FltSig, proc_conf->frame_net * sizeof(*saving_var->FltSig));
 //// Shifteo la ventana FRAME_OVERLAP veces
 //		// Para ello, shifteo lo viejo y copio el nuevo frame al final
-////		memcpy(&frame_block[proc_conf.zero_padding_left], &frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap], (proc_conf.frame_net + proc_conf.frame_overlap) * sizeof(*frame_block));
-////		memcpy(&frame_block[proc_conf.zero_padding_left + proc_conf.frame_overlap + proc_conf.frame_net], aux2, proc_conf.frame_net * sizeof(*aux2));
+////		memcpy(&frame_block[proc_conf->zero_padding_left], &frame_block[proc_conf->zero_padding_left + proc_conf->frame_overlap], (proc_conf->frame_net + proc_conf->frame_overlap) * sizeof(*frame_block));
+////		memcpy(&frame_block[proc_conf->zero_padding_left + proc_conf->frame_overlap + proc_conf->frame_net], aux2, proc_conf->frame_net * sizeof(*aux2));

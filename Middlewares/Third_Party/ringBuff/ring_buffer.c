@@ -86,13 +86,18 @@ ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t sh
     _this->num_clients++;
     *client_num = ++_this->client_num_assign;
 
-    // Alloco memoria para el cliente
+    // Alloco nueva memoria para el clientes
     ringBufClient *aux = malloc ( _this->num_clients * sizeof ( ringBufClient ) );
+	
+		// Copio todos loss clientes viejos 
     memcpy ( aux, _this->clients, ( _this->num_clients-1 ) * sizeof ( ringBufClient ) );
-    // Solo hay que liberar memoria mientras no sea el primer cliente
+	
+    // Eliminio la memoria anterior
     if ( _this->num_clients > 1 ) {
         free ( _this->clients );
     }
+		
+		// Guardo el puntero a la nueva memoria
     _this->clients = aux;
 
 //     if ( _this->num_clients > 1 ) {
@@ -116,26 +121,34 @@ ringBufStatus ringBuf_registClient ( ringBuf* _this, size_t read_size, size_t sh
 
 ringBufStatus ringBuf_unregistClient ( ringBuf *_this, const uint8_t client_num )
 {
-    // Resto la cantidad de clientes
-    _this->num_clients--;
+	   uint8_t client_idx;
 
-    if ( _this->num_clients > 0 ) {
-        ringBufClient *aux = _this->clients;
+    if ( _this->num_clients > 1 ) {
 
-        // Creo un nuevo espacio de memoria
-        _this->clients = malloc ( _this->num_clients * sizeof ( ringBufClient ) );
+        // Busco el índice de este cliente
+        ringBuf_findClient ( _this, client_num, &client_idx );
+
+        // Creo un nuevo espacio de memoria con un cliente menos
+        ringBufClient *aux = malloc ( (_this->num_clients-1) * sizeof ( ringBufClient ) );
 
         // Copio la info de todos los clientes menos del que estoy des-registrando
-        memcpy ( _this->clients, aux, ( client_num-1 ) * sizeof ( ringBufClient ) );
-        memcpy ( &_this->clients[client_num], &aux[client_num+1], ( _this->num_clients+1 - client_num ) * sizeof ( ringBufClient ) );
+        //Copio los que estan antes
+        memcpy ( aux, _this->clients, client_idx * sizeof ( ringBufClient ) );
+        //Copio los que estan despues
+        memcpy ( &aux[client_idx], &_this->clients[client_idx+1], ( _this->num_clients - ( client_idx+1 ) ) * sizeof ( ringBufClient ) );
 
         // libero la memoria vieja
-        free ( aux );
+        free ( _this->clients );
+        _this->clients = aux;
+
     } else {
         free ( _this->clients );
-				_this->clients = NULL;
+        _this->clients = NULL;
+        ringBuf_flush ( _this );
     }
 
+    // Resto la cantidad de clientes
+    _this->num_clients--;
 
     return BUFF_OK;
 }

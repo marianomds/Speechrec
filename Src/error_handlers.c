@@ -67,7 +67,8 @@ void HardFault_Handler(void)
 }
 
 
-void Error_Handler(char * str) {
+void Error_Handler(char * str)
+{
 
 	// Go to root directory
 	FIL log_file;

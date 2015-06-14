@@ -158,7 +158,6 @@ typedef struct QueueDefinition
 /* The old xQUEUE name is maintained above then typedefed to the new Queue_t
 name below to enable the use of older kernel aware debuggers. */
 typedef xQUEUE Queue_t;
-
 /*-----------------------------------------------------------*/
 
 /*

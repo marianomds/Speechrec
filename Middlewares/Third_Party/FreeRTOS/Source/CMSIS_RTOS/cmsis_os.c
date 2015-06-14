@@ -825,6 +825,11 @@ void osMessageDelete (osMessageQId *queue_id)
 	*queue_id = NULL;
 }
 
+void osMessageReset (osMessageQId queue_id)
+{
+	  xQueueReset (queue_id);
+}
+
 /**
 * @brief Put a Message to a Queue.
 * @param  queue_id  message queue ID obtained with \ref osMessageCreate.

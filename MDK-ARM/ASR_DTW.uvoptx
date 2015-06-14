@@ -212,12 +212,22 @@
           <WinNumber>1</WinNumber>
           <ItemText>freed,0x0A</ItemText>
         </Ww>
+        <Ww>
+          <count>4</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>audio_capture_msg,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>debug_q</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
-          <SubType>266</SubType>
-          <ItemText>\\ASR_DTW_Configuration\../Src/Application.c\pattern_storring_msg</ItemText>
+          <SubType>10</SubType>
+          <ItemText>\\ASR_DTW_Configuration\../Src/Application.c\audio_capture_msg</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>
@@ -929,7 +939,7 @@
 
   <Group>
     <GroupName>Middlewares/FreeRTOS</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -1075,7 +1085,7 @@
 
   <Group>
     <GroupName>Middlewares/ST/STM32_Audio/Addons/PDM</GroupName>
-    <tvExp>0</tvExp>
+    <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
