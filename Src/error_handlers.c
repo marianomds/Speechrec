@@ -79,6 +79,9 @@ void Error_Handler(char * str)
 	// Imprimo
 	printf ("%s\r\n", str);
 	
+	// Paro todas las tareas
+	vTaskSuspendAll();
+	
 	// Comienzo con la secuencia de leds
 	LED_On(RLED);
 	LED_On(GLED);

@@ -73,16 +73,16 @@ osThreadDef(Main, Main_Thread, osPriorityNormal, 1, 32*25);
 
 osThreadDef(AudioCapture, AudioCapture, osPriorityHigh,				1, 32*12);
 osThreadDef(AudioSave, 		AudioSave, 		osPriorityAboveNormal,1, 32*30);
-osThreadDef(AudioProcess,	AudioProcess, osPriorityNormal,			1, 32*20);
+osThreadDef(AudioProcess,	AudioProcess, osPriorityNormal,			1, 32*50);
 osThreadDef(AudioCalib, 	AudioCalib, 	osPriorityNormal,			1, 32*20);
-osThreadDef(AudioRead, 		AudioRead, 		osPriorityNormal,			1, 32*20);
+osThreadDef(AudioRead, 		AudioRead, 		osPriorityBelowNormal,1, 32*20);
 
 osThreadDef(FeatureExtraction,	featureExtraction,	osPriorityAboveNormal,	1, 32*120);
 osThreadDef(Calibration, 				calibration, 				osPriorityAboveNormal,	1, 32*80);
 osThreadDef(Recognition,				Recognition,				osPriorityAboveNormal, 	1, 32*40);
 
 osThreadDef(Keyboard, Keyboard, osPriorityRealtime, 1, configMINIMAL_STACK_SIZE);
-osThreadDef(Leds, 		Leds, 		osPriorityRealtime, 1, configMINIMAL_STACK_SIZE);
+osThreadDef(Leds, 		Leds, 		osPriorityHigh, 1, configMINIMAL_STACK_SIZE);
 
 //---------------------------------------
 //						APPLICATIONS TASKS
@@ -192,7 +192,7 @@ void Main_Thread (void const *pvParameters)
 					pat_stor_args.debug_conf = &appconf.debug_conf;
 					pat_stor_args.capt_conf = &appconf.capt_conf;
 					pat_stor_args.proc_conf = &appconf.proc_conf;
-					pat_stor_args.recognize = appconf.maintask == APP_RECOGNITION ? true:false;
+					pat_stor_args.recognize = appconf.maintask == APP_RECOGNITION;
 					
 					/* Create Tasks*/
 					osThreadCreate (osThread(AudioProcess), &pat_stor_args);
@@ -233,8 +233,8 @@ void AudioProcess (void const *pvParameters)
 	// Get arguments
 	args = (Audio_Process_args *) pvParameters;
 	
-	// Create Pattern Sotring Message Queue
-	osMessageQDef(audio_process_msg,5,uint32_t);
+	// Create Audio Process Sotring Message Queue
+	osMessageQDef(audio_process_msg,10,uint32_t);
 	audio_process_msg = osMessageCreate(osMessageQ(audio_process_msg),NULL);
 	*(args->msg_q) = audio_process_msg;
 	
@@ -248,7 +248,20 @@ void AudioProcess (void const *pvParameters)
 	feature_extract.src_msg_id =  audio_process_msg;
 	feature_extract.src_msg_val = FINISH_PROCESSING;
 	feature_extract.path = file_path;
-	feature_extract.init_complete = false;
+	
+	
+//	// DE PRUEBA DESPUES BORRAR
+//	strcpy(file_name, file_path);
+//	strcat(file_name, "/");
+//	strcat(file_name, file_path);
+//	strcat(file_name, AUDIO_FILE_EXTENSION);
+
+//// Open file for saving features
+//	f_chdir(file_path);
+//	f_open(&features_file, "features.bin", FA_CREATE_ALWAYS | FA_WRITE );
+//	f_chdir("..");
+
+//	osMessagePut(audio_process_msg,FINISH_SAVING,osWaitForever);
 	
 	/* START TASK */
 	for (;;)
@@ -271,7 +284,7 @@ void AudioProcess (void const *pvParameters)
 					// Create subdirectory for saving files here
 					f_mkdir (file_path);
 
-					// Set file_name "PTRN_xx/PTR_xx.WAV"
+					// Set file_name "REC_xx/REC_xx.WAV"
 					strcpy(file_name, file_path);
 					strcat(file_name, "/");
 					strcat(file_name, file_path);
@@ -301,11 +314,12 @@ void AudioProcess (void const *pvParameters)
 						osThreadCreate (osThread(FeatureExtraction), &feature_extract);
 
 						// Espero a que este todo inicializado
-						while(!feature_extract.init_complete);
+						while(!is_ringBuf_init(&features_buff))
+							osThreadYield();
 						
 						// Me registro como cliente en el buffer que crea audio_proc
-						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * sizeof(float32_t),
-																		(1 + args->proc_conf->lifter_length)  * sizeof(float32_t), audio_process_msg,
+						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t),
+																		(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t), audio_process_msg,
 																		FRAME_READY,	&features_buff_client_num);
 																		
 						processing = true;
@@ -341,29 +355,30 @@ void AudioProcess (void const *pvParameters)
 				case FINISH_SAVING:
 				{
 					// Process ofline
-					if (args->debug_conf->save_proc_vars)
+					if ( args->debug_conf->save_proc_vars )
 					{
 						// Create Read Audio Task
 						audio_read.buff = &audio_read_buff;
 						audio_read.capt_conf = *args->capt_conf;
 						audio_read.file_name = file_name;
 						audio_read.src_msg = audio_process_msg;
-						audio_read.init_complete = false;
 						osThreadCreate (osThread(AudioRead), &audio_read);
 						
 						// Espero a que este todo inicializado
-						while(!audio_read.init_complete);
+						while(!is_ringBuf_init(&audio_read_buff))
+							osThreadYield();
 						
 						// Start Feature Extraction process
 						feature_extract.audio_buff = &audio_read_buff;
 						osThreadCreate (osThread(FeatureExtraction), &feature_extract);
 						
 						// Espero a que este todo inicializado
-						while(!feature_extract.init_complete);
+						while(!is_ringBuf_init(&features_buff))
+							osThreadYield();
 						
 						// Me registro como cliente en el buffer que crea audio_proc
-						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * sizeof(float32_t),
-																		(1 + args->proc_conf->lifter_length)  * sizeof(float32_t), audio_process_msg,
+						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t),
+																		(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t), audio_process_msg,
 																		FRAME_READY,	&features_buff_client_num);
 
 						processing = true;
@@ -386,11 +401,9 @@ void AudioProcess (void const *pvParameters)
 				}
 				case FINISH_PROCESSING:
 				{
-					//Leo lo que me queda y lo guardo
+					//Leo lo que me queda y lo guardo y cierro el archivo
 					ringBuf_read_all ( &features_buff, features_buff_client_num, (uint8_t*) features, &bytes_written );
 					f_write(&features_file, features, bytes_written, &bytes_written);
-					
-					// Cierro el archivo
 					f_close(&features_file);
 					
 					// Me desregistro del buffer
@@ -443,7 +456,7 @@ void AudioProcess (void const *pvParameters)
 					
 					if(recognizing)
 					{
-						
+						//TODO Completar
 					}
 					
 					// Free memory
@@ -565,11 +578,10 @@ void AudioCalib (void const *pvParameters)
 						audio_read.capt_conf = *args->capt_conf;
 						audio_read.file_name = file_name;
 						audio_read.src_msg = calibration_msg;
-						audio_read.init_complete = false;
 						osThreadCreate (osThread(AudioRead), &audio_read);
 						
 						// Espero a que este todo inicializado
-						while(!audio_read.init_complete);
+						while(!is_ringBuf_init(&audio_read_buff));
 						
 						// Create AudioCalib Task
 						calib_args.audio_buff = &audio_read_buff;
@@ -579,7 +591,9 @@ void AudioCalib (void const *pvParameters)
 					}
 					// Si trabajo online ==> tengo que terminar la calibración
 					else
+					{
 						osMessagePut(calib_args.calib_msg_id, CALIB_FINISH, osWaitForever);
+					}
 
 					recording = false;
 					break;
@@ -630,21 +644,18 @@ void AudioCalib (void const *pvParameters)
 void Recognition (void const *pvParameters)
 {
 	// Message variables
-//	osEvent event;
 	Recognition_args *args = NULL;
-//	bool recognising = true;
 	
 	// Utterance variables
-//	float32_t *utterance = NULL;
-	FIL utterance_file, pat_file;
+	float32_t *utterance = NULL;
+	FIL utterance_file;
 	UINT bytes_read;
-//	size_t utterance_size;
-//	arm_matrix_instance_f32 utterance_mtx;
+	size_t utterance_size;
+	arm_matrix_instance_f32 utterance_mtx;
 	
 	// Patterns variables
 	Patterns *pat = NULL;
 	uint32_t pat_num = 0,pat_reco = 0;
-	char *pat_file_name = NULL;
 	
 	// Output info variables
 	FIL result;
@@ -670,60 +681,41 @@ void Recognition (void const *pvParameters)
 		{
 			// Allocate memroy for distance and initialize
 			dist = malloc(pat_num * sizeof(*dist));
-//			for(int i=0; i < pat_num ; i++)
-//				dist[i] = FLT_MAX;
+			for(int i=0; i < pat_num ; i++)
+				dist[i] = FLT_MAX;
 			
 			// Open utterance folder and stay here
 			f_chdir(args->utterance_path);
 			
 			f_open(&utterance_file, "features.bin", FA_OPEN_EXISTING | FA_READ);		// Open File
-//			utterance_size = f_size (&utterance_file);														// Check data size
-//			utterance = malloc(utterance_size);																		// Allocate memory
-//			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
-//			f_close(&utterance_file);																							// Close file
-//			f_chdir ("..");																												// Leave from utterance file
-//			
-//			arm_mat_init_f32 (&utterance_mtx, (utterance_size / sizeof(*utterance)) / appconf.proc_conf.lifter_length , appconf.proc_conf.lifter_length, utterance);
+			utterance_size = f_size (&utterance_file);														// Check data size
+			utterance = malloc(utterance_size);																		// Allocate memory
+			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
+			f_close(&utterance_file);																							// Close file
+			
+			arm_mat_init_f32 (&utterance_mtx, utterance_size / (sizeof(*utterance) * 3 * (1+appconf.proc_conf.lifter_length)), 3 * (1+appconf.proc_conf.lifter_length), utterance);
 			
 			// Search for minimun distance between patterns and utterance
 			for(int i=0; i < pat_num ; i++)
 			{
-	//			// Load pattern
-	//			if( !loadPattern (&pat[i], (1+args->proc_conf->lifter_length) * 3) )
-	//				continue;
-
-				// Abro el archivo del patron
-					// Set complete pattern file_name
-				pat_file_name = malloc( strlen("0:/") + strlen(args->patterns_path) + 1 + strlen(pat[i].pat_name) + 1 + strlen("features.bin") + 1 );
-				sprintf(pat_file_name,"0:/%s/%s/features.bin",args->patterns_path,pat[i].pat_name);
-				if(f_open(&pat_file, pat_file_name, FA_READ) != FR_OK)		// Open pattern file_name
+				// Load pattern
+				if( !loadPattern (&pat[i], (1+args->proc_conf->lifter_length) * 3, args->patterns_path ) )
 					continue;
-				free (pat_file_name);			pat_file_name = NULL; 					// Free memory
-				
-				
+
 				// Get distance
-	//			dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, appconf.debug_conf.save_dist);		
-						// Abro un archivo para salvar la matriz de distancia
-//				dist[i] = dtw_files (&utterance_file, &pat_file, 3 * (args->proc_conf->lifter_length+1), args->save_dist);
-				dist[i] = dtw_files_reduce (&utterance_file, &pat_file, 3 * (args->proc_conf->lifter_length+1), args->save_dist);
-				
-				// Close Pattern file
-				f_close(&pat_file);
+				dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, args->save_dist);
 
 				// Check if distance is shorter
 				if( i == 0 ||dist [i] < dist[pat_reco])
 					pat_reco = i;
 				
 				// Free memory
-	//			free(pat[i].pattern_mtx.pData);
-	//			pat[i].pattern_mtx.pData = NULL;
-	//			pat[i].pattern_mtx.numCols = 0;
-	//			pat[i].pattern_mtx.numRows = 0;
+				free(pat[i].pattern_mtx.pData);
+				pat[i].pattern_mtx.pData = NULL;
+				pat[i].pattern_mtx.numCols = 0;
+				pat[i].pattern_mtx.numRows = 0;
 			}
 			
-			// Close utterance file
-			f_close(&utterance_file);
-											
 			// Save distances
 			if(appconf.debug_conf.save_dist)
 			{
@@ -731,7 +723,6 @@ void Recognition (void const *pvParameters)
 				f_write(&result, dist, pat_num*sizeof(*dist),&bytes_read);
 				f_close(&result);
 			}
-			free(dist);							dist = NULL;
 
 			// Leave utterance folder
 			f_chdir ("..");
@@ -746,13 +737,12 @@ void Recognition (void const *pvParameters)
 
 		}
 		/****************** FINISH RECOGNIZING *******************/
-		//		recognising = false;
 		proc_state = NOTHING;
 
 		// Free memory
-//		free(utterance);				utterance = NULL;
+		free(utterance);				utterance = NULL;
 		free(pat);							pat = NULL;
-//		free(dist);							dist = NULL;
+		free(dist);							dist = NULL;
 		
 		// Send message telling I'm finish
 		osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
@@ -761,6 +751,7 @@ void Recognition (void const *pvParameters)
 		osThreadTerminate (osThreadGetId());
 	}
 }
+
 void AudioCapture (void const * pvParameters)
 {
 
@@ -980,8 +971,6 @@ void AudioRead (void const * pvParameters)
 	if( ringBuf_init(args->buff, args->capt_conf.frame_size * args->capt_conf.ring_buff_size * sizeof(*audio_frame), false) != BUFF_OK )
 		Error_Handler("Error on ring buffer init in AudioCapture");
 	
-	args->init_complete = true;
-	
 	/* START TASK */
 	for (;;)
 	{
@@ -1004,6 +993,7 @@ void AudioRead (void const * pvParameters)
 			{
 				// Copy frame to buffer
 				ring_status = ringBuf_write ( args->buff, (uint8_t*) audio_frame, bytesread );
+				osThreadYield();
 			}while (ring_status != BUFF_OK);
 		}
 		
@@ -1014,8 +1004,8 @@ void AudioRead (void const * pvParameters)
 		osMessagePut(args->src_msg, FINISH_READING, osWaitForever);
 		
 		// Espero a que todos los clinetes terminen de leer el buffer
-		while( !is_ringBuf_empty ( args->buff ) )
-			osDelay(10);
+		while( has_ringBuf_clients ( args->buff ) )
+			osThreadYield();
 
 		// Elimino el buffer
 		ringBuf_deinit(args->buff);
@@ -1263,6 +1253,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->proc_conf.mel_banks			= (uint16_t)		ini_getl		("SPConf", "MEL_BANKS",				MEL_BANKS,				filename);
 	config->proc_conf.dct_len				= (uint16_t)		ini_getl		("SPConf", "DCT_LEN", 				DCT_LEN,					filename);
 	config->proc_conf.lifter_length	= (uint16_t)		ini_getl		("SPConf", "LIFTER_LENGTH",		LIFTER_LENGTH,		filename);
+	config->proc_conf.theta					= (uint8_t)			ini_getl		("SPConf", "THETA",						THETA,						filename);
 	config->proc_conf.vad						= 							ini_getbool	("SPConf", "VAD",							VAD_ENABLE,				filename);
 	
 // Read AudioCalib configuration
@@ -1318,45 +1309,41 @@ uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *p
 	* @param  Filename to read
   * @retval OK-->"1"  Error-->"0"
   */
-uint8_t loadPattern (Patterns *pat, uint32_t vector_length)
+uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path)
 {
 	
 	FIL File;
 	UINT bytesread;
 	uint8_t output = 0;
-	struct VC *ptr;
+	float32_t *ptr;
 	uint32_t file_size;
-	uint32_t VC_length;
-	
-	// Abro la carpeta donde estan los patrones
-	if (f_chdir (pat->pat_name) == FR_OK)
-	{	
-		//Abro el archivo
-		if(f_open(&File, "MFCC.BIN", FA_READ) == FR_OK)		// Abro el archivo
-		{
-			// Me fijo el tamaño del archivo
-			file_size = f_size (&File);
-			VC_length = file_size / sizeof(float32_t);
-			
-			// Aloco la memoria necesaria para almacenar en memoria todos los Vectores de Características
-			if( ( ptr = (struct VC *) malloc(file_size) ) != NULL )
-				// Leo el archivo con los patrones
-				if(f_read (&File, ptr, file_size, &bytesread) == FR_OK)
-				{
-					output = 1;
-					arm_mat_init_f32 (&pat->pattern_mtx, VC_length / vector_length , vector_length, (float32_t *) ptr);
-					
-					//TODO: se reemplazo appconf.proc_conf.lifter_length por vector_length
-				}
-			
-			// Cierro el archivo
-			f_close(&File);
-		}
+	char *pat_file_name;
+
+	pat_file_name = malloc( strlen("0:/") + strlen(pat_path) + 1 + strlen(pat->pat_name) + 1 + strlen("features.bin") + 1 );
+	sprintf(pat_file_name,"0:/%s/%s/features.bin", pat_path, pat->pat_name);
+
+	//Abro el archivo
+	if(f_open(&File, pat_file_name, FA_READ) == FR_OK)		// Abro el archivo
+	{
+		// Me fijo el tamaño del archivo
+		file_size = f_size (&File);
 		
-		// Go back to original directory
-		f_chdir ("..");
+		// Aloco la memoria necesaria para almacenar en memoria todos los Vectores de Características
+		if( ( ptr = malloc(file_size) ) != NULL )
+			
+			// Leo el archivo con los patrones
+			if(f_read (&File, ptr, file_size, &bytesread) == FR_OK)
+			{
+				output = 1;
+				arm_mat_init_f32 (&pat->pattern_mtx, file_size / vector_length / sizeof(float32_t) , vector_length, (float32_t *) ptr);
+			}
+		
+		// Cierro el archivo
+		f_close(&File);
 	}
 
+	// Free memory
+	free (pat_file_name);
 	
 	return output;
 }
@@ -1396,4 +1383,145 @@ void User_Button_EXTI (void)
 //						audio_save.file_name = "PTRN_00/copy.wav";
 //						for(; f_stat(audio_save.file_name ,NULL)!= FR_NO_FILE; updateFilename(audio_save.file_name));
 //						osThreadCreate (osThread(AudioSave), &audio_save);
+
+
+
+
+
+
+//void Recognition (void const *pvParameters)
+//{
+//	// Message variables
+////	osEvent event;
+//	Recognition_args *args = NULL;
+////	bool recognising = true;
+//	
+//	// Utterance variables
+////	float32_t *utterance = NULL;
+//	FIL utterance_file, pat_file;
+//	UINT bytes_read;
+////	size_t utterance_size;
+////	arm_matrix_instance_f32 utterance_mtx;
+//	
+//	// Patterns variables
+//	Patterns *pat = NULL;
+//	uint32_t pat_num = 0,pat_reco = 0;
+//	char *pat_file_name = NULL;
+//	
+//	// Output info variables
+//	FIL result;
+//	float32_t *dist = NULL;
+//	
+//	// Get arguments
+//	args = (Recognition_args *) pvParameters;
+//	
+//					
+//	/* START TASK */
+//	for(;;)
+//	{	
+//		proc_state = RECOGNIZING;
+//		
+//		// --------------- Load spoken word ---------------
+//		// Read Patterns config file
+//		f_chdir(args->patterns_path);
+//		readPaternsConfigFile (PAT_CONF_FILE, &pat, &pat_num);
+//		f_chdir("..");
+
+//				
+//		if ( pat_num != 0)
+//		{
+//			// Allocate memroy for distance and initialize
+//			dist = malloc(pat_num * sizeof(*dist));
+////			for(int i=0; i < pat_num ; i++)
+////				dist[i] = FLT_MAX;
+//			
+//			// Open utterance folder and stay here
+//			f_chdir(args->utterance_path);
+//			
+//			f_open(&utterance_file, "features.bin", FA_OPEN_EXISTING | FA_READ);		// Open File
+////			utterance_size = f_size (&utterance_file);														// Check data size
+////			utterance = malloc(utterance_size);																		// Allocate memory
+////			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
+////			f_close(&utterance_file);																							// Close file
+////			f_chdir ("..");																												// Leave from utterance file
+////			
+////			arm_mat_init_f32 (&utterance_mtx, (utterance_size / sizeof(*utterance)) / appconf.proc_conf.lifter_length , appconf.proc_conf.lifter_length, utterance);
+//			
+//			// Search for minimun distance between patterns and utterance
+//			for(int i=0; i < pat_num ; i++)
+//			{
+//	//			// Load pattern
+//	//			if( !loadPattern (&pat[i], (1+args->proc_conf->lifter_length) * 3) )
+//	//				continue;
+
+//				// Abro el archivo del patron
+//					// Set complete pattern file_name
+//				pat_file_name = malloc( strlen("0:/") + strlen(args->patterns_path) + 1 + strlen(pat[i].pat_name) + 1 + strlen("features.bin") + 1 );
+//				sprintf(pat_file_name,"0:/%s/%s/features.bin",args->patterns_path,pat[i].pat_name);
+//				if(f_open(&pat_file, pat_file_name, FA_READ) != FR_OK)		// Open pattern file_name
+//					continue;
+//				free (pat_file_name);			pat_file_name = NULL; 					// Free memory
+//				
+//				
+//				// Get distance
+//	//			dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, appconf.debug_conf.save_dist);		
+//						// Abro un archivo para salvar la matriz de distancia
+////				dist[i] = dtw_files (&utterance_file, &pat_file, 3 * (args->1+proc_conf->lifter_length), args->save_dist);
+//				dist[i] = dtw_files_reduce (&utterance_file, &pat_file, 3 * (args->1+proc_conf->lifter_length), args->save_dist);
+//				
+//				// Close Pattern file
+//				f_close(&pat_file);
+
+//				// Check if distance is shorter
+//				if( i == 0 ||dist [i] < dist[pat_reco])
+//					pat_reco = i;
+//				
+//				// Free memory
+//	//			free(pat[i].pattern_mtx.pData);
+//	//			pat[i].pattern_mtx.pData = NULL;
+//	//			pat[i].pattern_mtx.numCols = 0;
+//	//			pat[i].pattern_mtx.numRows = 0;
+//			}
+//			
+//			// Close utterance file
+//			f_close(&utterance_file);
+//											
+//			// Save distances
+//			if(appconf.debug_conf.save_dist)
+//			{
+//				f_open (&result, "Dist.bin", FA_WRITE | FA_OPEN_ALWAYS);				// Load result file
+//				f_write(&result, dist, pat_num*sizeof(*dist),&bytes_read);
+//				f_close(&result);
+//			}
+//			free(dist);							dist = NULL;
+
+//			// Leave utterance folder
+//			f_chdir ("..");
+
+//			// Record in file wich pattern was spoken
+//			open_append (&result,"Spoken");																					// Load result file
+//			if (dist[pat_reco] != FLT_MAX)
+//				f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
+//			else
+//				f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
+//			f_close(&result);
+
+//		}
+//		/****************** FINISH RECOGNIZING *******************/
+//		//		recognising = false;
+//		proc_state = NOTHING;
+
+//		// Free memory
+////		free(utterance);				utterance = NULL;
+//		free(pat);							pat = NULL;
+////		free(dist);							dist = NULL;
+//		
+//		// Send message telling I'm finish
+//		osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
+//		
+//		// Kill thread
+//		osThreadTerminate (osThreadGetId());
+//	}
+//}
+
 

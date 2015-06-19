@@ -47,6 +47,7 @@
 #define MEL_BANKS											20
 #define DCT_LEN												32			// Tiene que ser mayor a 2*MEL_BANKS
 #define LIFTER_LENGTH									12
+#define THETA													2
 #define	VAD_ENABLE										true
 
 #define THD_Scl_ENERGY								2

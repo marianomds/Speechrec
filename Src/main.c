@@ -172,17 +172,11 @@ void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
 	
-	char msg[80];
+	char msg[200];
   /* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 	
 	sprintf(msg,"Wrong parameters value: file %s on line %d\r\n", file, line);
-
-	// Guardo el mensaje
-	FIL log_file;
-	open_append(&log_file,"0:/log.txt");
-	f_printf(&log_file, "%s", msg);
-	f_close(&log_file);
 	
 	Error_Handler(msg);
   /* USER CODE END 6 */

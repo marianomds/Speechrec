@@ -53,6 +53,9 @@ typedef struct
 	
 	// Liftering
 	uint16_t	lifter_length;
+	
+	// Delta coefficients
+	uint8_t theta;
 
 	// VAD
 	bool			vad;
@@ -86,6 +89,7 @@ typedef struct
 	float32_t *MelWin;			// Espectro pasado por los filtros de Mel
 	float32_t *LogWin;			// Logaritmo del espectro filtrado
 	float32_t *CepWin;			// Señal cepstral
+	float32_t *MFCC;				// Coeficientes MFCC
 	uint8_t 	VAD;					// Indica si es salida de voz o no
 }Proc_var;
 
@@ -107,6 +111,7 @@ typedef struct
 	FIL MelWinFile;
 	FIL LogWinFile;
 	FIL CepWinFile;
+	FIL MFCCFile;
 	
 	// When VAD Activated
 	FIL VADFile;
@@ -131,7 +136,6 @@ typedef struct
 	uint32_t	src_msg_val;
 	char *path;
 	osMessageQId proc_msg_id;
-	bool init_complete;
 }Feature_Extraction_args;
 
 
@@ -365,7 +369,7 @@ void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void deltaCoeff				(float32_t *output, float32_t *input);
+void deltaCoeff				(float32_t *output, float32_t *input, uint8_t theta, uint8_t num_params);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save

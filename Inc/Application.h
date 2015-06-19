@@ -132,16 +132,6 @@ typedef struct
 	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
 }Patterns;
 
-/**
-	*	\struct
-  *	\brief Vector Cuantization
-	*/
-typedef struct
-{
-	float32_t Energy;
-	float32_t MFCC[LIFTER_LENGTH];
-}VC;
-
 
 //---------------------------------------------------------------------------------
 //																INTERRUPTION FUNCTIONS
@@ -186,7 +176,7 @@ uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *p
 	* @param  
   * @retval 
   */
-uint8_t loadPattern (Patterns *pat, uint32_t vector_length);
+uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path);
 
 
 //---------------------------------------------------------------------------------
@@ -308,7 +298,6 @@ typedef struct
 	ringBuf *buff;
 	char * file_name;
 	osMessageQId src_msg;
-	bool init_complete;
 }Audio_Read_args;
 
 /**

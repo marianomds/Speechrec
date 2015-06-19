@@ -55,11 +55,11 @@ typedef struct ringBuf {
 typedef enum {
     BUFF_EMPTY,
     BUFF_FULL,
-    BUFF_ERROR,
     BUFF_NOT_ENOGH_SPACE,
     BUFF_NOT_READY,
     BUFF_NO_CLIENTS,
     BUFF_NOT_A_CLIENT,
+    BUFF_ERROR,
     BUFF_OK,
 } ringBufStatus;
 
@@ -67,21 +67,25 @@ typedef enum {
 ringBufStatus ringBuf_init ( ringBuf* _this, const size_t buff_size, bool can_override );
 ringBufStatus ringBuf_deinit ( ringBuf *_this );
 ringBufStatus ringBuf_flush ( ringBuf *_this );
-static void ringBuf_updateCount ( ringBuf *_this );
-
-static ringBufStatus ringBuf_read ( ringBuf* _this, uint8_t** ptr, uint32_t* count, size_t read_size, size_t shift_size, uint8_t* output );
-ringBufStatus ringBuf_write ( ringBuf* _this, const uint8_t* input, const size_t write_size );
 
 ringBufStatus ringBuf_registClient ( ringBuf *_this, size_t read_size, size_t shift_size, osMessageQId msg_id, uint32_t msg_val, uint8_t *client_num );
 ringBufStatus ringBuf_unregistClient ( ringBuf *_this, const uint8_t client_num );
-ringBufStatus ringBuf_findClient ( ringBuf *_this, const uint8_t client, uint8_t *idx );
-
+ringBufStatus ringBuf_shift_Client ( ringBuf *_this, const uint8_t client_num, size_t shift_size );
+	
+ringBufStatus ringBuf_write ( ringBuf* _this, const uint8_t* input, const size_t write_size );
 ringBufStatus ringBuf_read_const ( ringBuf *_this, uint8_t client, uint8_t *output );
 ringBufStatus ringBuf_read_var ( ringBuf *_this, uint8_t client, size_t read_size, size_t shift_size, uint8_t *output );
 ringBufStatus ringBuf_read_all ( ringBuf *_this, uint8_t client, uint8_t *output, size_t *read_size );
 
-bool  is_ringBuf_empty ( ringBuf *_this );
-bool  is_ringBuf_full ( ringBuf *_this );
+bool is_ringBuf_init			( ringBuf *_this );
+bool is_ringBuf_empty 		( ringBuf *_this );
+bool is_ringBuf_full 			( ringBuf *_this );
+bool has_ringBuf_clients	( ringBuf *_this );
+
+static void ringBuf_updateCount ( ringBuf *_this );
+static ringBufStatus ringBuf_read ( ringBuf* _this, uint8_t** ptr, uint32_t* count, size_t read_size, size_t shift_size, uint8_t* output );
+static ringBufStatus ringBuf_findClient ( ringBuf *_this, const uint8_t client, uint8_t *idx );
+
 
 #ifdef __cplusplus
 }

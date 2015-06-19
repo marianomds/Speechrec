@@ -178,7 +178,7 @@ static const float32_t Weights_32[64] = {
  * @param[in,out] *S         points to an instance of floating-point DCT4/IDCT4 structure.   
  * @param[in]     *S_RFFT    points to an instance of floating-point RFFT/RIFFT structure.   
  * @param[in]     *S_CFFT    points to an instance of floating-point CFFT/CIFFT structure.   
- * @param[in]     N      length of the DCT4.   
+ * @param[in]     N					 length of the DCT4.   
  * @param[in]     Nby2       half of the length of the DCT4.   
  * @param[in]     normalize  normalizing factor.   
  * @return        arm_status function returns ARM_MATH_SUCCESS if initialization is successful or ARM_MATH_ARGUMENT_ERROR if <code>fftLenReal</code> is not a supported transform length.   

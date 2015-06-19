@@ -71,7 +71,7 @@ static float32_t *CepWeight = NULL; 					// [LIFTER_length];
 
 static arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBank};
 		
-static arm_matrix_instance_f32 				MagFFTMtx, MelWinMtx;
+static arm_matrix_instance_f32 					MagFFTMtx, MelWinMtx;
 static arm_fir_instance_f32 						FirInst;	
 static arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
 static ale_dct2_instance_f32						DCTinst;
@@ -117,17 +117,20 @@ void featureExtraction (void const *pvParameters)
 	// Task variables
 	Feature_Extraction_args *args;
 	osEvent event;
-	uint8_t *aux;
+	float32_t *aux;
 	uint32_t read_size;
 	VAD_var vad_vars;
 	bool finish = false;	
-
+	bool first_time = true;
+	uint32_t frame_num = 0;
+	uint32_t speech_num = 0;
+	
 	// Degug variables
 	Proc_var *debug_vars = NULL;
 	Proc_files *debug_files = NULL;
 
 	// Buffers variables
-	ringBuf flt_buff, mfcc_buff, delta_buff, delta2_buff;
+	ringBuf flt_buff = {NULL}, mfcc_buff = {NULL}, delta_buff = {NULL}, delta2_buff = {NULL};
 	uint8_t proc_audio_client, proc_flt_client, proc_mfcc_client, proc_delta_client;
 	uint8_t packg_mfcc_client, packg_delta_client, packg_delta2_client;
 	
@@ -148,10 +151,10 @@ void featureExtraction (void const *pvParameters)
 	
 	// Init Ring Buffers
 	ringBuf_init ( &flt_buff, 		args->proc_conf->frame_overlap 				* 	10 		* sizeof(float32_t), false);
-	ringBuf_init ( &mfcc_buff, 		(1 + args->proc_conf->lifter_length)	* (5 + 5) * sizeof(float32_t), false);
-	ringBuf_init ( &delta_buff, 	(1 + args->proc_conf->lifter_length)	* (5 + 5) * sizeof(float32_t), false);
-	ringBuf_init ( &delta2_buff,	(1 + args->proc_conf->lifter_length)	* 	10 		* sizeof(float32_t), false);
-	ringBuf_init ( args->features_buff,(1 + args->proc_conf->lifter_length)*3*		10 		* sizeof(float32_t), false);
+	ringBuf_init ( &mfcc_buff, 		(1 + args->proc_conf->lifter_length)	* (10 + 5) * sizeof(float32_t), false);
+	ringBuf_init ( &delta_buff, 	(1 + args->proc_conf->lifter_length)	* (10 + 5) * sizeof(float32_t), false);
+	ringBuf_init ( &delta2_buff,	(1 + args->proc_conf->lifter_length)	* 	5 		* sizeof(float32_t), false);
+	ringBuf_init ( args->features_buff,(1 + args->proc_conf->lifter_length)*3*		20 		* sizeof(float32_t), false);
 
 	// Register Proc Clients in Ring Buffers
 	ringBuf_registClient ( args->audio_buff,			args->proc_conf->frame_overlap * 1 * sizeof(uint16_t),	args->proc_conf->frame_overlap			* sizeof(uint16_t),	proc_msg, PROC_BUFF_READY,	&proc_audio_client);
@@ -184,8 +187,6 @@ void featureExtraction (void const *pvParameters)
 			f_chdir("..");
 	}
 	
-	args->init_complete = true;
-	
 	//---------------------------- START TASK ----------------------------
 	for(;;)
 	{
@@ -197,17 +198,18 @@ void featureExtraction (void const *pvParameters)
 				case PROC_BUFF_READY:
 				{
 					// Leemos del buffer de audio y procesamos la primera parte
-					while ( ringBuf_read_const( args->audio_buff, proc_audio_client, aux ) == BUFF_OK)
+					while ( ringBuf_read_const( args->audio_buff, proc_audio_client, (uint8_t*) aux ) == BUFF_OK)
 					{
+						speech_num++;
 						// Procesamos la primera parte
-						firstProcStage ( (float32_t*) aux, (uint16_t*) aux, debug_vars);
+						firstProcStage ( aux, (uint16_t*) aux, debug_vars);
 						
 						// Save info if necesary
 						if(args->save_to_files)
 							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
 						
 						// Guardamos la info en el buffer
-						ringBuf_write  ( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
+						ringBuf_write  ( &flt_buff, (uint8_t*) aux, proc_conf->frame_overlap * sizeof(float32_t));
 					}
 									
 					break;
@@ -217,23 +219,24 @@ void featureExtraction (void const *pvParameters)
 					finish = true;
 					
 					// Leemos lo que queda en el buffer de audio
-					ringBuf_read_all( args->audio_buff, proc_audio_client, aux, &read_size );
+					ringBuf_read_all( args->audio_buff, proc_audio_client, (uint8_t*) aux, &read_size );
 					
 					// Si pudo leer algo
 					if(read_size > 0)
 					{
+						speech_num++;
 						// Hago zero padding de ser necesario
-						memset(&aux[read_size], 0, proc_conf->frame_overlap * sizeof(uint16_t) - read_size);	
+						memset(&aux[read_size/sizeof(float32_t)], 0, proc_conf->frame_overlap * sizeof(uint16_t) - read_size);	
 						
 						 // Procesamos la primera parte
-						firstProcStage 	( (float32_t*) aux, (uint16_t*) aux, debug_vars);
+						firstProcStage 	( aux, (uint16_t*) aux, debug_vars);
 						
 						// Save info if necesary
 						if(args->save_to_files)
 							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
 							
 						// Guardamos la info en el buffer
-						ringBuf_write 	( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
+						ringBuf_write 	( &flt_buff, (uint8_t*) aux, proc_conf->frame_overlap * sizeof(float32_t));
 					}
 					
 					break;
@@ -272,8 +275,8 @@ void featureExtraction (void const *pvParameters)
 					osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
 					
 					// Espero a que todos los clinetes terminen de leer el buffer
-					while( !is_ringBuf_empty ( args->features_buff ) )
-						osDelay(10);
+					while( has_ringBuf_clients ( args->features_buff ) )
+						osDelay(1);
 
 					// Elimino el buffer
 					ringBuf_deinit(args->features_buff);
@@ -286,20 +289,21 @@ void featureExtraction (void const *pvParameters)
 			}
 			
 			// Process filt audio while it's posible
-			while (ringBuf_read_const ( &flt_buff, proc_flt_client, aux ) == BUFF_OK)
+			while (ringBuf_read_const ( &flt_buff, proc_flt_client, (uint8_t*) aux ) == BUFF_OK)
 			{
+				frame_num++;
 				// Process Second stage
-				secondProcStage	( (float32_t*) aux, (float32_t*) aux, debug_vars);
+				secondProcStage	( aux, aux, debug_vars);
 				
 				// Save info if necesary
 				if(args->save_to_files)
 					Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, Second_Stage );
 				
 				// Process VAD
-				VADFeatures ( &vad_vars, (float32_t*) aux, Energy);
+				VADFeatures ( &vad_vars, aux, Energy);
 				
 				// Process Third stage
-				thirdProcStage	( (float32_t*) aux, (float32_t*) aux, debug_vars);
+				thirdProcStage	( aux, aux, debug_vars);
 				
 				// Save info if necesary
 				if(args->save_to_files)
@@ -310,25 +314,39 @@ void featureExtraction (void const *pvParameters)
 			}
 			
 			// Process mfcc while it's posible
-			while (ringBuf_read_const ( &mfcc_buff, proc_mfcc_client, aux ) == BUFF_OK)
+			while (ringBuf_read_const ( &mfcc_buff, proc_mfcc_client, (uint8_t*) aux ) == BUFF_OK)
 			{
-				deltaCoeff ( (float32_t*) aux, (float32_t*) aux);
-				ringBuf_write (&delta_buff, aux, (proc_conf->lifter_length+1) * sizeof(float32_t));
+				deltaCoeff ( aux1, aux, proc_conf->theta, 1+proc_conf->lifter_length);
+				ringBuf_write (&delta_buff, (uint8_t*) aux1, (1+proc_conf->lifter_length) * sizeof(float32_t));
 			}
 
 			// Process delta_mfcc while it's posible
-			while (ringBuf_read_const ( &delta_buff, proc_delta_client, aux ) == BUFF_OK)
+			while (ringBuf_read_const ( &delta_buff, proc_delta_client, (uint8_t*) aux ) == BUFF_OK)
 			{
-				deltaCoeff ( (float32_t*) aux, (float32_t*) aux);
-				ringBuf_write (&delta2_buff, aux, (proc_conf->lifter_length+1) * sizeof(float32_t));
+				deltaCoeff ( aux1, aux, proc_conf->theta, 1+proc_conf->lifter_length);
+				ringBuf_write (&delta2_buff, (uint8_t*)aux1, (1+proc_conf->lifter_length) * sizeof(float32_t));
 			}
 			
 			//Package mfcc, delta & delta2 and save in a buff
-			if ( ringBuf_read_const ( &mfcc_buff, packg_mfcc_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 0] ) == BUFF_OK )
-				if ( ringBuf_read_const ( &delta_buff, packg_delta_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 1] ) == BUFF_OK )
-					if ( ringBuf_read_const ( &delta2_buff, packg_delta2_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 2] ) == BUFF_OK )
-						ringBuf_write (args->features_buff, (uint8_t*) aux, (proc_conf->lifter_length+1)*3 * sizeof(float32_t));
-						
+			while ( ringBuf_read_const ( &delta2_buff, packg_delta2_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 2 ] ) == BUFF_OK )
+			{
+				// Si es la primera vez que puedo leer los coeficientes doble delta shifteo los buffers delta y mfcc
+				if(first_time)
+				{
+					ringBuf_shift_Client ( &mfcc_buff, packg_mfcc_client, (1+proc_conf->lifter_length) * 4 * sizeof(float32_t) );
+					ringBuf_shift_Client ( &delta_buff, packg_delta_client, (1+proc_conf->lifter_length) * 2 * sizeof(float32_t) );
+					first_time = false;
+				}
+				
+				// Ahora leo esos buffers
+				ringBuf_read_const ( &delta_buff, packg_delta_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 1] );
+				ringBuf_read_const ( &mfcc_buff, packg_mfcc_client, (uint8_t*) &aux[ (1+proc_conf->lifter_length) * 0] );
+				
+				// Grabo en un archivo
+				ringBuf_write (args->features_buff, (uint8_t*) aux, (1+proc_conf->lifter_length) * 3 * sizeof(float32_t));
+			}
+			
+			
 			// Finish task
 			if(finish)
 				osMessagePut(proc_msg,PROC_KILL,0);
@@ -341,7 +359,7 @@ void calibration (void const *pvParameters)
 	// Task variables
 	Calib_args *args;
 	osEvent event;
-	uint8_t *aux;
+	float32_t *aux;
 	VAD_var vad_vars;
 	uint32_t frame_num = 0;
 	
@@ -350,7 +368,7 @@ void calibration (void const *pvParameters)
 	Proc_files *debug_files = NULL;
 
 	// Buffers variables
-	ringBuf flt_buff;
+	ringBuf flt_buff = {NULL};
 	uint8_t calib_audio_client, calib_flt_client;
 	
 	// Get arguments
@@ -406,17 +424,17 @@ void calibration (void const *pvParameters)
 				case CALIB_BUFF_READY:
 				{
 					// Leemos del buffer de audio y procesamos la primera parte
-					while ( ringBuf_read_const( args->audio_buff, calib_audio_client, aux ) == BUFF_OK)
+					while ( ringBuf_read_const( args->audio_buff, calib_audio_client, (uint8_t*) aux ) == BUFF_OK)
 					{
 						// Procesamos la primera parte
-						firstProcStage ( (float32_t*) aux, (uint16_t*) aux, debug_vars);
+						firstProcStage ( aux, (uint16_t*) aux, debug_vars);
 						
 						// Save info if necesary
 						if(args->save_to_files)
 							Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, First_Stage);
 						
 						// Guardamos la info en el buffer
-						ringBuf_write  ( &flt_buff, aux, proc_conf->frame_overlap * sizeof(float32_t));
+						ringBuf_write  ( &flt_buff, (uint8_t*) aux, proc_conf->frame_overlap * sizeof(float32_t));
 					}
 									
 					break;
@@ -512,17 +530,17 @@ void calibration (void const *pvParameters)
 			}
 			
 			// Process filt audio while it's posible
-			while (ringBuf_read_const ( &flt_buff, calib_flt_client, aux ) == BUFF_OK)
+			while (ringBuf_read_const ( &flt_buff, calib_flt_client, (uint8_t*) aux ) == BUFF_OK)
 			{
 				// Process Second stage
-				secondProcStage	( (float32_t*) aux, (float32_t*) aux, debug_vars);
+				secondProcStage	( aux, aux, debug_vars);
 				
 				// Save info if necesary
 				if(args->save_to_files)
 					Append_proc_files ( debug_files, debug_vars, args->proc_conf->vad, Second_Stage );
 				
 				// Process VAD
-				VADFeatures ( &vad_vars, (float32_t*) aux, Energy);
+				VADFeatures ( &vad_vars, aux, Energy);
 				
 				// Save variables
 				SilEnergy[frame_num] = vad_vars.energy;
@@ -692,8 +710,7 @@ void secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *savin
 	
 	/* Se calcula la STFT */
 	arm_rfft_fast_f32(&RFFTinst,aux1,aux2,0);
-	aux2[0] += aux2[1];				//Sumo las componentes reales
-
+	
 	/* Calculo el módulo de la FFT */
 	arm_cmplx_mag_squared_f32  (aux2, MagFFT, proc_conf->fft_len/2);
 
@@ -736,7 +753,7 @@ void thirdProcStage 	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var)
 	if(saving_var != NULL)
 	{
 		arm_copy_f32 (aux2, saving_var->CepWin, proc_conf->dct_len/2);
-		arm_copy_f32 (MFCC, saving_var->CepWin, proc_conf->lifter_length);
+		arm_copy_f32 (MFCC, saving_var->MFCC, 	proc_conf->lifter_length);
 	}
 	
 }
@@ -759,12 +776,26 @@ void VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy)
 	vad->fmax = Frecmax;
 	vad->energy = SpFlat;
 }
-void deltaCoeff				(float32_t *output, float32_t *input)
+void deltaCoeff				(float32_t *output, float32_t *input, uint8_t theta, uint8_t num_params)
 {
-	int step = proc_conf->lifter_length+1;
+	int step = num_params;
 	
-	for(int i=0; i < proc_conf->lifter_length+1; i++)
-		output[i] = ( (input[3*step+i] - input[1*step+i]) + 2 * (input[4*step+i] - input[0*step+i]) ) / 10;
+	// Inicializo el buffer en 0
+	arm_fill_f32(0,output,num_params);
+	
+	// Calculo el numerador
+	for(int i = num_params; i  ; i--)
+		for(int j = theta; j; j--)
+			output[i-1] += j * (input[(theta+j)*step + (i-1)] - input[(theta-j)*step + (i-1)]);
+	
+	// Calculo el denominador
+	float32_t divisor =0;	
+	for(int j = theta; j; j--)
+		divisor += j * j;
+	divisor *= 2;
+	
+	// Divido por el denominador
+	arm_scale_f32 (output, 1/divisor, output, num_params);
 }
 //
 //----- MISCELLANEOUS FUNCTIONS -----
@@ -783,23 +814,26 @@ void allocateProcVariables (Proc_var *var)
 	var->MelWin		= malloc(proc_conf->mel_banks * sizeof(*(var->MelWin)));		// Espectro pasado por los filtros de Mel
 	
 	var->LogWin		= malloc(proc_conf->dct_len  * sizeof(*(var->LogWin)));		// Logaritmo del espectro filtrado
-	var->CepWin		= malloc(proc_conf->dct_len/2* sizeof(*(var->CepWin)));		// Señal cepstral
+	
+	var->CepWin		= malloc(proc_conf->dct_len/2			* sizeof(*(var->CepWin)));		// Señal cepstral
+	var->MFCC			= malloc(proc_conf->lifter_length	* sizeof(*(var->MFCC)));			// Coeficientes MFCC
 	
 	if(var->speech == NULL || var->FltSig == NULL || var->WinSig == NULL || var->STFTWin == NULL || 
-		 var->MagFFT == NULL || var->MelWin == NULL || var->LogWin == NULL || var->CepWin == NULL)
+		 var->MagFFT == NULL || var->MelWin == NULL || var->LogWin == NULL || var->CepWin == NULL || var->MFCC == NULL)
 		Error_Handler("Error on malloc of proc variables");
 }
 void freeProcVariables (Proc_var *var)
 {
-	free(var->speech);				var->speech = NULL;
-	free(var->FltSig);				var->FltSig = NULL;
+	free(var->speech);			var->speech = NULL;
+	free(var->FltSig);			var->FltSig = NULL;
 	free(var->Frame);				var->Frame = NULL;
-	free(var->WinSig);				var->WinSig = NULL;
+	free(var->WinSig);			var->WinSig = NULL;
 	free(var->STFTWin);			var->STFTWin = NULL;
-	free(var->MagFFT);				var->MagFFT = NULL;
-	free(var->MelWin);				var->MelWin = NULL;
-	free(var->LogWin);				var->LogWin = NULL;
-	free(var->CepWin);				var->CepWin = NULL;
+	free(var->MagFFT);			var->MagFFT = NULL;
+	free(var->MelWin);			var->MelWin = NULL;
+	free(var->LogWin);			var->LogWin = NULL;
+	free(var->CepWin);			var->CepWin = NULL;
+	free(var->MFCC);				var->MFCC = NULL;
 }
 uint8_t Open_proc_files (Proc_files *files, const bool vad)
 {
@@ -826,6 +860,7 @@ uint8_t Open_proc_files (Proc_files *files, const bool vad)
 	if(f_open(&files->MelWinFile, "MelWin.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler("Error on MelWin open");
 	if(f_open(&files->LogWinFile, "LogWin.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler("Error on LogWin open");
 	if(f_open(&files->CepWinFile, "CepWin.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler("Error on CepWin open");
+	if(f_open(&files->MFCCFile, 	"MFCC.bin", 	FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler("Error on MFCC open");
 
 	if (vad)
 	{
@@ -861,9 +896,10 @@ uint8_t Append_proc_files (Proc_files *files, const Proc_var *var, const bool va
 	
 	if(stage & Third_Stage)
 	{
-		if(f_write(&files->MelWinFile,  var->MelWin, proc_conf->mel_banks * sizeof(*var->MelWin),  &byteswritten) != FR_OK)	Error_Handler("Error on MelWinFile write");
-		if(f_write(&files->LogWinFile,  var->LogWin, proc_conf->dct_len   *	sizeof(*var->LogWin),  &byteswritten) != FR_OK)	Error_Handler("Error on LogWinFile write");
-		if(f_write(&files->CepWinFile,  var->CepWin, proc_conf->dct_len/2 * sizeof(*var->CepWin),  &byteswritten) != FR_OK)	Error_Handler("Error on CepWinFile write");
+		if(f_write(&files->MelWinFile,  var->MelWin,	proc_conf->mel_banks 		* sizeof(*var->MelWin), &byteswritten) != FR_OK)	Error_Handler("Error on MelWinFile write");
+		if(f_write(&files->LogWinFile,	var->LogWin,	proc_conf->dct_len   		*	sizeof(*var->LogWin), &byteswritten) != FR_OK)	Error_Handler("Error on LogWinFile write");
+		if(f_write(&files->CepWinFile,	var->CepWin,	proc_conf->dct_len/2 		* sizeof(*var->CepWin), &byteswritten) != FR_OK)	Error_Handler("Error on CepWinFile write");
+		if(f_write(&files->MFCCFile,  	var->MFCC, 		proc_conf->lifter_length* sizeof(*var->MFCC),		&byteswritten) != FR_OK)	Error_Handler("Error on MFCCFile write");
 	}
 	
 	if(vad)
@@ -887,6 +923,7 @@ uint8_t Close_proc_files (Proc_files *files, const bool vad)
 	f_close(&files->MelWinFile);
 	f_close(&files->LogWinFile);
 	f_close(&files->CepWinFile);
+	f_close(&files->MFCCFile);
 
 	if(vad)
 	{
