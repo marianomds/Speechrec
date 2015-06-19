@@ -366,7 +366,7 @@ void AudioProcess (void const *pvParameters)
 						
 						// Espero a que este todo inicializado
 						while(!is_ringBuf_init(&audio_read_buff))
-							osThreadYield();
+							osDelay(1);
 						
 						// Start Feature Extraction process
 						feature_extract.audio_buff = &audio_read_buff;
@@ -374,7 +374,7 @@ void AudioProcess (void const *pvParameters)
 						
 						// Espero a que este todo inicializado
 						while(!is_ringBuf_init(&features_buff))
-							osThreadYield();
+							osDelay(1);
 						
 						// Me registro como cliente en el buffer que crea audio_proc
 						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t),
@@ -490,17 +490,16 @@ void AudioCalib (void const *pvParameters)
 	char file_path[] = {"CLB_00"};
 	char file_name[ (strlen(file_path)+1)*2 + strlen(AUDIO_FILE_EXTENSION) ];
 	bool calibrating = false;
-	bool recording = false;
 	
 	// Get arguments
 	args = (Audio_Calibration_args *) pvParameters;
 	
 	// Create AudioCalib Message Queue
-	osMessageQDef(calibration_msg,5,uint32_t);
+	osMessageQDef(calibration_msg,10,uint32_t);
 	calibration_msg = osMessageCreate(osMessageQ(calibration_msg),NULL);
 	*(args->msg_q) = calibration_msg;
 	
-	// Set file_name "PTRN_xx/PTR_xx.WAV"
+	// Set file_name "CLB_xx/CLB_xx.WAV"
 	strcpy(file_name, file_path);
 	strcat(file_name, "/");
 	strcat(file_name, file_path);
@@ -532,14 +531,13 @@ void AudioCalib (void const *pvParameters)
 		audio_save.file_name = file_name;
 		audio_save.src_msg = calibration_msg;
 		osThreadCreate (osThread(AudioSave), &audio_save);
-		recording = true;
 	}
 	
-	// Si es necesario salvar las variables calibro ofline
+	// Si no es necesario salvar las variables calibro online
 	if(!args->debug_conf->save_proc_vars)
 	{
 		calib_args.audio_buff = args->buff;
-		osThreadCreate (osThread(AudioCalib), &calib_args);
+		osThreadCreate (osThread(Calibration), &calib_args);
 		calibrating = true;
 		proc_state = CALIBRATING;
 	}
@@ -547,17 +545,19 @@ void AudioCalib (void const *pvParameters)
 	// Start capturing audio
 	osMessagePut(audio_capture_msg,START_CAPTURE,osWaitForever);
 	
-	// Espero el tiempo indicado por la calibración
+	// Espero el tiempo indicado por la calibración (indicado en segundos)
 	osDelay(args->calib_conf->calib_time * 1000);
 
 	// Stop capturing audio
 	osMessagePut(audio_capture_msg,STOP_CAPTURE,osWaitForever);
 	
-	// Finish recording
+	
 	if (args->debug_conf->debug)
+		// Finish recording
 		osMessagePut(audio_save_msg,FINISH,osWaitForever);
 	else
-		osMessagePut(calibration_msg,FINISH_SAVING,osWaitForever);
+		// Si trabajo online ==> tengo que terminar la calibración
+		osMessagePut(calib_args.calib_msg_id, CALIB_FINISH, osWaitForever);
 	
 	/* START TASK */
 	for (;;)
@@ -581,21 +581,16 @@ void AudioCalib (void const *pvParameters)
 						osThreadCreate (osThread(AudioRead), &audio_read);
 						
 						// Espero a que este todo inicializado
-						while(!is_ringBuf_init(&audio_read_buff));
+						while(!is_ringBuf_init(&audio_read_buff))
+							osDelay(1);
 						
 						// Create AudioCalib Task
 						calib_args.audio_buff = &audio_read_buff;
-						osThreadCreate (osThread(AudioCalib), &calib_args);
+						osThreadCreate (osThread(Calibration), &calib_args);
 						calibrating = true;
 						proc_state = CALIBRATING;
 					}
-					// Si trabajo online ==> tengo que terminar la calibración
-					else
-					{
-						osMessagePut(calib_args.calib_msg_id, CALIB_FINISH, osWaitForever);
-					}
 
-					recording = false;
 					break;
 				}
 				case FINISH_READING:
@@ -612,14 +607,7 @@ void AudioCalib (void const *pvParameters)
 					break;
 				}
 				case KILL_THREAD:
-				{
-					// Stop recording
-					if (recording)
-					{
-						osMessagePut(audio_capture_msg, STOP_CAPTURE, osWaitForever);
-						osMessagePut(audio_save_msg, FINISH, osWaitForever);
-					}
-					
+				{				
 					// Stop Recording Tasks
 					if (calibrating)
 						osMessagePut(calib_args.calib_msg_id, CALIB_KILL, osWaitForever);
@@ -1201,7 +1189,7 @@ void setEnvVar (void)
 //	padding = appconf.proc_conf.frame_len - (appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2);
 		
 	// Escalo el THD_min_FMAX a índices en el buffer
-	appconf.calib_conf.thd_min_fmax = (uint32_t)  appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.capt_conf.freq;	
+	appconf.calib_conf.thd_min_fmax = appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.capt_conf.freq;	
 }
 /**
   * @brief  Lee el archivo de configuración del sistema

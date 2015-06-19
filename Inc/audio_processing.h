@@ -69,7 +69,7 @@ typedef struct
 typedef struct
 {
 	float32_t	energy;
-	float32_t	fmax;
+	uint32_t	fmax;
 	float32_t	sp;
 }VAD_var;
 
@@ -91,6 +91,7 @@ typedef struct
 	float32_t *CepWin;			// Señal cepstral
 	float32_t *MFCC;				// Coeficientes MFCC
 	uint8_t 	VAD;					// Indica si es salida de voz o no
+	VAD_var   vad_vars;
 }Proc_var;
 
 /**
@@ -150,6 +151,12 @@ typedef enum
 	First_Stage = 0x01,
 	Second_Stage = 0x02,
 	Third_Stage = 0x04,
+	VAD_Stage = 0x08,
+	
+	FS_Stage = 0x03,
+	FST_Stage = 0x07,
+	FSV_Stage = 0x0B,
+	All_Stages = 0x0F,
 }Proc_stages;
 
 /**
@@ -191,7 +198,7 @@ typedef struct
 {
 	uint16_t	calib_time;
 	float32_t	thd_scl_eng;
-	uint32_t	thd_min_fmax;
+	float32_t	thd_min_fmax;
 	float32_t	thd_scl_sf;
 }Calib_conf;
 
@@ -300,21 +307,21 @@ void		finishCalibration		(void);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-uint8_t Open_proc_files (Proc_files *files, const bool vad);
+uint8_t Open_proc_files (Proc_files *files, Proc_stages stage);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-uint8_t Append_proc_files (Proc_files *files, const Proc_var *var, const bool vad, Proc_stages stage);
+uint8_t Append_proc_files (Proc_files *files, const Proc_var *var, Proc_stages stage);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-uint8_t Close_proc_files (Proc_files *files, const bool vad);
+uint8_t Close_proc_files (Proc_files *files, Proc_stages stage);
 
 
 
@@ -348,7 +355,7 @@ void	firstProcStage	(float32_t *filt_signal, uint16_t *audio, Proc_var *saving_v
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void	secondProcStage	(float32_t *MagFFT, float32_t *frame_block, Proc_var *saving_var);
+void	secondProcStage	(float32_t *MagFFT, float32_t *Energy, float32_t *frame_block, Proc_var *saving_var);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
@@ -362,7 +369,7 @@ void	thirdProcStage	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, float32_t Energy);
+void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
@@ -392,11 +399,11 @@ void 			Lifter_float 		(float32_t *Lifter, uint32_t L);
 	* @brief  Allocate Heap memory for Processing variables needed to save it to files
 	* @param[in] var	Pointer to a Proc_var struct
 	*/
-void		allocateProcVariables	(Proc_var *var);
+void		allocateProcVariables	(Proc_var *var, Proc_stages stage);
 /**
 	* @brief  Release Heap memory for Processing variables needed to save it to files
 	* @param[in] var	Pointer to a Proc_var struct
 	*/
-void		freeProcVariables			(Proc_var *var);
+void		freeProcVariables			(Proc_var *var, Proc_stages stage);
 
 #endif // AUDIO_PROCESSING_H
