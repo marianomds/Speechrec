@@ -246,12 +246,10 @@ ringBufStatus ringBuf_write ( ringBuf *_this, const uint8_t *input, const size_t
 
     // Pregunto si no puedo sobreescribir
     if ( !_this->can_override ) {
-        // Pregunto si el buffer esta lleno
+        // Pregunto si el buffer esta lleno o si no hay espacio disponible
         if ( is_ringBuf_full ( _this ) ) {
             status = BUFF_FULL;
-        }
-        // Pregunto si hay espacio disponible
-        if ( write_size > _this->buff_size - _this->count) {
+        } else if ( write_size > _this->buff_size - _this->count) {
             status = BUFF_NOT_ENOGH_SPACE;
         }
     }
