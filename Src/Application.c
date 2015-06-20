@@ -315,7 +315,7 @@ void AudioProcess (void const *pvParameters)
 
 						// Espero a que este todo inicializado
 						while(!is_ringBuf_init(&features_buff))
-							osThreadYield();
+							osDelay(1);
 						
 						// Me registro como cliente en el buffer que crea audio_proc
 						ringBuf_registClient ( &features_buff,	(1 + args->proc_conf->lifter_length) * 3 * sizeof(float32_t),
