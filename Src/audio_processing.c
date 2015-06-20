@@ -31,11 +31,11 @@ static osMessageQId calib_msg;
 //---------------------------------------
 
 static Proc_conf	*proc_conf;						// Processing configurartion
-static Calib_conf *calib_conf;					// AudioCalib configurartion
 
 //---------------------------------------
 //				SPEECH PROCESSING VARIALBES
 //---------------------------------------
+__align(8)
 
 static float32_t *pState = NULL;							// [proc_conf->numtaps + proc_conf->frame_net - 1]
 static float32_t *Pre_enfasis_Coeef = NULL;	// [proc_conf->numtaps]
@@ -46,7 +46,7 @@ static float32_t *aux2 = NULL; 							// [ max(proc_conf->frame_len,proc_conf->f
 static float32_t *HamWin = NULL; 						// [proc_conf->frame_len];
 static float32_t *CepWeight = NULL; 					// [LIFTER_length];
 
-	static float32_t MelBank [256*20] = {
+static float32_t MelBank [256*20] = {
 	0,0,0,0,0,0,0,0,0,0,1.8776061e-01f,6.1692772e-01f,9.5704521e-01f,5.5711352e-01f,1.5718182e-01f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,4.2954786e-02f,4.4288648e-01f,8.4281818e-01f,7.7378656e-01f,4.0109872e-01f,2.8410879e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.2621344e-01f,5.9890128e-01f,9.7158912e-01f,6.7917563e-01f,3.3187576e-01f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -67,7 +67,7 @@ static float32_t *CepWeight = NULL; 					// [LIFTER_length];
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7.0862017e-02f,2.0020300e-01f,3.2954399e-01f,4.5888497e-01f,5.8822596e-01f,7.1756695e-01f,8.4690793e-01f,9.7624892e-01f,9.0160302e-01f,7.8107290e-01f,6.6054279e-01f,5.4001268e-01f,4.1948256e-01f,2.9895245e-01f,1.7842234e-01f,5.7892225e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9.8396985e-02f,2.1892710e-01f,3.3945721e-01f,4.5998732e-01f,5.8051744e-01f,7.0104755e-01f,8.2157766e-01f,9.4210777e-01f,9.4162909e-01f,8.2930964e-01f,7.1699019e-01f,6.0467074e-01f,4.9235129e-01f,3.8003185e-01f,2.6771240e-01f,1.5539295e-01f,4.3073503e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5.8370915e-02f,1.7069036e-01f,2.8300981e-01f,3.9532926e-01f,5.0764871e-01f,6.1996815e-01f,7.3228760e-01f,8.4460705e-01f,9.5692650e-01f,9.3547118e-01f,8.3080307e-01f,7.2613497e-01f,6.2146687e-01f,5.1679876e-01f,4.1213066e-01f,3.0746255e-01f,2.0279445e-01f,9.8126347e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	};
+};
 
 static arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBank};
 		
@@ -76,27 +76,14 @@ static arm_fir_instance_f32 						FirInst;
 static arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
 static ale_dct2_instance_f32						DCTinst;
 
-////---------------------------------------
-////							VAD VARIALBES
-////---------------------------------------
-//	__align(8)
-
-//static float32_t Energy;
-//static float32_t Frecmax;
-//static float32_t SpFlat;
-//	//	float32_t SilZeroCross;
-
 //---------------------------------------
 //				CALIBRATION VARIABLES
 //---------------------------------------
-static float32_t *SilEnergy  = NULL;
-static uint32_t  *SilFmax    = NULL;
-static float32_t *SilSpFlat  = NULL;
-		
-static float32_t SilEnergyMean, SilEnergyDev, THD_E;
-static uint32_t  SilFmaxMean, 	SilFmaxDev, 	THD_FMX;
-static float32_t SilSpFlatMean,	SilSpFlatDev, THD_SF;
-//static float32_t SilZeroCrossMean, SilZeroCrossDev, THD_ZC;
+
+static float32_t THD_E;
+static uint32_t  THD_FMX;
+static float32_t THD_SF;
+//static float32_t THD_ZC;
 
 	
 
@@ -367,6 +354,9 @@ void calibration (void const *pvParameters)
 	float32_t *aux;
 	VAD_var vad_vars;
 	uint32_t frame_num = 0;
+	float32_t *SilEnergy  = NULL;
+	uint32_t  *SilFmax    = NULL;
+	float32_t *SilSpFlat  = NULL;
 	
 	// Degug variables
 	Proc_var *debug_vars = NULL;
@@ -384,13 +374,23 @@ void calibration (void const *pvParameters)
 	calib_msg = osMessageCreate(osMessageQ(calib_msg),NULL);	
 	args->calib_msg_id = calib_msg;
 	
-	// Init processing
-	initCalibration (args->calib_conf, args->proc_conf, args->audio_freq);
+	// Initialized basic configuration
+	initBasics (args->proc_conf);
+	
+	// Calculo la longitud de la calibraci?n seg?n el tiempo seteado
+	uint32_t aprox_calib_len		= (uint32_t)	args->calib_conf->calib_time * args->audio_freq / proc_conf->frame_overlap + 5;
 
+	// Allocate space for variables
+	SilEnergy = malloc(aprox_calib_len * sizeof(*SilEnergy));
+	SilFmax 	= malloc(aprox_calib_len * sizeof(*SilFmax));
+	SilSpFlat = malloc(aprox_calib_len * sizeof(*SilSpFlat));
+	if(SilEnergy == NULL || SilFmax == NULL || SilSpFlat == NULL )
+		Error_Handler("Cannot allocate Sil variables in AudioCalib");
+	
 	// Allocate space for aux variable
 	if ( (aux = malloc(args->proc_conf->frame_len * sizeof(float32_t) )) == NULL)
 		Error_Handler("Error on malloc aux in audio processing");
-	
+		
 	// Init Ring Buffers
 	ringBuf_init ( &flt_buff, args->proc_conf->frame_overlap * 10 * sizeof(float32_t), false);
 
@@ -408,7 +408,7 @@ void calibration (void const *pvParameters)
 		// Allocate space for debug files
 		if ( (debug_files = malloc(sizeof(*debug_files) )) == NULL)
 			Error_Handler("Error on malloc debug_files in audio processing");
-	
+		
 		FRESULT res = f_chdir(args->path);
 		
 		Open_proc_files ( debug_files, FSV_Stage);
@@ -446,6 +446,11 @@ void calibration (void const *pvParameters)
 				}
 				case CALIB_FINISH:
 				{
+					float32_t SilEnergyMean, SilEnergyDev;
+					uint32_t  SilFmaxMean, 	SilFmaxDev;
+					float32_t SilSpFlatMean,	SilSpFlatDev;
+//					float32_t SilZeroCrossMean, SilZeroCrossDev;
+						
 					// Calculate Mean of Features
 					arm_mean_f32 (SilEnergy, frame_num, &SilEnergyMean);
 					arm_mean_q31 ((q31_t*)SilFmax, frame_num,(q31_t*) &SilFmaxMean);
@@ -457,9 +462,9 @@ void calibration (void const *pvParameters)
 					arm_std_f32 (SilSpFlat, frame_num, &SilSpFlatDev);
 					
 					// Set Thresholds
-					THD_E   = SilEnergyMean + calib_conf->thd_scl_eng * SilEnergyDev;
-					THD_FMX = SilFmaxMean > calib_conf->thd_min_fmax ? SilFmaxMean : calib_conf->thd_min_fmax;
-					THD_SF  = SilSpFlatMean + calib_conf->thd_scl_sf * SilSpFlatDev;
+					THD_E   = SilEnergyMean + args->calib_conf->thd_scl_eng * SilEnergyDev;
+					THD_FMX = SilFmaxMean > args->calib_conf->thd_min_fmax ? SilFmaxMean : args->calib_conf->thd_min_fmax;
+					THD_SF  = SilSpFlatMean + args->calib_conf->thd_scl_sf * SilSpFlatDev;
 
 					if(args->save_calib_vars)
 					{
@@ -508,23 +513,24 @@ void calibration (void const *pvParameters)
 						free(debug_vars);
 					}
 
-					// Me desregistro del bufer de audio
+					// Me desregistro de los buffers
+					ringBuf_unregistClient(&flt_buff, calib_flt_client);
 					ringBuf_unregistClient(args->audio_buff, calib_audio_client);
 
 					// Elimino los buffers
 					ringBuf_deinit ( &flt_buff );
 											
-					// Libero memoria
+					// Free memory
+					free(SilEnergy);
+					free(SilFmax);
+					free(SilSpFlat);
 					free(aux);
 					
-					// Finicializo el proceso
-					finishCalibration();
-							
 					// Destroy Message Queue
 					osMessageDelete(&calib_msg);
 					args->calib_msg_id = NULL;
 					
-					// Envío mensaje inidicando que termine
+					// Envío mensaje inidicando que terminé
 					osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
 					
 					// Elimino la tarea
@@ -542,7 +548,6 @@ void calibration (void const *pvParameters)
 				// Save info if necesary
 				if(args->save_to_files)
 					Append_proc_files ( debug_files, debug_vars, Second_Stage );
-								
 				
 				// Process VAD
 				VADFeatures ( &vad_vars, aux, debug_vars);
@@ -562,37 +567,6 @@ void calibration (void const *pvParameters)
 	}
 }
 
-//
-//-------- CALIBRATION FUNCTIONS --------
-//
-void initCalibration	(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t audio_freq)
-{
-	// Copio la configuración de calibración
-	calib_conf = calib_config;
-	
-	// Initialized basic configuration
-	initBasics (proc_config);
-	
-	// Calculo la longitud de la calibraci?n seg?n el tiempo seteado
-	uint32_t aprox_calib_len		= (uint32_t)	calib_conf->calib_time * audio_freq / proc_conf->frame_overlap + 5;
-
-	// Allocate space for variables
-	SilEnergy  = malloc(aprox_calib_len * sizeof(*SilEnergy));
-	SilFmax = malloc(aprox_calib_len * sizeof(*SilFmax));
-	SilSpFlat  = malloc(aprox_calib_len * sizeof(*SilSpFlat));
-	if(SilEnergy == NULL || SilFmax == NULL || SilSpFlat == NULL )
-		Error_Handler("Cannot allocate Sil variables in AudioCalib");
-}
-void finishCalibration	(void)
-{
-	// Free memory
-	free(SilEnergy);		SilEnergy = NULL;
-	free(SilFmax);	SilFmax = NULL;
-	free(SilSpFlat);		SilSpFlat = NULL;
-
-	// Finish basics
-	finishBasics();	
-}
 //
 //-----	INIT PROCESSING FUNCTIONS	-------
 //
@@ -769,7 +743,6 @@ void VADFeatures			(VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var)
 {
 	uint32_t Index;
 	float32_t AM,GM;
-
 	
 //	vad->energy = Energy;
 	
@@ -981,10 +954,10 @@ uint8_t Close_proc_files (Proc_files *files, Proc_stages stage)
 	
 	if(stage & VAD_Stage)
 	{
-		f_close(&files->VADFile);
 		f_close(&files->EnerFile);
 		f_close(&files->FrecFile);
 		f_close(&files->SFFile);
+		f_close(&files->VADFile);
 	}
 	
 //	f_close(&files->nosirve);

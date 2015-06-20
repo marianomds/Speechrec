@@ -284,14 +284,14 @@ Proc_status		MFCC_float				(uint16_t *frame, Proc_stages *stages, bool last_fram
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void		initCalibration			(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t audio_freq);
+//void		initCalibration			(Calib_conf *calib_config, Proc_conf *proc_config, uint32_t audio_freq);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void		finishCalibration		(void);
+//void		finishCalibration		(void);
 //---------------------------------------
 //						HELP FUNCTIONS
 //---------------------------------------
