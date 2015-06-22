@@ -288,6 +288,8 @@ ringBufStatus ringBuf_write ( ringBuf *_this, const uint8_t *input, const size_t
             // Chequeo overrun
             if ( _this->clients[idx].count > _this->buff_size ) {
                 _this->clients[idx].overrun = true;
+								_this->clients[idx].count = _this->buff_size;
+								_this->clients[idx].ptr = _this->head;
             }
 
             // Envío un mensaje al cliente avisando que puede leer en caso que sea cierto

@@ -127,13 +127,14 @@ void Main_Thread (void const *pvParameters)
 					osThreadCreate (osThread(AudioCapture), &audio_cap_args);
 				
 					/* If VAD was configured*/
-					if(appconf.proc_conf.vad)
+					if(appconf.vad_conf.vad)
 					{
 						app_state = APP_CALIBRATION;
 						
 						/* Create AudioCalib Task */
 						calibration_args.msg_q 			  = &msgID;
 						calibration_args.proc_conf    = &appconf.proc_conf;
+						calibration_args.vad_conf    	= &appconf.vad_conf;
 						calibration_args.calib_conf   = &appconf.calib_conf;
 						calibration_args.debug_conf   = &appconf.debug_conf;
 						calibration_args.capt_conf    = &appconf.capt_conf;
@@ -192,6 +193,7 @@ void Main_Thread (void const *pvParameters)
 					pat_stor_args.debug_conf = &appconf.debug_conf;
 					pat_stor_args.capt_conf = &appconf.capt_conf;
 					pat_stor_args.proc_conf = &appconf.proc_conf;
+					pat_stor_args.vad_conf =  &appconf.vad_conf;
 					pat_stor_args.recognize = appconf.maintask == APP_RECOGNITION;
 					
 					/* Create Tasks*/
@@ -244,25 +246,12 @@ void AudioProcess (void const *pvParameters)
 	// Init Audio Processing args
 	feature_extract.features_buff = &features_buff;
 	feature_extract.proc_conf = args->proc_conf;
+	feature_extract.vad_conf = args->vad_conf;
 	feature_extract.save_to_files = args->debug_conf->save_proc_vars;
 	feature_extract.src_msg_id =  audio_process_msg;
 	feature_extract.src_msg_val = FINISH_PROCESSING;
 	feature_extract.path = file_path;
-	
-	
-//	// DE PRUEBA DESPUES BORRAR
-//	strcpy(file_name, file_path);
-//	strcat(file_name, "/");
-//	strcat(file_name, file_path);
-//	strcat(file_name, AUDIO_FILE_EXTENSION);
-
-//// Open file for saving features
-//	f_chdir(file_path);
-//	f_open(&features_file, "features.bin", FA_CREATE_ALWAYS | FA_WRITE );
-//	f_chdir("..");
-
-//	osMessagePut(audio_process_msg,FINISH_SAVING,osWaitForever);
-	
+					
 	/* START TASK */
 	for (;;)
 	{
@@ -499,14 +488,9 @@ void AudioCalib (void const *pvParameters)
 	calibration_msg = osMessageCreate(osMessageQ(calibration_msg),NULL);
 	*(args->msg_q) = calibration_msg;
 	
-	// Set file_name "CLB_xx/CLB_xx.WAV"
-	strcpy(file_name, file_path);
-	strcat(file_name, "/");
-	strcat(file_name, file_path);
-	strcat(file_name, AUDIO_FILE_EXTENSION);
-	
 	// Init calibration arguments
 	calib_args.proc_conf = &appconf.proc_conf;
+	calib_args.vad_conf  = &appconf.vad_conf;
 	calib_args.calib_conf = &appconf.calib_conf;
 	calib_args.audio_freq = args->capt_conf->freq;
 	calib_args.save_to_files = appconf.debug_conf.save_proc_vars;
@@ -524,6 +508,12 @@ void AudioCalib (void const *pvParameters)
 		// Create subdirectory for saving files here
 		f_mkdir (file_path);
 
+		// Set file_name "CLB_xx/CLB_xx.WAV"
+		strcpy(file_name, file_path);
+		strcat(file_name, "/");
+		strcat(file_name, file_path);
+		strcat(file_name, AUDIO_FILE_EXTENSION);
+			
 		// Create Audio Save Task
 		audio_save.usb_buff_size = args->debug_conf->usb_buff_size;
 		audio_save.buff	= args->buff;
@@ -1242,9 +1232,14 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->proc_conf.dct_len				= (uint16_t)		ini_getl		("SPConf", "DCT_LEN", 				DCT_LEN,					filename);
 	config->proc_conf.lifter_length	= (uint16_t)		ini_getl		("SPConf", "LIFTER_LENGTH",		LIFTER_LENGTH,		filename);
 	config->proc_conf.theta					= (uint8_t)			ini_getl		("SPConf", "THETA",						THETA,						filename);
-	config->proc_conf.vad						= 							ini_getbool	("SPConf", "VAD",							VAD_ENABLE,				filename);
 	
-// Read AudioCalib configuration
+	// Read Speech Processing configuration
+	config->vad_conf.vad					= 							ini_getbool	("VADConf",	"VAD",					VAD_ENABLE,		filename);
+	config->vad_conf.age_thd			= (uint16_t)		ini_getl		("VADConf", "AGE_THD", 			AGE_THD,			filename);
+	config->vad_conf.timeout_thd	= (uint16_t)		ini_getl		("VADConf", "TIMEOUT_THD",	TIMEOUT_THD,	filename);
+	
+	
+	// Read AudioCalib configuration
 	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", 			CALIB_TIME, 			filename);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,			filename);

@@ -56,10 +56,20 @@ typedef struct
 	
 	// Delta coefficients
 	uint8_t theta;
-
-	// VAD
-	bool			vad;
+	
 }Proc_conf;
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief VAD
+	*/
+typedef struct
+{
+	bool			vad;
+	uint8_t		age_thd;
+	uint8_t		timeout_thd;
+}VAD_conf;
 
 /**
 	*\typedef
@@ -71,6 +81,7 @@ typedef struct
 	float32_t	energy;
 	uint32_t	fmax;
 	float32_t	sp;
+	bool 			VAD;					// Indica si es salida de voz o no
 }VAD_var;
 
 /**
@@ -90,7 +101,6 @@ typedef struct
 	float32_t *LogWin;			// Logaritmo del espectro filtrado
 	float32_t *CepWin;			// Señal cepstral
 	float32_t *MFCC;				// Coeficientes MFCC
-	uint8_t 	VAD;					// Indica si es salida de voz o no
 	VAD_var   vad_vars;
 }Proc_var;
 
@@ -130,6 +140,7 @@ typedef struct
 typedef struct
 {
 	Proc_conf *proc_conf;
+	VAD_conf	*vad_conf;
 	bool save_to_files;	
 	ringBuf *audio_buff;
 	ringBuf *features_buff;
@@ -211,6 +222,7 @@ typedef struct
 {
 	Proc_conf *proc_conf;
 	Calib_conf *calib_conf;
+	VAD_conf 	*vad_conf;
 	uint32_t audio_freq;
 	bool save_to_files;	
 	bool save_calib_vars;
@@ -258,7 +270,7 @@ void calibration (void const *pvParameters);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void initProcessing (Proc_conf *configuration);
+void initProcessing (Proc_conf *proc_config);
 /**
   * @brief  De-Initialized Processing
   */
@@ -334,7 +346,7 @@ uint8_t Close_proc_files (Proc_files *files, Proc_stages stage);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void initBasics (Proc_conf *configuration);
+void initBasics (Proc_conf *proc_config);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save
@@ -369,7 +381,7 @@ void	thirdProcStage	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var);
 	* @param  Length: Length of the Hamming Window
   * @retval 
   */
-void	VADFeatures			(VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var);
+void	VAD			(VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var);
 /**
   * @brief  Coefficients of the Hamming Window
 	* @param  Hamming: Address of the vector where the coefficients are going to be save

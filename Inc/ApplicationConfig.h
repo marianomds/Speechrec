@@ -48,7 +48,11 @@
 #define DCT_LEN												32			// Tiene que ser mayor a 2*MEL_BANKS
 #define LIFTER_LENGTH									12
 #define THETA													2
+
+// VAD
 #define	VAD_ENABLE										true
+#define	AGE_THD												3
+#define	TIMEOUT_THD										3
 
 #define THD_Scl_ENERGY								2
 #define THD_Scl_SF										0.5f

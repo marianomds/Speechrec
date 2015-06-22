@@ -113,6 +113,7 @@ typedef struct
 
 	Capt_conf		capt_conf;
 	Proc_conf		proc_conf;
+	VAD_conf		vad_conf;
 	Calib_conf	calib_conf;
 	Debug_conf	debug_conf;	
 	
@@ -326,6 +327,7 @@ typedef struct
 	Debug_conf	 *debug_conf;
 	Capt_conf 	 *capt_conf;
 	Proc_conf		 *proc_conf;
+	VAD_conf		 *vad_conf;
 	bool				recognize;
 }Audio_Process_args;
 
@@ -341,6 +343,7 @@ typedef struct
 	Debug_conf	 *debug_conf;
 	Capt_conf 	 *capt_conf;
 	Proc_conf		 *proc_conf;
+	VAD_conf		 *vad_conf;
 	Calib_conf	 *calib_conf;
 	
 	osMessageQId src_msg_id;
