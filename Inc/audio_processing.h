@@ -209,7 +209,8 @@ typedef struct
 {
 	uint16_t	calib_time;
 	float32_t	thd_scl_eng;
-	float32_t	thd_min_fmax;
+	uint32_t	thd_min_fmax;
+	uint32_t	thd_max_fmax;
 	float32_t	thd_scl_sf;
 }Calib_conf;
 

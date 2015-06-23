@@ -81,7 +81,7 @@ static ale_dct2_instance_f32						DCTinst;
 //---------------------------------------
 
 static float32_t THD_E;
-static uint32_t  THD_FMX;
+static uint32_t  THD_min_FMX,THD_max_FMX;
 static float32_t THD_SF;
 //static float32_t THD_ZC;
 
@@ -135,9 +135,10 @@ void featureExtraction (void const *pvParameters)
 	// Check if VAD is activated
 	if (args->vad_conf->vad)
 	{
-		age_thd = args->vad_conf->age_thd;
-		timeout_thd = args->vad_conf->timeout_thd + args->proc_conf->theta*2;
+		age_thd = args->vad_conf->age_thd - 1;																		// En realidad empieza a contar de "0" por eso hay que restarle 1
+		timeout_thd = args->vad_conf->timeout_thd + args->proc_conf->theta*2;			// Tengo que sumartle THETA*2 porque es lo que necesito para obtener los doble delta del último frame
 		
+		// Inicialización
 		age = 0;
 		timeout = timeout_thd;
 		proc_frame = false;
@@ -271,7 +272,7 @@ void featureExtraction (void const *pvParameters)
 					firstProcStage ( aux, (uint16_t*) aux, debug_vars);
 					
 					// Save info if necesary
-					if(args->vad_conf->vad)
+					if(args->save_to_files)
 						Append_proc_files ( debug_files, debug_vars, First_Stage);
 					
 					// Guardamos la info en el buffer
@@ -289,7 +290,7 @@ void featureExtraction (void const *pvParameters)
 					secondProcStage	( aux, &vad_vars.energy, aux, debug_vars);
 					
 					// Save info if necesary
-					if(args->vad_conf->vad)
+					if(args->save_to_files)
 						Append_proc_files ( debug_files, debug_vars, Second_Stage);
 					
 					// Process VAD if necesary
@@ -298,7 +299,7 @@ void featureExtraction (void const *pvParameters)
 						VAD ( &vad_vars, aux, debug_vars);
 						
 						// Save info if necesary
-						if(args->vad_conf->vad)
+						if(args->save_to_files)
 							Append_proc_files ( debug_files, debug_vars, VAD_Stage);
 					}
 					
@@ -306,7 +307,7 @@ void featureExtraction (void const *pvParameters)
 					thirdProcStage	( aux, aux, debug_vars);
 
 					// Save info if necesary
-					if(args->vad_conf->vad)
+					if(args->save_to_files)
 						Append_proc_files ( debug_files, debug_vars, Third_Stage);
 						
 					ringBuf_write (&mfcc_buff, (uint8_t*) &vad_vars.energy, sizeof(float32_t));
@@ -476,8 +477,11 @@ void calibration (void const *pvParameters)
 					
 					// Set Thresholds
 					THD_E   = SilEnergyMean + args->calib_conf->thd_scl_eng * SilEnergyDev;
-					THD_FMX = SilFmaxMean > args->calib_conf->thd_min_fmax ? SilFmaxMean : args->calib_conf->thd_min_fmax;
 					THD_SF  = SilSpFlatMean + args->calib_conf->thd_scl_sf * SilSpFlatDev;
+//					THD_FMX = SilFmaxMean > args->calib_conf->thd_min_fmax ? SilFmaxMean : args->calib_conf->thd_min_fmax;
+					THD_min_FMX = args->calib_conf->thd_min_fmax ;
+					THD_max_FMX = args->calib_conf->thd_max_fmax ;
+					
 
 					if(args->save_calib_vars)
 					{
@@ -497,7 +501,7 @@ void calibration (void const *pvParameters)
 						if(f_open(&CalibFile, "CLB_FMX.bin", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler("");
 						if(f_write(&CalibFile, &SilFmaxMean,sizeof(SilFmaxMean),(void*)&byteswritten) != FR_OK) Error_Handler("");
 						if(f_write(&CalibFile, &SilFmaxDev, sizeof(SilFmaxDev),	(void*)&byteswritten) != FR_OK) Error_Handler("");
-						if(f_write(&CalibFile, &THD_FMX,		sizeof(THD_FMX),		(void*)&byteswritten) != FR_OK) Error_Handler("");
+//						if(f_write(&CalibFile, &THD_min_FMX,sizeof(THD_min_FMX),(void*)&byteswritten) != FR_OK) Error_Handler("");
 						f_close(&CalibFile);
 						
 								// Guardo el Spectral Flatness
@@ -781,7 +785,11 @@ void VAD (VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var)
 	float32_t AM,GM;
 	
 	/* Obtengo la Fmax */
-	arm_max_f32 (MagFFT, proc_conf->fft_len/2, aux1, &vad->fmax);									// no me interesa el valor máximo, sino en que lugar se encuentra
+	// No me interesa el valor máximo, sino en que lugar se encuentra
+	// Empiezo a contar de la muestra 1 porque la 0 es la continua y no esta bien tenerla en cuenta
+	// Por eso luego le debo sumar uno para que se realize el desplazamiento por la continua
+	arm_max_f32 (&MagFFT[1], proc_conf->fft_len/2-1, aux1, &vad->fmax);
+	vad->fmax++;
 	
 	/* Calculo el Spectral Flatness */
 	arm_mean_f32 (MagFFT, proc_conf->fft_len/2, &AM);	// Arithmetic Mean
@@ -790,10 +798,10 @@ void VAD (VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var)
 	vad->sp = fabsf(10*log10f(GM/AM));
 	
 	// VAD algorithm
-	if ( (vad->energy > THD_E && 500 < vad->fmax && vad->fmax < 3500) || vad->sp > THD_SF)
+	if ( (vad->energy > THD_E && THD_min_FMX < vad->fmax && vad->fmax < THD_max_FMX) || vad->sp > THD_SF)
 	{
 		age++;
-		if (age >= age_thd)
+		if (age > age_thd)
 		{
 			timeout = timeout_thd;
 			proc_frame = true;
@@ -804,10 +812,12 @@ void VAD (VAD_var *vad, float32_t *MagFFT, Proc_var *saving_var)
 		if (proc_frame)
 		{
 			if (timeout == 0)
+			{
 				proc_frame = false;
+				age = 0;
+			}
 			timeout--;
 		}
-		age = 0;
 	}
 	
 	vad->VAD = proc_frame;

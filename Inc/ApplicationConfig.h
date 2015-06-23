@@ -56,7 +56,8 @@
 
 #define THD_Scl_ENERGY								2
 #define THD_Scl_SF										0.5f
-#define THD_min_FMAX									4000
+#define THD_min_FMAX									500
+#define THD_max_FMAX									3500
 
 #define PDM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_DECIMATOR*AUDIO_IN_CHANNEL_NBR/8
 #define PCM_BUFF_SIZE                 AUDIO_IN_FREQ/1000*AUDIO_IN_CHANNEL_NBR

@@ -560,7 +560,7 @@ void AudioCalib (void const *pvParameters)
 			{	
 				case FINISH_SAVING:
 				{
-					// Si trabajo ofline ==> creo una tarea para leer el archivo y lo proceso
+					// Si trabajo offline ==> creo una tarea para leer el archivo y lo proceso
 					if(args->debug_conf->save_proc_vars)
 					{
 						// Create Read Audio Task
@@ -580,6 +580,9 @@ void AudioCalib (void const *pvParameters)
 						calibrating = true;
 						proc_state = CALIBRATING;
 					}
+					else
+						// Si trabajo online ==> Aviso que tiene que terminar
+						osMessagePut(calib_args.calib_msg_id, CALIB_FINISH, osWaitForever);
 
 					break;
 				}
@@ -1179,7 +1182,8 @@ void setEnvVar (void)
 //	padding = appconf.proc_conf.frame_len - (appconf.proc_conf.frame_net + appconf.proc_conf.frame_overlap * 2);
 		
 	// Escalo el THD_min_FMAX a índices en el buffer
-	appconf.calib_conf.thd_min_fmax = appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.capt_conf.freq;	
+	appconf.calib_conf.thd_min_fmax = appconf.calib_conf.thd_min_fmax * appconf.proc_conf.fft_len / appconf.capt_conf.freq;
+	appconf.calib_conf.thd_max_fmax = appconf.calib_conf.thd_max_fmax * appconf.proc_conf.fft_len / appconf.capt_conf.freq;
 }
 /**
   * @brief  Lee el archivo de configuración del sistema
@@ -1243,8 +1247,9 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", 			CALIB_TIME, 			filename);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
 	config->calib_conf.thd_min_fmax	= (uint32_t)	ini_getf("CalConf", "THD_min_FMAX",			THD_min_FMAX,			filename);
+	config->calib_conf.thd_max_fmax	= (uint32_t)	ini_getf("CalConf", "THD_max_FMAX",			THD_max_FMAX,			filename);
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
-	
+		
 	// Read Patterns configuration
 	ini_gets("PatConf", "PAT_DIR", 				PAT_DIR, 				config->patpath, 			sizeof(config->patpath), 			filename);
 
