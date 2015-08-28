@@ -194,6 +194,7 @@ void Main_Thread (void const *pvParameters)
 					pat_stor_args.capt_conf = &appconf.capt_conf;
 					pat_stor_args.proc_conf = &appconf.proc_conf;
 					pat_stor_args.vad_conf =  &appconf.vad_conf;
+					pat_stor_args.reco_conf = &appconf.reco_conf;
 					pat_stor_args.recognize = appconf.maintask == APP_RECOGNITION;
 					
 					/* Create Tasks*/
@@ -405,6 +406,7 @@ void AudioProcess (void const *pvParameters)
 					{
 						reco_args.patterns_path = appconf.patpath;
 						reco_args.proc_conf = args->proc_conf;
+						reco_args.reco_conf = args->reco_conf;
 						reco_args.utterance_path = file_path;
 						reco_args.save_dist = args->debug_conf->save_dist;
 						reco_args.src_msg_id = audio_process_msg;
@@ -660,7 +662,7 @@ void Recognition (void const *pvParameters)
 				
 		if ( pat_num != 0)
 		{
-			// Allocate memroy for distance and initialize
+			// Allocate memory for distance and initialize
 			dist = malloc(pat_num * sizeof(*dist));
 			for(int i=0; i < pat_num ; i++)
 				dist[i] = FLT_MAX;
@@ -684,7 +686,7 @@ void Recognition (void const *pvParameters)
 					continue;
 
 				// Get distance
-				dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, args->save_dist);
+				dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, args->save_dist, args->reco_conf->width) / (utterance_mtx.numRows + pat[i].pattern_mtx.numRows);
 
 				// Check if distance is shorter
 				if( i == 0 ||dist [i] < dist[pat_reco])
@@ -1242,7 +1244,6 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->vad_conf.age_thd			= (uint16_t)		ini_getl		("VADConf", "AGE_THD", 			AGE_THD,			filename);
 	config->vad_conf.timeout_thd	= (uint16_t)		ini_getl		("VADConf", "TIMEOUT_THD",	TIMEOUT_THD,	filename);
 	
-	
 	// Read AudioCalib configuration
 	config->calib_conf.calib_time		= (uint16_t)	ini_getl("CalConf", "CALIB_TIME", 			CALIB_TIME, 			filename);
 	config->calib_conf.thd_scl_eng	= (float32_t)	ini_getf("CalConf", "THD_Scale_ENERGY", THD_Scl_ENERGY,		filename);
@@ -1250,8 +1251,11 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->calib_conf.thd_max_fmax	= (uint32_t)	ini_getf("CalConf", "THD_max_FMAX",			THD_max_FMAX,			filename);
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
 		
+	// Read Recognition configuration
+	config->reco_conf.width = (uint8_t)	ini_getl("RecoConf", "width", RECO_WIDTH, filename);
+	
 	// Read Patterns configuration
-	ini_gets("PatConf", "PAT_DIR", 				PAT_DIR, 				config->patpath, 			sizeof(config->patpath), 			filename);
+	ini_gets("PatConf", "PAT_DIR", PAT_DIR, config->patpath, sizeof(config->patpath), filename);
 
 	return 1;
 }

@@ -34,6 +34,7 @@
 #include "stdbool.h"
 #include "ALE_STM32F4_DISCOVERY_Audio_Input_Driver.h"
 #include "audio_processing.h"
+#include "recognition.h"
 #include "ff.h"
 #include <ring_buffer.h>
 
@@ -115,6 +116,7 @@ typedef struct
 	Proc_conf		proc_conf;
 	VAD_conf		vad_conf;
 	Calib_conf	calib_conf;
+	Reco_conf		reco_conf;
 	Debug_conf	debug_conf;	
 	
 	char patpath[15];
@@ -328,6 +330,7 @@ typedef struct
 	Capt_conf 	 *capt_conf;
 	Proc_conf		 *proc_conf;
 	VAD_conf		 *vad_conf;
+	Reco_conf		 *reco_conf;
 	bool				recognize;
 }Audio_Process_args;
 
@@ -358,6 +361,7 @@ typedef struct
 typedef struct
 {
 	Proc_conf		 *proc_conf;
+	Reco_conf		 *reco_conf;
 	char 				 *utterance_path;
 	char 				 *patterns_path;
 	bool         save_dist;

@@ -84,6 +84,7 @@ uint32_t PB_GetState(Button_TypeDef Button)
 {
   return HAL_GPIO_ReadPin(BUTTON_PORT[Button], BUTTON_PIN[Button]);
 }
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	User_Button_EXTI();
 }

@@ -25,6 +25,19 @@ enum Path{
 	HORIZONTAL = 2,
 };
 
+
+/**
+	*\typedef
+	*	\struct
+  *	\brief Recognition configuration
+	*/
+typedef struct
+{
+	// DTW parallelogram width
+	uint8_t width;
+	
+}Reco_conf;
+
 /**
   * @brief  DTW Algorithm
 	*
@@ -64,7 +77,7 @@ enum Path{
   * @retval 
   */
 float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx);
-float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx);
+float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx, uint8_t width);
 float32_t dtw_files (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
 float32_t dtw_files_reduce (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
 

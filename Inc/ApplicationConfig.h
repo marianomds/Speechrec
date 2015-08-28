@@ -66,6 +66,8 @@
 #define CALIB_TIME										10 //segundos
 #define CALIB_LEN 										CALIB_TIME*AUDIO_IN_FREQ/FRAME_LEN
 
+#define RECO_WIDTH										10
+
 #define PAT_DIR												"Patterns"
 #define PAT_CONF_FILE									"patterns.ini"
 

@@ -107,9 +107,8 @@ float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *
 }
 
 
-float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx)
+float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx, uint8_t width)
 {
-
 	// Assert error
 	assert_param ( a->numCols == b->numCols );
 
@@ -118,7 +117,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	uint32_t idx, idx_vertical, idx_horizontal,idx_diagonal, path_idx;
 //	float32_t aux , past[3];
 	float32_t cost;
-	uint16_t width=10;
+//	uint16_t width=10;
 	float32_t *dtw_mtx;
 	float32_t result = FLT_MAX;
 	FIL dist_mtx_file;
@@ -143,7 +142,7 @@ float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instanc
 	}
 	
 	// Adapt width
-	width = (uint16_t) max(width, abs(costmtxrows-costmtxcols));
+	width = (uint8_t) max(width, abs(costmtxrows-costmtxcols));
 	
 	// Allocate memory for matrices used for calculation	
 	if( (dtw_mtx = malloc( reduce_rows * costmtxcols * sizeof(*dtw_mtx) ) ) == NULL)
