@@ -17,10 +17,8 @@
 //#define FREERTOS
 
 //#ifdef FREERTOS
-
 //#define malloc(size) pvPortMalloc(size)
 //#define free(ptr) pvPortFree(ptr)
-
 //#endif
 
 

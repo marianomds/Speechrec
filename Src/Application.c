@@ -100,7 +100,7 @@ void Main_Thread (void const *pvParameters)
 	// Task arguments
 	Audio_Capture_args audio_cap_args = {NULL};
 	Audio_Calibration_args calibration_args = {NULL};
-	Audio_Process_args pat_stor_args = {NULL};
+	Audio_Process_args audio_proc_args = {NULL};
 	
 	for(;;) {
 		
@@ -188,17 +188,15 @@ void Main_Thread (void const *pvParameters)
 					app_state = appconf.maintask;
 					
 					/* Create Audio_Process Task */
-					pat_stor_args.msg_q = &msgID;
-					pat_stor_args.buff = &audio_ring_buffer;
-					pat_stor_args.debug_conf = &appconf.debug_conf;
-					pat_stor_args.capt_conf = &appconf.capt_conf;
-					pat_stor_args.proc_conf = &appconf.proc_conf;
-					pat_stor_args.vad_conf =  &appconf.vad_conf;
-					pat_stor_args.reco_conf = &appconf.reco_conf;
-					pat_stor_args.recognize = appconf.maintask == APP_RECOGNITION;
-					
-					/* Create Tasks*/
-					osThreadCreate (osThread(AudioProcess), &pat_stor_args);
+					audio_proc_args.msg_q = &msgID;
+					audio_proc_args.buff = &audio_ring_buffer;
+					audio_proc_args.debug_conf = &appconf.debug_conf;
+					audio_proc_args.capt_conf = &appconf.capt_conf;
+					audio_proc_args.proc_conf = &appconf.proc_conf;
+					audio_proc_args.vad_conf =  &appconf.vad_conf;
+					audio_proc_args.reco_conf = &appconf.reco_conf;
+					audio_proc_args.recognize = appconf.maintask == APP_RECOGNITION;
+					osThreadCreate (osThread(AudioProcess), &audio_proc_args);
 
 				break;
 				}
@@ -737,7 +735,6 @@ void Recognition (void const *pvParameters)
 
 void AudioCapture (void const * pvParameters)
 {
-
 	// Function variables
 	uint16_t *audio_frame;
 	Audio_Capture_args *args;
