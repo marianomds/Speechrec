@@ -20,6 +20,7 @@ Por priemra y única vez:
 
 
 	-en usb_host.c
+	NO HACE FALTA EN LA NUEVA VERSIÓN DEL STM32CubeMx pone un osMessagePut al final del switch
 
 			/* USER CODE BEGIN 0 */
 				extern osMessageQId appli_event;
