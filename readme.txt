@@ -3,6 +3,7 @@ Cuando se genera el proyecto con el STM32CubeMx, hay que modificar:
 Por priemra y única vez:
 
 	- en usbh_conf.c
+	La nueva versión del STM32CubeMx permite hacer esto de forma automática seleccionando en Configuration-->USB-Host-Configuration-->PlatformSettings GPIO:Output-PC0
 
 		    /* Drive high Charge pump */
 		    /* USER CODE BEGIN 1 */ 
