@@ -1,6 +1,6 @@
-Cuando se genera el proyecto con el STM32CubeMx, hay que modificar:
+# Cuando se genera el proyecto con el STM32CubeMx, hay que modificar #
 
-Por priemra y única vez:
+## Por priemra y única vez: ##
 
 	- en usbh_conf.c
 	La nueva versión del STM32CubeMx permite hacer esto de forma automática seleccionando en Configuration-->USB-Host-Configuration-->PlatformSettings GPIO:Output-PC0
@@ -66,18 +66,21 @@ Por priemra y única vez:
 			/* USER CODE END StartDefaultTask */
 
 
-Cada vez que se genera el proyecto:
+## Cada vez que se genera el proyecto: ##
 
-	-en startup_stm32f407xx.s:
+	1. En startup_stm32f407xx.s:
 
 			Stack_Size      EQU     0x00000800
 			Heap_Size       EQU     0x00000400
 
-	-en cmsis_os.h
+
+**ESTOS DOS ÚLTIMOS NO HACEN FALTA CON LA ÚLTIMA VERSIÓN DEL STM32CubeMX, los Mail Queue ya estan habilitados**
+
+	2. En cmsis_os.h
 		#if 1 /* Mail Queue Management Functions are not supported in this cmsis_os version, will be added in the next release  */
 		struct os_mailQ_cb *os_mailQ_cb_##name; \
 
-	-en cmsis_os.c
+	3. En cmsis_os.c
 		#if 1 /* Mail Queue Management Functions are not supported in this cmsis_os version, will be added in the next release  */
 
 
