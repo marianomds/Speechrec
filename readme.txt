@@ -4,6 +4,7 @@ Por priemra y única vez:
 
 	- en usbh_conf.c
 
+		    /* Drive high Charge pump */
 		    /* USER CODE BEGIN 1 */ 
 		    /* ToDo: Add IOE driver control */
 			    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
