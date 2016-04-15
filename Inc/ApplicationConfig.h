@@ -21,7 +21,7 @@
 #define AUDIO_FILE_EXTENSION		".wav"
 
 /*---------------------------------------------------------------------------------
-								DEFAULT CONFIGURATION PARAMETERS OF THE APPLICATION
+								DEFAULT APPLICATION CONFIGURATION PARAMETERS
 -----------------------------------------------------------------------------------*/
 
 #define AUDIO_FRAME_SIZE              512
@@ -45,7 +45,7 @@
 #define ALPHA													0.95f
 #define FFT_LEN												512
 #define MEL_BANKS											20
-#define DCT_LEN												32			// Tiene que ser mayor a 2*MEL_BANKS
+#define DCT_LEN												32			// Tiene que ser 2^N y mayor a MEL_BANKS
 #define LIFTER_LENGTH									12
 #define THETA													2
 

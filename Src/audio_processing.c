@@ -46,7 +46,8 @@ static float32_t *aux2 = NULL; 							// [ max(proc_conf->frame_len,proc_conf->f
 static float32_t *HamWin = NULL; 						// [proc_conf->frame_len];
 static float32_t *CepWeight = NULL; 					// [LIFTER_length];
 
-static float32_t MelBank [256*20] = {
+//TODO Obtener los valores programáticamente (buscar )
+static float32_t MelBanks [FFT_LEN/2*MEL_BANKS] = {
 	0,0,0,0,0,0,0,0,0,0,1.8776061e-01f,6.1692772e-01f,9.5704521e-01f,5.5711352e-01f,1.5718182e-01f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,4.2954786e-02f,4.4288648e-01f,8.4281818e-01f,7.7378656e-01f,4.0109872e-01f,2.8410879e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.2621344e-01f,5.9890128e-01f,9.7158912e-01f,6.7917563e-01f,3.3187576e-01f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -68,10 +69,9 @@ static float32_t MelBank [256*20] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9.8396985e-02f,2.1892710e-01f,3.3945721e-01f,4.5998732e-01f,5.8051744e-01f,7.0104755e-01f,8.2157766e-01f,9.4210777e-01f,9.4162909e-01f,8.2930964e-01f,7.1699019e-01f,6.0467074e-01f,4.9235129e-01f,3.8003185e-01f,2.6771240e-01f,1.5539295e-01f,4.3073503e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5.8370915e-02f,1.7069036e-01f,2.8300981e-01f,3.9532926e-01f,5.0764871e-01f,6.1996815e-01f,7.3228760e-01f,8.4460705e-01f,9.5692650e-01f,9.3547118e-01f,8.3080307e-01f,7.2613497e-01f,6.2146687e-01f,5.1679876e-01f,4.1213066e-01f,3.0746255e-01f,2.0279445e-01f,9.8126347e-02f,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
+//static arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBanks};
 
-static arm_matrix_instance_f32 MelFilt = {MEL_BANKS, FFT_LEN/2, MelBank};
-		
-static arm_matrix_instance_f32 					MagFFTMtx, MelWinMtx;
+static arm_matrix_instance_f32 					MagFFTMtx, MelWinMtx, MelFilt;
 static arm_fir_instance_f32 						FirInst;	
 static arm_rfft_fast_instance_f32 			RFFTinst, DCTinst_rfft;
 static ale_dct2_instance_f32						DCTinst;
@@ -665,6 +665,9 @@ void initBasics (Proc_conf *proc_config)
 	if(arm_rfft_fast_init_f32 (&RFFTinst, proc_conf->fft_len) == ARM_MATH_ARGUMENT_ERROR)
 		Error_Handler("Error on RFFT instance in audio processing");
 	
+	// Creo la matriz de Filtros Mel
+	//TODO Generar programáticamente los MelBanks y eliminarlo de arriba (y siempre utilizar los valores en proc_conf)
+	arm_mat_init_f32 (&MelFilt, proc_conf->mel_banks, proc_conf->fft_len/2, MelBanks);
 }
 void finishBasics	(void)
 {
@@ -748,7 +751,7 @@ void thirdProcStage 	(float32_t *MFCC, float32_t *MagFFT, Proc_var *saving_var)
 {
 	
 	/* Se pasa el espectro por los filtros del banco de Mel y se obtienen los coeficientes */
-	arm_mat_init_f32 (&MagFFTMtx, proc_conf->fft_len/2, 1, MagFFT);																				// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
+	arm_mat_init_f32 (&MagFFTMtx, proc_conf->fft_len/2, 1, MagFFT);																			// Se convierte la STFT a una Matriz de filas=fftLen y columnas=1
 	arm_mat_init_f32 (&MelWinMtx, proc_conf->mel_banks, 1, aux1);																				// Se crea una matriz para almacenar el resultado
 	if(arm_mat_mult_f32(&MelFilt, &MagFFTMtx, &MelWinMtx) == ARM_MATH_SIZE_MISMATCH)
 		Error_Handler("Error on thirdProcStage");
@@ -1036,7 +1039,7 @@ uint8_t Close_proc_files (Proc_files *files, Proc_stages stage)
 ////	arm_rfft_fast_instance_f32 	rfft_instance;
 ////	float32_t pState[64];
 ////
-//// Los valores fueron obtenidos mediante la equación x = 50*cos((1:32)*2*pi/40);
+//// Los valores fueron obtenidos mediante la ecuación x = 50*cos((1:32)*2*pi/40);
 ////
 ////	float32_t pInlineBuffer[32]={		49.384417029756889f,		47.552825814757675f,		44.550326209418394f,		40.450849718747371f,
 ////		35.355339059327378f,		29.389262614623657f,		22.699524986977345f,		15.450849718747373f,		7.821723252011546f,
