@@ -44,7 +44,7 @@
 #define NUMTAPS												2
 #define ALPHA													0.95f
 #define FFT_LEN												512
-#define MEL_BANKS											20
+#define MEL_BANKS											40
 #define DCT_LEN												32			// Tiene que ser 2^N y mayor a MEL_BANKS
 #define LIFTER_LENGTH									12
 #define THETA													2
