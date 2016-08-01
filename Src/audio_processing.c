@@ -330,8 +330,8 @@ void featureExtraction (void const *pvParameters)
 					if(args->save_to_files)
 						Append_proc_files ( debug_files, debug_vars, Third_Stage);
 						
-					ringBuf_write (&mfcc_buff, (uint8_t*) &vad_vars.energy, sizeof(float32_t));
 					ringBuf_write (&mfcc_buff, (uint8_t*) aux, proc_conf->lifter_length * sizeof(float32_t));
+					ringBuf_write (&mfcc_buff, (uint8_t*) &vad_vars.energy, sizeof(float32_t));
 					
 					keep_reading = true;
 				}
