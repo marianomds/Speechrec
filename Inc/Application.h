@@ -35,6 +35,8 @@
 #include "recognition.h"
 #include "ff.h"
 #include <ring_buffer.h>
+#include "headerHMM.h"
+
 
 //---------------------------------------------------------------------------------
 //																		APPLICATION STATES
