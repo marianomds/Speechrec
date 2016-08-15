@@ -17,6 +17,16 @@
 #include "float.h"
 #include "error_handler.h"
 #include <ale_stdlib.h>
+
+
+float32_t Tesis_loglik(const float32_t * utterance, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma)
+{
+
+	
+	return -INFINITY;
+	
+}
+
 /*
 float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx)
 {

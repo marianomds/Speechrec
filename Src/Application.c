@@ -632,6 +632,16 @@ void Recognition (void const *pvParameters)
 	FIL utterance_file;
 	UINT bytes_read;
 	size_t utterance_size;
+	uint16_t T;
+	
+	// Aux variables
+	uint16_t i;
+	
+	//HMM variables
+	float32_t loglik[11];
+	float32_t loglikMAX = -INFINITY;
+	uint8_t loglikMAXind = 11;
+	
 //	arm_matrix_instance_f32 utterance_mtx;
 	
 	// Patterns variables
@@ -639,7 +649,7 @@ void Recognition (void const *pvParameters)
 //	uint32_t pat_num = 0,pat_reco = 0;
 	
 	// Output info variables
-//	FIL result;
+	FIL result;
 //	float32_t *dist = NULL;
 	
 	// Get arguments
@@ -673,6 +683,22 @@ void Recognition (void const *pvParameters)
 			utterance = malloc(utterance_size);																		// Allocate memory
 			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
 			f_close(&utterance_file);																							// Close file
+			
+			// Calculo el largo de la secuencia
+			T = bytes_read/NCOEFS;
+			
+			// Calculo los log-likelihoods de la secuencia para los 11 HMM
+			for (i = 0; i<11; i++)
+			{
+				loglik[i] = Tesis_loglik(utterance, T, &transmat1[i][0], &transmat2[i][0], &mixmat[i][0][0], &mu[i][0][0][0], &Sigma[i][0][0][0]);
+				if (loglik[i] > loglikMAX)
+				{
+					loglikMAX = loglik[i];
+					loglikMAXind = i;
+				}
+			}
+			
+			
 /*			
 			arm_mat_init_f32 (&utterance_mtx, utterance_size / (sizeof(*utterance) * 3 * (1+appconf.proc_conf.lifter_length)), 3 * (1+appconf.proc_conf.lifter_length), utterance);
 			
@@ -707,16 +733,16 @@ void Recognition (void const *pvParameters)
 */
 			// Leave utterance folder
 			f_chdir ("..");
-/*
+
 			// Record in file wich pattern was spoken
 			open_append (&result,"Spoken");																					// Load result file
-			if (dist[pat_reco] != FLT_MAX)
-				f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
-			else
-				f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
+			if (loglikMAXind == 11)
+				f_printf(&result, "Error - Likelihood para los 11 modelos: 0\n\n");
+			else 
+				f_printf(&result, "Número reconocido: %d\nLikelihood: %f\nLog-Likelihood: %f\n\n", loglikMAXind, expf(loglikMAX), loglikMAX);
 			f_close(&result);
 
-		}*/
+//		}
 		/****************** FINISH RECOGNIZING *******************/
 		proc_state = NOTHING;
 

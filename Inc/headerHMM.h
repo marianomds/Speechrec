@@ -1,4 +1,5 @@
 #include "arm_math.h"
+#include "ApplicationConfig.h"
 
 #define NPALABRAS 11
 #define NCOEFS ((LIFTER_LENGTH+1)*3)
