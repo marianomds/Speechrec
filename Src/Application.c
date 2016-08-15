@@ -629,9 +629,9 @@ void Recognition (void const *pvParameters)
 	
 	// Utterance variables
 	float32_t *utterance = NULL;
-//	FIL utterance_file;
-//	UINT bytes_read;
-//	size_t utterance_size;
+	FIL utterance_file;
+	UINT bytes_read;
+	size_t utterance_size;
 //	arm_matrix_instance_f32 utterance_mtx;
 	
 	// Patterns variables
@@ -664,7 +664,7 @@ void Recognition (void const *pvParameters)
 			dist = malloc(pat_num * sizeof(*dist));
 			for(int i=0; i < pat_num ; i++)
 				dist[i] = FLT_MAX;
-			
+*/			
 			// Open utterance folder and stay here
 			f_chdir(args->utterance_path);
 			
@@ -673,7 +673,7 @@ void Recognition (void const *pvParameters)
 			utterance = malloc(utterance_size);																		// Allocate memory
 			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
 			f_close(&utterance_file);																							// Close file
-			
+/*			
 			arm_mat_init_f32 (&utterance_mtx, utterance_size / (sizeof(*utterance) * 3 * (1+appconf.proc_conf.lifter_length)), 3 * (1+appconf.proc_conf.lifter_length), utterance);
 			
 			// Search for minimun distance between patterns and utterance
@@ -704,10 +704,10 @@ void Recognition (void const *pvParameters)
 				f_write(&result, dist, pat_num*sizeof(*dist),&bytes_read);
 				f_close(&result);
 			}
-
+*/
 			// Leave utterance folder
 			f_chdir ("..");
-
+/*
 			// Record in file wich pattern was spoken
 			open_append (&result,"Spoken");																					// Load result file
 			if (dist[pat_reco] != FLT_MAX)
