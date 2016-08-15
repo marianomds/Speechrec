@@ -18,25 +18,25 @@
 #include "arm_math.h"
 #include "stdbool.h"
 #include "ff.h"
-
+/*
 enum Path{
 	DIAGONAL = 0,
 	VERTICAL = 1,
 	HORIZONTAL = 2,
 };
-
+*/
 
 /**
 	*\typedef
 	*	\struct
   *	\brief Recognition configuration
 	*/
-typedef struct
+/*typedef struct
 {
 	// DTW parallelogram width
 	uint8_t width;
 	
-}Reco_conf;
+}Reco_conf;*/
 
 /**
   * @brief  DTW Algorithm
@@ -76,27 +76,27 @@ typedef struct
 	* @param  [in] path: Pointer to the matrix where the path taken can be seen. Size of path must be length(a)+length(b). If it's not need pass NULL.
   * @retval 
   */
-float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx);
-float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx, uint8_t width);
-float32_t dtw_files (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
-float32_t dtw_files_reduce (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
+//float32_t dtw  (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx);
+//float32_t dtw_reduce (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, const bool save_dist_mtx, uint8_t width);
+//float32_t dtw_files (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
+//float32_t dtw_files_reduce (FIL *a, FIL *b, const uint8_t parameters_size, const bool save_dist_mtx);
 
 /**
   * @brief  Inicializa la función distancia
   * @param	[in] Tamaño de los vectores a comparar
   */
-void init_dist (uint32_t blockSize);
+//void init_dist (uint32_t blockSize);
 /**
   * @brief  De-inicializa la función de distancia
   */
-void deinit_dist (void);
+//void deinit_dist (void);
 /**
   * @brief  Calcula la distancia entre dos elementos
   * @param	[in] points to the first input vector 
 	* @param	[in] points to the second input vector 
 	* @retval resultado
   */
-float32_t dist (float32_t *pSrcA, float32_t *pSrcB);
+//float32_t dist (float32_t *pSrcA, float32_t *pSrcB);
 
 
 #endif // RECOGNITION_H

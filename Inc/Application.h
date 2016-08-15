@@ -96,7 +96,7 @@ typedef struct
 	bool			debug;
 	bool			save_proc_vars;
 	bool			save_clb_vars;
-	bool			save_dist;
+//	bool			save_dist;
 	uint32_t  usb_buff_size;
 }Debug_conf;
 
@@ -114,10 +114,10 @@ typedef struct
 	Proc_conf		proc_conf;
 	VAD_conf		vad_conf;
 	Calib_conf	calib_conf;
-	Reco_conf		reco_conf;
+//	Reco_conf		reco_conf;
 	Debug_conf	debug_conf;	
 	
-	char patpath[15];
+//	char patpath[15];
 }AppConfig;
 
 
@@ -126,12 +126,12 @@ typedef struct
 	*	\struct
   *	\brief Audio Capture task arguments
 	*/
-typedef struct
-{
-	char pat_name[PATERN_MAX_NAME_SIZE];		/*< Nombre del Patron */
-	uint8_t	pat_actv_num;										/*< Numero de activación */
-	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
-}Patterns;
+//typedef struct
+//{
+//	char pat_name[PATERN_MAX_NAME_SIZE];		/*< Nombre del Patron */
+//	uint8_t	pat_actv_num;										/*< Numero de activación */
+//	arm_matrix_instance_f32 pattern_mtx;		/*< Instancia de matriz para los atributos */
+//}Patterns;
 
 
 //---------------------------------------------------------------------------------
@@ -171,13 +171,13 @@ uint8_t readConfigFile (const char *filename, AppConfig *Conf);
 	* @param  
   * @retval 
   */
-uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num);
+//uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num);
 /**
   * @brief  KeyBoard Handler Task
 	* @param  
   * @retval 
   */
-uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path);
+//uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path);
 
 
 //---------------------------------------------------------------------------------
@@ -328,7 +328,7 @@ typedef struct
 	Capt_conf 	 *capt_conf;
 	Proc_conf		 *proc_conf;
 	VAD_conf		 *vad_conf;
-	Reco_conf		 *reco_conf;
+//	Reco_conf		 *reco_conf;
 	bool				recognize;
 }Audio_Process_args;
 
@@ -359,10 +359,10 @@ typedef struct
 typedef struct
 {
 	Proc_conf		 *proc_conf;
-	Reco_conf		 *reco_conf;
+//	Reco_conf		 *reco_conf;
 	char 				 *utterance_path;
-	char 				 *patterns_path;
-	bool         save_dist;
+//	char 				 *patterns_path;
+//	bool         save_dist;
 	osMessageQId src_msg_id;
 	uint32_t 		 src_msg_val;
 }Recognition_args;
