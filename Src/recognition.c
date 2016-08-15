@@ -17,7 +17,7 @@
 #include "float.h"
 #include "error_handler.h"
 #include <ale_stdlib.h>
-
+/*
 float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx)
 {
 
@@ -514,3 +514,4 @@ float32_t dist (float32_t *pSrcA, float32_t *pSrcB)
 	return result;
 }
 
+*/

@@ -194,7 +194,7 @@ void Main_Thread (void const *pvParameters)
 					audio_proc_args.capt_conf = &appconf.capt_conf;
 					audio_proc_args.proc_conf = &appconf.proc_conf;
 					audio_proc_args.vad_conf =  &appconf.vad_conf;
-					audio_proc_args.reco_conf = &appconf.reco_conf;
+//					audio_proc_args.reco_conf = &appconf.reco_conf;
 					audio_proc_args.recognize = appconf.maintask == APP_RECOGNITION;
 					osThreadCreate (osThread(AudioProcess), &audio_proc_args);
 
@@ -402,11 +402,11 @@ void AudioProcess (void const *pvParameters)
 					
 					if(args->recognize)
 					{
-						reco_args.patterns_path = appconf.patpath;
+//						reco_args.patterns_path = appconf.patpath;
 						reco_args.proc_conf = args->proc_conf;
-						reco_args.reco_conf = args->reco_conf;
+//						reco_args.reco_conf = args->reco_conf;
 						reco_args.utterance_path = file_path;
-						reco_args.save_dist = args->debug_conf->save_dist;
+//						reco_args.save_dist = args->debug_conf->save_dist;
 						reco_args.src_msg_id = audio_process_msg;
 						reco_args.src_msg_val = FINISH_RECOGNIZING;
 						osThreadCreate(osThread(Recognition),&reco_args);
@@ -629,18 +629,18 @@ void Recognition (void const *pvParameters)
 	
 	// Utterance variables
 	float32_t *utterance = NULL;
-	FIL utterance_file;
-	UINT bytes_read;
-	size_t utterance_size;
-	arm_matrix_instance_f32 utterance_mtx;
+//	FIL utterance_file;
+//	UINT bytes_read;
+//	size_t utterance_size;
+//	arm_matrix_instance_f32 utterance_mtx;
 	
 	// Patterns variables
-	Patterns *pat = NULL;
-	uint32_t pat_num = 0,pat_reco = 0;
+//	Patterns *pat = NULL;
+//	uint32_t pat_num = 0,pat_reco = 0;
 	
 	// Output info variables
-	FIL result;
-	float32_t *dist = NULL;
+//	FIL result;
+//	float32_t *dist = NULL;
 	
 	// Get arguments
 	args = (Recognition_args *) pvParameters;
@@ -653,12 +653,12 @@ void Recognition (void const *pvParameters)
 		
 		// --------------- Load spoken word ---------------
 		// Read Patterns config file
-		f_chdir(args->patterns_path);
-		readPaternsConfigFile (PAT_CONF_FILE, &pat, &pat_num);
-		f_chdir("..");
+//		f_chdir(args->patterns_path);
+//		readPaternsConfigFile (PAT_CONF_FILE, &pat, &pat_num);
+//		f_chdir("..");
 
 				
-		if ( pat_num != 0)
+/*		if ( pat_num != 0)
 		{
 			// Allocate memory for distance and initialize
 			dist = malloc(pat_num * sizeof(*dist));
@@ -716,14 +716,14 @@ void Recognition (void const *pvParameters)
 				f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
 			f_close(&result);
 
-		}
+		}*/
 		/****************** FINISH RECOGNIZING *******************/
 		proc_state = NOTHING;
 
 		// Free memory
 		free(utterance);				utterance = NULL;
-		free(pat);							pat = NULL;
-		free(dist);							dist = NULL;
+//		free(pat);							pat = NULL;
+//		free(dist);							dist = NULL;
 		
 		// Send message telling I'm finish
 		osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
@@ -1203,14 +1203,14 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	{
 		config->debug_conf.save_proc_vars	= ini_getbool	("Debug", "save_proc_vars",	false,	filename);
 		config->debug_conf.save_clb_vars	= ini_getbool	("Debug", "save_clb_vars",	false,	filename);
-		config->debug_conf.save_dist			= ini_getbool	("Debug", "save_dist",	false,	filename);
+//		config->debug_conf.save_dist			= ini_getbool	("Debug", "save_dist",	false,	filename);
 		config->debug_conf.usb_buff_size	= (uint32_t)	ini_getl("Debug", "usb_buff_size", 128, filename);
 	}
 	else
 	{
 		config->debug_conf.save_proc_vars	= false;
 		config->debug_conf.save_clb_vars	= false;
-		config->debug_conf.save_dist			= false;
+//		config->debug_conf.save_dist			= false;
 		config->debug_conf.usb_buff_size	= 0;
 	}
 	
@@ -1249,10 +1249,10 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	config->calib_conf.thd_scl_sf		= (float32_t)	ini_getf("CalConf", "THD_Scale_SF",			THD_Scl_SF,				filename);
 		
 	// Read Recognition configuration
-	config->reco_conf.width = (uint8_t)	ini_getl("RecoConf", "width", RECO_WIDTH, filename);
+//	config->reco_conf.width = (uint8_t)	ini_getl("RecoConf", "width", RECO_WIDTH, filename);
 	
 	// Read Patterns configuration
-	ini_gets("PatConf", "PAT_DIR", PAT_DIR, config->patpath, sizeof(config->patpath), filename);
+//	ini_gets("PatConf", "PAT_DIR", PAT_DIR, config->patpath, sizeof(config->patpath), filename);
 
 	return 1;
 }
@@ -1265,7 +1265,7 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 	* @param [out]	Number of Patterns
   * @retval 			OK-->"1"  Error-->"0"
   */
-uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num)
+/*uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *pat_num)
 {
 	
 	char section[30];
@@ -1292,13 +1292,13 @@ uint8_t readPaternsConfigFile (const char *filename, Patterns **Pat, uint32_t *p
 	}
 		
 	return 1;
-}
+}*/
 /**
   * @brief  Read Atributes from Pattern File
 	* @param  Filename to read
   * @retval OK-->"1"  Error-->"0"
   */
-uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path)
+/*uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path)
 {
 	
 	FIL File;
@@ -1335,7 +1335,7 @@ uint8_t loadPattern (Patterns *pat, uint32_t vector_length, char *pat_path)
 	free (pat_file_name);
 	
 	return output;
-}
+}*/
 
 //---------------------------------------
 //				INTERRUPTION FUNCTIONS
@@ -1350,167 +1350,3 @@ void User_Button_EXTI (void)
 	HAL_NVIC_DisableIRQ(EXTI0_IRQn);			// Disable EXTI0 IRQ
 	osMessagePut(key_msg,BUTTON_IRQ,0);
 }
-//uint32_t tick_start ,elapsed_time;
-//if(f_open(&log_file,"log.txt",FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)		Error_Handler();		//TODO de prueba						
-//tick_start = osKernelSysTick();
-//elapsed_time = osKernelSysTick() - tick_start;
-//f_printf(&log_file, "elapsed_time: %d\n", elapsed_time  );
-//f_close(&log_file);
-
-//FIL nosirve;
-//f_open(&nosirve,"noSirve.txt", FA_CREATE_ALWAYS | FA_WRITE);
-//f_printf(&nosirve, "Esto es una mierda");
-//f_close(&nosirve);	//TODO de prueba
-
-//	osMessagePut(calibration_msg, END_CAPTURE, osWaitForever);		// BORRAR ESTA LINEA DE ABAJO
-
-
-//						// Create Audio Save Task for copy
-//						audio_save.usb_buff_size = args->debug_conf->usb_buff_size;
-//						audio_save.buff	= &audio_read_buff;
-//						audio_save.capt_conf = *args->capt_conf;
-//						audio_save.file_name = "PTRN_00/copy.wav";
-//						for(; f_stat(audio_save.file_name ,NULL)!= FR_NO_FILE; updateFilename(audio_save.file_name));
-//						osThreadCreate (osThread(AudioSave), &audio_save);
-
-
-
-
-
-
-//void Recognition (void const *pvParameters)
-//{
-//	// Message variables
-////	osEvent event;
-//	Recognition_args *args = NULL;
-////	bool recognising = true;
-//	
-//	// Utterance variables
-////	float32_t *utterance = NULL;
-//	FIL utterance_file, pat_file;
-//	UINT bytes_read;
-////	size_t utterance_size;
-////	arm_matrix_instance_f32 utterance_mtx;
-//	
-//	// Patterns variables
-//	Patterns *pat = NULL;
-//	uint32_t pat_num = 0,pat_reco = 0;
-//	char *pat_file_name = NULL;
-//	
-//	// Output info variables
-//	FIL result;
-//	float32_t *dist = NULL;
-//	
-//	// Get arguments
-//	args = (Recognition_args *) pvParameters;
-//	
-//					
-//	/* START TASK */
-//	for(;;)
-//	{	
-//		proc_state = RECOGNIZING;
-//		
-//		// --------------- Load spoken word ---------------
-//		// Read Patterns config file
-//		f_chdir(args->patterns_path);
-//		readPaternsConfigFile (PAT_CONF_FILE, &pat, &pat_num);
-//		f_chdir("..");
-
-//				
-//		if ( pat_num != 0)
-//		{
-//			// Allocate memroy for distance and initialize
-//			dist = malloc(pat_num * sizeof(*dist));
-////			for(int i=0; i < pat_num ; i++)
-////				dist[i] = FLT_MAX;
-//			
-//			// Open utterance folder and stay here
-//			f_chdir(args->utterance_path);
-//			
-//			f_open(&utterance_file, "features.bin", FA_OPEN_EXISTING | FA_READ);		// Open File
-////			utterance_size = f_size (&utterance_file);														// Check data size
-////			utterance = malloc(utterance_size);																		// Allocate memory
-////			f_read (&utterance_file, utterance, utterance_size, &bytes_read);			// Read data
-////			f_close(&utterance_file);																							// Close file
-////			f_chdir ("..");																												// Leave from utterance file
-////			
-////			arm_mat_init_f32 (&utterance_mtx, (utterance_size / sizeof(*utterance)) / appconf.proc_conf.lifter_length , appconf.proc_conf.lifter_length, utterance);
-//			
-//			// Search for minimun distance between patterns and utterance
-//			for(int i=0; i < pat_num ; i++)
-//			{
-//	//			// Load pattern
-//	//			if( !loadPattern (&pat[i], (1+args->proc_conf->lifter_length) * 3) )
-//	//				continue;
-
-//				// Abro el archivo del patron
-//					// Set complete pattern file_name
-//				pat_file_name = malloc( strlen("0:/") + strlen(args->patterns_path) + 1 + strlen(pat[i].pat_name) + 1 + strlen("features.bin") + 1 );
-//				sprintf(pat_file_name,"0:/%s/%s/features.bin",args->patterns_path,pat[i].pat_name);
-//				if(f_open(&pat_file, pat_file_name, FA_READ) != FR_OK)		// Open pattern file_name
-//					continue;
-//				free (pat_file_name);			pat_file_name = NULL; 					// Free memory
-//				
-//				
-//				// Get distance
-//	//			dist[i] = dtw_reduce (&utterance_mtx, &pat[i].pattern_mtx, appconf.debug_conf.save_dist);		
-//						// Abro un archivo para salvar la matriz de distancia
-////				dist[i] = dtw_files (&utterance_file, &pat_file, 3 * (args->1+proc_conf->lifter_length), args->save_dist);
-//				dist[i] = dtw_files_reduce (&utterance_file, &pat_file, 3 * (args->1+proc_conf->lifter_length), args->save_dist);
-//				
-//				// Close Pattern file
-//				f_close(&pat_file);
-
-//				// Check if distance is shorter
-//				if( i == 0 ||dist [i] < dist[pat_reco])
-//					pat_reco = i;
-//				
-//				// Free memory
-//	//			free(pat[i].pattern_mtx.pData);
-//	//			pat[i].pattern_mtx.pData = NULL;
-//	//			pat[i].pattern_mtx.numCols = 0;
-//	//			pat[i].pattern_mtx.numRows = 0;
-//			}
-//			
-//			// Close utterance file
-//			f_close(&utterance_file);
-//											
-//			// Save distances
-//			if(appconf.debug_conf.save_dist)
-//			{
-//				f_open (&result, "Dist.bin", FA_WRITE | FA_OPEN_ALWAYS);				// Load result file
-//				f_write(&result, dist, pat_num*sizeof(*dist),&bytes_read);
-//				f_close(&result);
-//			}
-//			free(dist);							dist = NULL;
-
-//			// Leave utterance folder
-//			f_chdir ("..");
-
-//			// Record in file wich pattern was spoken
-//			open_append (&result,"Spoken");																					// Load result file
-//			if (dist[pat_reco] != FLT_MAX)
-//				f_printf(&result, "%s %s\n", "Patron:", pat[pat_reco].pat_name);			// Record pattern name
-//			else
-//				f_printf(&result, "%s %s\n", "Patron:", "No reconocido");							// If no pattern was found
-//			f_close(&result);
-
-//		}
-//		/****************** FINISH RECOGNIZING *******************/
-//		//		recognising = false;
-//		proc_state = NOTHING;
-
-//		// Free memory
-////		free(utterance);				utterance = NULL;
-//		free(pat);							pat = NULL;
-////		free(dist);							dist = NULL;
-//		
-//		// Send message telling I'm finish
-//		osMessagePut(args->src_msg_id, args->src_msg_val, osWaitForever);
-//		
-//		// Kill thread
-//		osThreadTerminate (osThreadGetId());
-//	}
-//}
-
-
