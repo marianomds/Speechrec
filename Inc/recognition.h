@@ -26,6 +26,7 @@
 
 float32_t Tesis_loglik(const float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma);
 
+void Tesis_mixgauss_logprob(const float32_t * data, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * mixmat, float32_t * B);
 
 /*
 enum Path{

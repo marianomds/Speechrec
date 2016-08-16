@@ -23,18 +23,31 @@
 float32_t Tesis_loglik(const float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma)
 {
 	float32_t loglik;
+	float32_t * B = NULL;
 	
+				
+	// Aloco memoria para la matriz B
+	B = malloc(NESTADOS * T * sizeof(*B)); // B[NESTADOS][T]
+
 	// Cálculo de la matriz B de probabilidades de salida
-//	B = Tesis_mixgauss_logprob(data, mu, Sigma, mixmat);
+	Tesis_mixgauss_logprob(data, mu, Sigma, mixmat, B);
 	
 	// Cálculo del log-likelihood utilizando el procedimiento forward
 //	loglik = Tesis_forward(transmat1, transmat2, B); % Tener en cuenta que en C, se la pasa un puntero a la matriz B a la función forward, y es modificada dentro de la función, así que cuando termina la misma, dicha matriz tiene un valor distinto a antes de empezar (está normalizada)
+	
+	free(B);
+	B = NULL;
 	
 	return loglik;
 	
 }
 
-
+void Tesis_mixgauss_logprob(const float32_t * data, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * mixmat, float32_t * B)
+{
+	
+	
+	
+}
 
 
 
