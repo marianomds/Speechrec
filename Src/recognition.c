@@ -176,7 +176,7 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 		
 	}
 	
-	scale = Tesis_lognormalise(alphaB + t); // Cálculo de la escala y normalización de alpha
+	scale = Tesis_lognormalise(alphaB + t, T); // Cálculo de la escala y normalización de alpha
 
 	// Si para un instante el factor de escala da 0, toda la sequencia analizada no tiene 
 	// posibilidad de ser modelizada por el correspondiente modelo HMM => retornamos con 
@@ -195,10 +195,34 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 	
 }
 
-float32_t Tesis_lognormalise(float32_t * A)
+// Normalización del vector A (con valores logarítmicos), de forma que sus valores no logaritmicos sumen 1
+// Cálculo del factor de escala/normalización logarítmico
+float32_t Tesis_lognormalise(float32_t * A, uint16_t T)
 {
+	uint16_t i;
+	float32_t c;
+	float32_t s;
+
+	// c = max(A(:)); % log(sum(A)) ~ log(max(A))
+	c = fmaxf(*A, *(A + T)); // log(sum(A)) ~ log(max(A))
+	for (i = 2; i < NESTADOS; i++)
+	{
+		c = fmaxf(c, *(A + i*T)); // log(sum(A)) ~ log(max(A))
+	}
+
+	// En caso de que el factor de escala logarítmico de -inf, evitamos que el valor de la 
+	// matriz normalizada se modifique
+	if (c == -INFINITY)
+		s = 0;
+	else
+		s = c;
 	
-	return 1;
+	for (i = 0; i < NESTADOS; i++)
+	{
+		*(A + i*T) = *(A + i*T) - s; // log(A/s) = log(A) - log(s)
+	}
+	
+	return c;
 	
 }
 
