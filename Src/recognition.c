@@ -97,6 +97,7 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	float32_t detSigma = 1;
 	uint16_t i;
 	float32_t denom;
+	float32_t invSigma[NCOEFS];
 	
 	// Cálculo del determinante de la matriz de covarianzas.
 	// Como trabajo con matrices de covarianza diagonales, a la función sólo le paso la diagonal.
@@ -111,6 +112,16 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	
 	// Cálculo del denominador de la ecuación
 	denom = powf((2*PI),(NCOEFS/2)*sqrtf(detSigma));
+	
+	// Cálculo de la inversa de la matriz de covarianzas.
+	// La inversa de una matriz diagonal se calcula invirtiendo cada valor de su diagonal
+	for (i = 0; i<NCOEFS; i++)
+	{
+		
+			invSigma[i] = 1/(*(Sigma + i));
+		
+	}
+
 
 	
 	return 1;
