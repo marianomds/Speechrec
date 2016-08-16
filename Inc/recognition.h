@@ -30,7 +30,10 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 
 float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma);
 
-float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * B, uint16_t T);
+float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * alphaB, uint16_t T);
+
+float32_t Tesis_lognormalise(float32_t * A);
+
 
 /*
 enum Path{

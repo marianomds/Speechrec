@@ -148,8 +148,11 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 // pasa un puntero a la matriz B (acá llamada alphaB) a la función forward, y es modificada 
 // dentro de la función, así que cuando termina la misma, dicha matriz tiene un valor distinto 
 // a antes de empezar (está normalizada)
-float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * B, uint16_t T)
+float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * alphaB, uint16_t T)
 {
+
+	uint16_t t;
+	uint16_t i;
 
 	// Factor de escala (Rabiner, 1989)
 	// scale(t) = Pr(O(t) | O(1:t-1)) = 1/c(t) as defined by Rabiner (1989).
@@ -158,13 +161,34 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 	// Inicialización del acumulador del log-likelihood
 	float32_t loglik = 0;
 	
+	// Paso 1 del procedimiento Forward
+	t = 0;
+	// prior: vector de probabilidades de estados iniciales
+	// log(prior*B) = log(prior) + log(B)
+	// pero acá prior vale siempre [1 0 0...0]
+	// log(1) = 0; log(0) = -inf
+	// log(prior) = [0 -inf -inf...-inf]
 	
+	for (i = 1; i < NESTADOS; i++) // log(prior*B) = log(prior) + log(B); log(prior(1)) = 0
+	{
+		
+		*(alphaB + i*T + t) = -INFINITY; // log(prior*B) = log(prior) + log(B); log(prior(2:q)) = -inf
+		
+	}
+	
+	scale = Tesis_lognormalise(alphaB + t); // Cálculo de la escala y normalización de alpha
+
 	
 	return loglik;
 	
 }
 
-
+float32_t Tesis_lognormalise(float32_t * A)
+{
+	
+	return 1;
+	
+}
 
 
 /*
