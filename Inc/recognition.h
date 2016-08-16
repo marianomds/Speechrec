@@ -18,12 +18,13 @@
 #include "arm_math.h"
 #include "stdbool.h"
 #include "ff.h"
+#include "macrosHMM.h"
 
 //---------------------------------------------------------------------------------
 //															HMM FUNCTIONS
 //---------------------------------------------------------------------------------
 
-float32_t Tesis_loglik(const float32_t * utterance, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma);
+float32_t Tesis_loglik(const float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma);
 
 
 /*

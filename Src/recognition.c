@@ -19,13 +19,30 @@
 #include <ale_stdlib.h>
 
 
-float32_t Tesis_loglik(const float32_t * utterance, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma)
+// Cálculo del log-likelihood para una secuencia de vectores de observaciones usando un modelo con mezcla de Gausianas
+float32_t Tesis_loglik(const float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma)
 {
-
+	float32_t loglik;
 	
-	return -INFINITY;
+	// Cálculo de la matriz B de probabilidades de salida
+//	B = Tesis_mixgauss_logprob(data, mu, Sigma, mixmat);
+	
+	// Cálculo del log-likelihood utilizando el procedimiento forward
+//	loglik = Tesis_forward(transmat1, transmat2, B); % Tener en cuenta que en C, se la pasa un puntero a la matriz B a la función forward, y es modificada dentro de la función, así que cuando termina la misma, dicha matriz tiene un valor distinto a antes de empezar (está normalizada)
+	
+	return loglik;
 	
 }
+
+
+
+
+
+
+
+
+
+
 
 /*
 float32_t dtw (const arm_matrix_instance_f32 *a, const arm_matrix_instance_f32 *b, float32_t *dist_mtx)
