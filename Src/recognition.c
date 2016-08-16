@@ -140,11 +140,27 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 }
 
 
-
+// Cálculo del log-likelihood (posterior probability) utilizando el procedimiento forward
+// A diferencia de la documentación, donde se diferencian las matrices alpha (matriz de 
+// variables logarítmicas forward) y B (matriz B de probabilidades logarítmicas de salida)por
+// separado, aquí se logró utilizar una misma matriz (alphaB) que cumpla la misma función que
+// las dos anteriores, optimizando así el uso de la memoria. Tener en cuenta que en C, se la 
+// pasa un puntero a la matriz B (acá llamada alphaB) a la función forward, y es modificada 
+// dentro de la función, así que cuando termina la misma, dicha matriz tiene un valor distinto 
+// a antes de empezar (está normalizada)
 float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * B, uint16_t T)
 {
+
+	// Factor de escala (Rabiner, 1989)
+	// scale(t) = Pr(O(t) | O(1:t-1)) = 1/c(t) as defined by Rabiner (1989).
+	float32_t scale;
 	
-	return 1;
+	// Inicialización del acumulador del log-likelihood
+	float32_t loglik = 0;
+	
+	
+	
+	return loglik;
 	
 }
 
