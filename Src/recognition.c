@@ -178,6 +178,18 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 	
 	scale = Tesis_lognormalise(alphaB + t); // Cálculo de la escala y normalización de alpha
 
+	// Si para un instante el factor de escala da 0, toda la sequencia analizada no tiene 
+	// posibilidad de ser modelizada por el correspondiente modelo HMM => retornamos con 
+	// probabilidad 0 (loglik = -inf)
+	if (scale == -INFINITY)
+	{
+		loglik = -INFINITY;
+		return loglik;
+	}
+	else
+	{
+		loglik = loglik + scale; // Rabiner (1989), eq. 103: log(P) = sum(log(scale))
+	}
 	
 	return loglik;
 	
