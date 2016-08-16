@@ -685,7 +685,7 @@ void Recognition (void const *pvParameters)
 			f_close(&utterance_file);																							// Close file
 			
 			// Calculo el largo de la secuencia
-			T = bytes_read/NCOEFS;
+			T = bytes_read/NCOEFS/sizeof(*utterance);
 			
 			// Calculo los log-likelihoods de la secuencia para los 11 HMM
 			for (i = 0; i<11; i++)
@@ -739,7 +739,7 @@ void Recognition (void const *pvParameters)
 			if (loglikMAXind == 11)
 				f_printf(&result, "Error - Likelihood para los 11 modelos: 0\n\n");
 			else 
-				f_printf(&result, "Número reconocido: %d\nLikelihood: %f\nLog-Likelihood: %f\n\n", loglikMAXind, expf(loglikMAX), loglikMAX);
+				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\n\n", loglikMAXind, (int)loglikMAX);
 			f_close(&result);
 
 //		}
