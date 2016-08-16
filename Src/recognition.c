@@ -153,7 +153,9 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 
 	uint16_t t;
 	uint16_t i;
-
+	float32_t m[NESTADOS];
+	float32_t m2[NESTADOS];
+	
 	// Factor de escala (Rabiner, 1989)
 	// scale(t) = Pr(O(t) | O(1:t-1)) = 1/c(t) as defined by Rabiner (1989).
 	float32_t scale;
@@ -191,6 +193,64 @@ float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transma
 		loglik = loglik + scale; // Rabiner (1989), eq. 103: log(P) = sum(log(scale))
 	}
 	
+	
+	// Pasos 2 a T del procedimiento Forward
+	for (t = 1; t < T; t++)
+	{
+    // Esta función no recibe toda la matriz de transiciones sino sólo sus dos diagonales 
+		// distintas de cero (para optimizar el uso de la memoria). Entonces la multiplicación 
+		// de la matriz transmat con la matriz  alpha se lleva a cabo en dos pasos, uno por 
+		// cada diagonal, y luego se suman ambos.
+		
+		for (i = 0; i < NESTADOS-1; i++)
+		{
+			
+			m[i] = *(transmat1 + i) + *(alphaB + i*T + t - 1); // log(transmat1*alpha) = log(transmat1) + log(alpha)
+			
+		}
+		
+		m[NESTADOS-1] = *(alphaB + (NESTADOS-1)*T + t - 1); // el último valor de transmat1 (diagonal principal) vale siempre 1 (log(1) = 0), por eso no se lo pasé
+
+		m2[0] = -INFINITY; // la segunda diagonal no influye en el cálculo del primer valor, entonces vale 0. log(0) = -inf
+
+		for (i = 1; i < NESTADOS; i++)
+		{
+			
+			m2[i] = *(transmat2 + i - 1) + *(alphaB + (i-1)*T + t - 1); // log(transmat2*alpha) = log(transmat2) + log(alpha)
+			
+		}
+
+		for (i = 0; i < NESTADOS; i++)
+		{
+			
+			m[i] = fmaxf(m[i], m2[i]); // log(sum(m1 m2)) ~ log(max(m1 m2)); en lugar de m1 uso m para ahorrar memoria
+			
+		}
+		
+		for (i = 0; i < NESTADOS; i++)
+		{
+			
+			*(alphaB + i*T + t) = m[i] + *(alphaB + i*T + t); // log(m*B) = log(m) + log(B)
+
+		}
+
+		scale = Tesis_lognormalise(alphaB + t, T); // Cálculo de la escala y normalización de alpha
+
+    // Si para un instante el factor de escala da 0, toda la sequencia analizada no tiene 
+		// posibilidad de ser modelizada por el correspondiente modelo HMM => retornamos con 
+		// probabilidad 0 (loglik = -inf)
+		if (scale == -INFINITY)
+		{
+			loglik = -INFINITY;
+			return loglik;
+		}
+		else
+		{
+			loglik = loglik + scale; // Rabiner (1989), eq. 103: log(P) = sum(log(scale))
+		} 
+
+	}
+
 	return loglik;
 	
 }
