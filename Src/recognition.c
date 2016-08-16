@@ -34,7 +34,7 @@ float32_t Tesis_loglik(float32_t * data, uint16_t T, const  float32_t * transmat
 	Tesis_mixgauss_logprob(data, mu, Sigma, mixmat, B, T);
 	
 	// Cálculo del log-likelihood utilizando el procedimiento forward
-//	loglik = Tesis_forward(transmat1, transmat2, B); % Tener en cuenta que en C, se la pasa un puntero a la matriz B a la función forward, y es modificada dentro de la función, así que cuando termina la misma, dicha matriz tiene un valor distinto a antes de empezar (está normalizada)
+	loglik = Tesis_forward(transmat1, transmat2, B, T);
 	
 	free(B);
 	B = NULL;
@@ -141,7 +141,12 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 
 
 
-
+float32_t Tesis_forward(const  float32_t * transmat1, const  float32_t * transmat2, float32_t * B, uint16_t T)
+{
+	
+	return 1;
+	
+}
 
 
 
