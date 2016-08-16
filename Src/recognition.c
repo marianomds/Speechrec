@@ -98,6 +98,7 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	uint16_t i;
 	float32_t denom;
 	float32_t invSigma[NCOEFS];
+	float32_t exponente = 0;
 	
 	// Cálculo del determinante de la matriz de covarianzas.
 	// Como trabajo con matrices de covarianza diagonales, a la función sólo le paso la diagonal.
@@ -122,6 +123,13 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 		
 	}
 
+	// Cálculo del exponente de la ecuación
+	for (i = 0; i<NCOEFS; i++)
+	{
+		
+		exponente = exponente + powf(*(data + i) - *(mu + i),2)*invSigma[i];
+		
+	}	
 
 	
 	return 1;
