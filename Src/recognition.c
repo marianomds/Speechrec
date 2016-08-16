@@ -99,6 +99,7 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	float32_t denom;
 	float32_t invSigma[NCOEFS];
 	float32_t exponente = 0;
+	float32_t p;
 	
 	// Cálculo del determinante de la matriz de covarianzas.
 	// Como trabajo con matrices de covarianza diagonales, a la función sólo le paso la diagonal.
@@ -131,8 +132,10 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 		
 	}	
 
+	// Cálculo del logaritmo de la probabilidad
+	p = -0.5*exponente - logf(denom + (float32_t)DBL_EPSILON); 
 	
-	return 1;
+	return p;
 	
 }
 
