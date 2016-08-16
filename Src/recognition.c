@@ -66,8 +66,8 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 			for (q = 0; q < NESTADOS; q++)
 			{
 				
-				*(B + q*T + t) = fmaxf(*(mixmat + q*NMEZCLAS + 0) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 0, Sigma + q*NMEZCLAS*NCOEFS + 0),
-															 *(mixmat + q*NMEZCLAS + 1) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 1, Sigma + q*NMEZCLAS*NCOEFS + 1));
+				*(B + q*T + t) = fmaxf(*(mixmat + q*NMEZCLAS + 0) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 0*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 0*NCOEFS),
+															 *(mixmat + q*NMEZCLAS + 1) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 1*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 1*NCOEFS));
 				
 				if (NMEZCLAS > 2)
 				{
@@ -76,7 +76,7 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 					{
 						
 						*(B + q*T + t) = fmaxf(*(B + q*T + t),
-											    				 *(mixmat + q*NMEZCLAS + k) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + k, Sigma + q*NMEZCLAS*NCOEFS + k));
+											    				 *(mixmat + q*NMEZCLAS + k) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + k*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + k*NCOEFS));
 						
 					}
 					
@@ -89,9 +89,26 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 }
 
 
-
+// Cálculo de la probabilidad logarítmica de una densidad gausiana de múltiples dimensiones
+// para cada instante de la secuencia de vectores de observación
 float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma)
 {
+
+	float32_t detSigma = 1;
+	uint16_t i;
+
+	// Cálculo del determinante de la matriz de covarianzas.
+	// Como trabajo con matrices de covarianza diagonales, a la función sólo le paso la diagonal.
+	// El determinante de la matriz diagonal es la productoria de los valores de la diagonal.
+
+	for (i = 0; i<NCOEFS; i++)
+	{
+		
+		detSigma = detSigma * (*(Sigma + i));
+		
+	}
+	
+	
 	
 	return 1;
 	
