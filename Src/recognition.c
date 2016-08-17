@@ -72,7 +72,7 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 				if (NMEZCLAS > 2)
 				{
 					
-					for (k = 0; k < NMEZCLAS; k++)
+					for (k = 2; k < NMEZCLAS; k++)
 					{
 						
 						*(B + q*T + t) = fmaxf(*(B + q*T + t),
