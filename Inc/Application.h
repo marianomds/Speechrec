@@ -6,8 +6,9 @@
   * @date    05-Agosto-2014
   * @brief   Application Tasks for ASR_DTW
   ******************************************************************************
-  * @attention
-  *
+  * @version V2.0.0
+  * @author  Mariano Marufo da Silva
+	* @email 	 mmarufodasilva@est.frba.utn.edu.ar
   ******************************************************************************
   */   
 

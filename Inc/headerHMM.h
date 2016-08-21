@@ -1,3 +1,11 @@
+/**
+  ******************************************************************************
+  * @file    headerHMM.h
+  * @author  Mariano Marufo da Silva
+  * @email 	 mmarufodasilva@est.frba.utn.edu.ar
+  ******************************************************************************
+  */
+
 #include "arm_math.h"
 #include "ApplicationConfig.h"
 #include "macrosHMM.h"

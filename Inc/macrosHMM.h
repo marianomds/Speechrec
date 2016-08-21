@@ -1,3 +1,11 @@
+/**
+  ******************************************************************************
+  * @file    macrosHMM.h
+  * @author  Mariano Marufo da Silva
+	* @email 	 mmarufodasilva@est.frba.utn.edu.ar
+  ******************************************************************************
+  */  
+
 #ifndef MACROSHMM_H
 #define MACROSHMM_H
 
