@@ -636,9 +636,11 @@ void Recognition (void const *pvParameters)
 	
 	//HMM variables
 	float32_t loglik[11];
-	float32_t loglikMAX = -INFINITY;
+	float32_t loglikMAX;
 	uint8_t loglikMAXind = 11;
-	
+	uint8_t loglik2MAXind = 11;
+	float32_t loglik2MAX;
+	float32_t var;
 	
 	// Output info variables
 	FIL result;
@@ -668,23 +670,47 @@ void Recognition (void const *pvParameters)
 			for (i = 0; i<11; i++)
 			{
 				loglik[i] = Tesis_loglik(utterance, T, *(transmat1 + i), *(transmat2 + i), *(*(mixmat + i)), *(*(*(mu + i))), *(*(logDenom + i)), *(*(*(invSigma + i))));
-				if (loglik[i] > loglikMAX)
-				{
-					loglikMAX = loglik[i];
-					loglikMAXind = i;
-				}
 			}
 			
 			
 			// Leave utterance folder
 			f_chdir ("..");
 
+			// Busco primero y segundo máximo de los Log_likelihoods
+			loglikMAX = loglik[0];
+			loglikMAXind = 0;
+			loglik2MAX = loglik[1];
+			loglik2MAXind = 1;
+			if (loglik2MAX > loglikMAX)
+			{
+				var = loglik2MAX;
+				loglik2MAX = loglikMAX;
+				loglikMAX = var;
+				loglikMAXind = 1;
+				loglik2MAXind = 0;
+			}
+			for (i = 2; i < 11; i++)
+			{
+				if (loglik[i] > loglikMAX)
+				{
+					loglik2MAX = loglikMAX;
+					loglikMAX = loglik[i];
+					loglik2MAXind = loglikMAXind;
+					loglikMAXind = i;
+				}
+				else if(loglik[i] > loglik2MAX)
+				{
+					loglik2MAX = loglik[i];
+					loglik2MAXind = i;
+				}
+			}
+			
 			// Record in file wich pattern was spoken
 			open_append (&result,"Spoken");																					// Load result file
 			if (loglikMAXind == 11)
 				f_printf(&result, "Error - Likelihood para los 11 modelos: 0\n\n");
 			else 
-				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\n\n", loglikMAXind, (int)loglikMAX);
+				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\nSegundo puesto: %d\nLog-Likelihood (2° puesto): %d\nDiferencia entre ambos: %d\n\n", loglikMAXind, (int)loglikMAX, loglik2MAXind, (int)loglik2MAX, (int)rintf(loglikMAX - loglik2MAX));
 			f_close(&result);
 
 		/****************** FINISH RECOGNIZING *******************/
