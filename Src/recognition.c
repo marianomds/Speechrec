@@ -21,7 +21,7 @@
 
 // Cálculo del log-likelihood para una secuencia de vectores de observaciones usando un 
 // modelo con mezcla de Gausianas
-float32_t Tesis_loglik(float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma)
+float32_t Tesis_loglik(float32_t * data, uint16_t T, const  float32_t * transmat1, const  float32_t * transmat2, const  float32_t * mixmat, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * invSigma)
 {
 	float32_t loglik;
 	float32_t * B = NULL;
@@ -31,7 +31,7 @@ float32_t Tesis_loglik(float32_t * data, uint16_t T, const  float32_t * transmat
 	B = malloc(NESTADOS * T * sizeof(*B)); // B[NESTADOS][T]
 
 	// Cálculo de la matriz B de probabilidades de salida
-	Tesis_mixgauss_logprob(data, mu, Sigma, mixmat, B, T);
+	Tesis_mixgauss_logprob(data, mu, Sigma, invSigma, mixmat, B, T);
 	
 	// Cálculo del log-likelihood utilizando el procedimiento forward
 	loglik = Tesis_forward(transmat1, transmat2, B, T);
@@ -47,7 +47,7 @@ float32_t Tesis_loglik(float32_t * data, uint16_t T, const  float32_t * transmat
 // Generación de la matriz B de probabilidades logarítmicas de salida calculando la pdf
 // (probability density function) para cada estado del modelo HMM y en cada instante de
 // la secuencia de vectores de observación
-void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * mixmat, float32_t * B, uint16_t T)
+void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * invSigma, const  float32_t * mixmat, float32_t * B, uint16_t T)
 {
 	uint16_t t;
 	uint16_t q;
@@ -66,8 +66,8 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 			for (q = 0; q < NESTADOS; q++)
 			{
 				
-				*(B + q*T + t) = fmaxf(*(mixmat + q*NMEZCLAS + 0) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 0*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 0*NCOEFS),
-															 *(mixmat + q*NMEZCLAS + 1) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 1*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 1*NCOEFS));
+				*(B + q*T + t) = fmaxf(*(mixmat + q*NMEZCLAS + 0) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 0*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 0*NCOEFS, invSigma + q*NMEZCLAS*NCOEFS + 0*NCOEFS),
+															 *(mixmat + q*NMEZCLAS + 1) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + 1*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + 1*NCOEFS, invSigma + q*NMEZCLAS*NCOEFS + 1*NCOEFS));
 				
 				if (NMEZCLAS > 2)
 				{
@@ -76,7 +76,7 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 					{
 						
 						*(B + q*T + t) = fmaxf(*(B + q*T + t),
-											    				 *(mixmat + q*NMEZCLAS + k) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + k*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + k*NCOEFS));
+											    				 *(mixmat + q*NMEZCLAS + k) + Tesis_gaussian_logprob(data + NCOEFS*t, mu + q*NMEZCLAS*NCOEFS + k*NCOEFS, Sigma + q*NMEZCLAS*NCOEFS + k*NCOEFS, invSigma + q*NMEZCLAS*NCOEFS + k*NCOEFS));
 						
 					}
 					
@@ -91,13 +91,13 @@ void Tesis_mixgauss_logprob(float32_t * data, const  float32_t * mu, const  floa
 
 // Cálculo de la probabilidad logarítmica de una densidad gausiana de múltiples dimensiones
 // para cada instante de la secuencia de vectores de observación
-float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma)
+float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const  float32_t * Sigma, const  float32_t * invSigma)
 {
 
 	float32_t detSigma = 1;
 	uint16_t i;
 	float32_t denom;
-	float32_t invSigma[NCOEFS];
+//	float32_t invSigma[NCOEFS];
 	float32_t exponente = 0;
 	float32_t p;
 	
@@ -115,21 +115,12 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	// Cálculo del denominador de la ecuación
 	denom = sqrtf((float)detSigma);
 	denom = ((float)DENOM1)*denom;
-	
-	// Cálculo de la inversa de la matriz de covarianzas.
-	// La inversa de una matriz diagonal se calcula invirtiendo cada valor de su diagonal
-	for (i = 0; i<NCOEFS; i++)
-	{
-		
-			invSigma[i] = 1/(*(Sigma + i));
-		
-	}
 
 	// Cálculo del exponente de la ecuación
 	for (i = 0; i<NCOEFS; i++)
 	{
 		
-		exponente = exponente + powf(*(data + i) - *(mu + i),2)*invSigma[i];
+		exponente = exponente + powf(*(data + i) - *(mu + i),2)*(*(invSigma + i));
 		
 	}	
 
