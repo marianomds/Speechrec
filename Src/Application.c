@@ -690,7 +690,7 @@ void Recognition (void const *pvParameters)
 			// Calculo los log-likelihoods de la secuencia para los 11 HMM
 			for (i = 0; i<11; i++)
 			{
-				loglik[i] = Tesis_loglik(utterance, T, *(transmat1 + i), *(transmat2 + i), *(*(mixmat + i)), *(*(*(mu + i))), *(*(*(Sigma + i))), *(*(*(invSigma + i))));
+				loglik[i] = Tesis_loglik(utterance, T, *(transmat1 + i), *(transmat2 + i), *(*(mixmat + i)), *(*(*(mu + i))), *(*(logDenom + i)), *(*(*(invSigma + i))));
 				if (loglik[i] > loglikMAX)
 				{
 					loglikMAX = loglik[i];
