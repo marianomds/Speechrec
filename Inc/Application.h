@@ -89,7 +89,6 @@ typedef struct
 	bool			debug;
 	bool			save_proc_vars;
 	bool			save_clb_vars;
-//	bool			save_dist;
 	uint32_t  usb_buff_size;
 }Debug_conf;
 
