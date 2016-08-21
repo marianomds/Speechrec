@@ -102,7 +102,7 @@ float32_t Tesis_gaussian_logprob(float32_t * data, const  float32_t * mu, const 
 	for (i = 0; i<NCOEFS; i++)
 	{
 		
-		exponente = exponente + powf(*(data + i) - *(mu + i),2)*(*(invSigma + i));
+		exponente = exponente + (*(data + i) - *(mu + i))*(*(data + i) - *(mu + i))*(*(invSigma + i));
 		
 	}	
 
