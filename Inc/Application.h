@@ -27,7 +27,7 @@
 #include "ff.h"
 #include <ring_buffer.h>
 #include "headerHMM.h"
-
+#include "macrosLCD.h"
 
 //---------------------------------------------------------------------------------
 //																		APPLICATION STATES
@@ -143,6 +143,12 @@ void setEnvVar (void);
   * @retval 
   */
 uint8_t readConfigFile (const char *filename, AppConfig *Conf);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void LCD_Init(void);
 
 //---------------------------------------------------------------------------------
 //															HMM FUNCTIONS

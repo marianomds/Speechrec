@@ -103,6 +103,9 @@ void Main_Thread (void const *pvParameters)
 	Audio_Calibration_args calibration_args = {NULL};
 	Audio_Process_args audio_proc_args = {NULL};
 	
+	/* Initialize LCD */
+	LCD_Init();
+	
 	for(;;) {
 		
 		event = osMessageGet(appli_event, osWaitForever);
@@ -1221,6 +1224,53 @@ uint8_t readConfigFile (const char *filename, AppConfig *config)
 		
 
 	return 1;
+}
+
+void LCD_Init(void)
+{
+	int16_t var;
+	
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LCD_REG_SEL_Port, LCD_REG_SEL_Pin, GPIO_PIN_RESET);//Selected command register
+	osDelay(2);//espera a que arranque el display
+	
+  var = LCD_DATOS_8bits->ODR;
+	var = var & 0x1100;
+	var = var | 0x0038; //Function set: 2 Line, 8-bit, 5x7 dots
+	LCD_DATOS_8bits->ODR = var;
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+	osDelay(2);
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	osDelay(2);//espero al lcd para que procese el comando
+	
+  var = LCD_DATOS_8bits->ODR;
+	var = var & 0x1100;
+	var = var | 0x000C; //Display on, Cursor off blinking off
+	LCD_DATOS_8bits->ODR = var;
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+	osDelay(2);
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	osDelay(2);//espero al lcd para que procese el comando
+	
+  var = LCD_DATOS_8bits->ODR;
+	var = var & 0x1100;
+	var = var | 0x0006; //Entry mode, auto increment with no shift
+	LCD_DATOS_8bits->ODR = var;
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+	osDelay(2);
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	osDelay(2);//espero al lcd para que procese el comando
+
+  var = LCD_DATOS_8bits->ODR;
+	var = var & 0x1100;
+	var = var | 0x0001; //Clear LCD
+	LCD_DATOS_8bits->ODR = var;
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+	osDelay(2);
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	osDelay(2);//espero al lcd para que procese el comando
+
+
 }
 
 //---------------------------------------
