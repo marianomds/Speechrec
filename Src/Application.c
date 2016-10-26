@@ -1271,6 +1271,64 @@ void LCD_Init(void)
 	osDelay(2);//espero al lcd para que procese el comando
 
 
+  LCD_sendstring("Reconocido:         ",LCD_L1);
+	LCD_sendstring("Log-lik:            ",LCD_L2);
+	LCD_sendstring("Reconocido 2:       ",LCD_L3);
+	LCD_sendstring("Log-lik 2:          ",LCD_L4);
+
+}
+
+void LCD_senddata(char var, char pos)
+{
+	int16_t aux;
+	
+	if(pos)					 //si hay posicion la mando sino pongo el char donde esta
+	{
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LCD_REG_SEL_Port, LCD_REG_SEL_Pin, GPIO_PIN_RESET);//Selected command register
+	  aux = LCD_DATOS_8bits->ODR;
+		aux = aux & 0x1100;
+		aux = aux | pos; // Ingreso el caracter
+		LCD_DATOS_8bits->ODR = aux;
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+		osDelay(2);
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+		osDelay(2);//espero al lcd para que procese el comando
+	}
+
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LCD_REG_SEL_Port, LCD_REG_SEL_Pin, GPIO_PIN_SET);//Selected data register
+	aux = LCD_DATOS_8bits->ODR;
+	aux = aux & 0x1100;
+	aux = aux | var; // Ingreso el caracter
+	LCD_DATOS_8bits->ODR = aux;
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+	osDelay(2);
+	HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+	osDelay(2);//espero al lcd para que procese el comando
+
+}
+
+void LCD_sendstring(char *var, char pos)
+{
+	int16_t aux;
+	
+	if(pos)					 //si hay posicion la mando sino pongo el char donde esta
+	{
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LCD_REG_SEL_Port, LCD_REG_SEL_Pin, GPIO_PIN_RESET);//Selected command register
+	  aux = LCD_DATOS_8bits->ODR;
+		aux = aux & 0x1100;
+		aux = aux | pos; // Ingreso el caracter
+		LCD_DATOS_8bits->ODR = aux;
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_SET);//habilito el dato
+		osDelay(2);
+		HAL_GPIO_WritePin(LCD_ENABLE_Port, LCD_ENABLE_Pin, GPIO_PIN_RESET);
+		osDelay(2);//espero al lcd para que procese el comando
+	}
+
+	while(*var)              //mientras no sea el final del string
+    	LCD_senddata(*var++, LCD_NOL);  //mando caracteres uno por uno
 }
 
 //---------------------------------------

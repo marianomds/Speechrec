@@ -16,4 +16,10 @@
 #define LCD_ENABLE_Pin GPIO_PIN_15
 #define LCD_DATOS_8bits GPIOD // sólo los bits 0 a 7
 
+#define     LCD_L1     0x80
+#define     LCD_L2	   0xC0
+#define     LCD_L3	   0x94
+#define     LCD_L4	   0xD4
+#define     LCD_NOL	   0x00   //lo pone en la posicion que estaba(uso el cero por que es un codigo invalido de posicion ya que el bit 7 tiene que estar en uno si o si)
+
 #endif // MACROSLCD_H

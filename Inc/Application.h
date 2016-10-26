@@ -149,6 +149,18 @@ uint8_t readConfigFile (const char *filename, AppConfig *Conf);
   * @retval 
   */
 void LCD_Init(void);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void LCD_senddata(char, char);
+/**
+  * @brief  KeyBoard Handler Task
+	* @param  
+  * @retval 
+  */
+void LCD_sendstring(char *, char);
 
 //---------------------------------------------------------------------------------
 //															HMM FUNCTIONS
