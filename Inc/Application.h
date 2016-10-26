@@ -28,6 +28,7 @@
 #include <ring_buffer.h>
 #include "headerHMM.h"
 #include "macrosLCD.h"
+#include "stdio.h"
 
 //---------------------------------------------------------------------------------
 //																		APPLICATION STATES

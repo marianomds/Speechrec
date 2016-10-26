@@ -20,6 +20,9 @@
 #define     LCD_L2	   0xC0
 #define     LCD_L3	   0x94
 #define     LCD_L4	   0xD4
+#define     LCD_L2_B	 0xD1
+#define     LCD_L3_B	 0xA5
+#define     LCD_L4_B	 0xE3
 #define     LCD_NOL	   0x00   //lo pone en la posicion que estaba(uso el cero por que es un codigo invalido de posicion ya que el bit 7 tiene que estar en uno si o si)
 
 #endif // MACROSLCD_H

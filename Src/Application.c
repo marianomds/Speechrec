@@ -636,6 +636,7 @@ void Recognition (void const *pvParameters)
 	
 	// Aux variables
 	uint16_t i;
+	char str_aux[20];
 	
 	//HMM variables
 	float32_t loglik[11];
@@ -711,10 +712,24 @@ void Recognition (void const *pvParameters)
 			// Record in file wich pattern was spoken
 			open_append (&result,"Spoken");																					// Load result file
 			if (loglikMAXind == 11)
+			{
 				f_printf(&result, "Error - Likelihood para los 11 modelos: 0\n\n");
-			else 
+			}
+			else
+			{
 				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\nSegundo puesto: %d\nLog-Likelihood (2° puesto): %d\nDiferencia entre ambos: %d\n\n", loglikMAXind, (int)loglikMAX, loglik2MAXind, (int)loglik2MAX, (int)rintf(loglikMAX - loglik2MAX));
+				sprintf(str_aux, "%d", loglikMAXind);
+				LCD_sendstring("  ", LCD_L2_B);
+				LCD_sendstring(str_aux, LCD_L2_B);
+				sprintf(str_aux, "%d", loglik2MAXind);
+				LCD_sendstring("  ", LCD_L3_B);
+				LCD_sendstring(str_aux, LCD_L3_B);
+				sprintf(str_aux, "%d", (int)rintf(loglikMAX - loglik2MAX));
+				LCD_sendstring("    ", LCD_L4_B);
+				LCD_sendstring(str_aux, LCD_L4_B);
+			}
 			f_close(&result);
+			
 
 		/****************** FINISH RECOGNIZING *******************/
 		proc_state = NOTHING;
@@ -1271,10 +1286,10 @@ void LCD_Init(void)
 	osDelay(2);//espero al lcd para que procese el comando
 
 
-  LCD_sendstring("Reconocido:         ",LCD_L1);
-	LCD_sendstring("Log-lik:            ",LCD_L2);
-	LCD_sendstring("Reconocido 2:       ",LCD_L3);
-	LCD_sendstring("Log-lik 2:          ",LCD_L4);
+  LCD_sendstring("Reconocimiento Habla",LCD_L1);
+	LCD_sendstring("Num. reconocido:    ",LCD_L2);
+	LCD_sendstring("Segundo puesto:     ",LCD_L3);
+	LCD_sendstring("Log-lik. dif.:      ",LCD_L4);
 
 }
 
