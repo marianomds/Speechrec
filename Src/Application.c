@@ -752,6 +752,8 @@ void AudioCapture (void const * pvParameters)
 	Audio_Capture_args *args;
 	osEvent event;
 	
+	uint16_t aux_cont;
+	
 	// Create Message
 	osMessageQDef(audio_capture_msg, 10, uint32_t);
 	audio_capture_msg = osMessageCreate(osMessageQ(audio_capture_msg),NULL);
@@ -779,6 +781,7 @@ void AudioCapture (void const * pvParameters)
 			switch(event.value.v){
 				case START_CAPTURE:
 				{
+					aux_cont = 10;
 					// Starts Capturing Audio Process
 					audioRecord ();
 					cap_state = CAPTURING;
@@ -811,8 +814,15 @@ void AudioCapture (void const * pvParameters)
 				
 				case BUFFER_READY:
 				{
-					// Copy frame to buffer
-					ringBuf_write ( args->buff, (uint8_t*) audio_frame, args->capt_conf.frame_size * sizeof(*audio_frame) );
+					if (aux_cont==0) //Dejo algunos milisegundos al principio sin grabar, para saltearme el glitch inicial
+					{
+						// Copy frame to buffer
+						ringBuf_write ( args->buff, (uint8_t*) audio_frame, args->capt_conf.frame_size * sizeof(*audio_frame) );
+					}
+					else
+					{
+						aux_cont--;
+					}
 					
 					break;
 				}
