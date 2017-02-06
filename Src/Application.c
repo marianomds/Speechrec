@@ -781,7 +781,7 @@ void AudioCapture (void const * pvParameters)
 			switch(event.value.v){
 				case START_CAPTURE:
 				{
-					aux_cont = 10;
+					aux_cont = 20;
 					// Starts Capturing Audio Process
 					audioRecord ();
 					cap_state = CAPTURING;
