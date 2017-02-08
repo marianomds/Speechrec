@@ -645,6 +645,10 @@ void Recognition (void const *pvParameters)
 	uint8_t loglik2MAXind = 11;
 	float32_t loglik2MAX;
 	float32_t var;
+	float32_t loglik3MAX;
+	float32_t dif1;
+	float32_t dif2;
+	char nivel[6];
 	
 	// Output info variables
 	FIL result;
@@ -709,6 +713,35 @@ void Recognition (void const *pvParameters)
 				}
 			}
 			
+			// Busco tercer máximo de los Log_likelihoods
+			loglik3MAX = -INFINITY;
+			for (i = 0; i < 11; i++)
+			{
+				if ((i!=loglikMAXind)&&(i!=loglik2MAXind))
+				{
+					if (loglik[i] > loglik3MAX)
+					{
+						loglik3MAX = loglik[i];
+					}
+				}
+			}
+			
+			// Evaluación del nivel de reconocimiento
+			dif1 = loglikMAX - loglik2MAX; // difenrencia entre el primero y el segundo
+			dif2 = loglik2MAX - loglik3MAX; // difenrencia entre el segundo y el tercero
+			if ((dif1 > 200) && (dif2 <= 80))
+			{
+				strcpy(nivel, "Alto");
+			}
+			else if ((dif1 > 200) && (dif2 > 80))
+			{
+				strcpy(nivel, "Medio");
+			}
+			else
+			{
+				strcpy(nivel, "Bajo");
+			}
+			
 			// Record in file wich pattern was spoken
 			open_append (&result,"Spoken");																					// Load result file
 			if (loglikMAXind == 11)
@@ -717,15 +750,15 @@ void Recognition (void const *pvParameters)
 			}
 			else
 			{
-				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\nSegundo puesto: %d\nLog-Likelihood (2° puesto): %d\nDiferencia entre ambos: %d\n\n", loglikMAXind, (int)loglikMAX, loglik2MAXind, (int)loglik2MAX, (int)rintf(loglikMAX - loglik2MAX));
+				f_printf(&result, "Número reconocido: %d\nLog-Likelihood: %d\nSegundo puesto: %d\nLog-Likelihood (2° puesto): %d\nDiferencia entre primero y segundo: %d\nDiferencia entre segundo y tercero: %d\nNivel de reconocimiento: %s\n\n", loglikMAXind, (int)loglikMAX, loglik2MAXind, (int)loglik2MAX, (int)rintf(loglikMAX - loglik2MAX), (int)rintf(loglik2MAX - loglik3MAX), nivel);
 				sprintf(str_aux, "%d", loglikMAXind);
 				LCD_sendstring("  ", LCD_L2_B);
 				LCD_sendstring(str_aux, LCD_L2_B);
 				sprintf(str_aux, "%d", loglik2MAXind);
 				LCD_sendstring("  ", LCD_L3_B);
 				LCD_sendstring(str_aux, LCD_L3_B);
-				sprintf(str_aux, "%d", (int)rintf(loglikMAX - loglik2MAX));
-				LCD_sendstring("    ", LCD_L4_B);
+				sprintf(str_aux, "%s", nivel);
+				LCD_sendstring("     ", LCD_L4_B);
 				LCD_sendstring(str_aux, LCD_L4_B);
 			}
 			f_close(&result);
@@ -1299,7 +1332,7 @@ void LCD_Init(void)
   LCD_sendstring("Reconocimiento Habla",LCD_L1);
 	LCD_sendstring("Num. reconocido:    ",LCD_L2);
 	LCD_sendstring("Segundo puesto:     ",LCD_L3);
-	LCD_sendstring("Log-lik. dif.:      ",LCD_L4);
+	LCD_sendstring("Nivel de rec.:      ",LCD_L4);
 
 }
 
