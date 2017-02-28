@@ -1149,6 +1149,7 @@ void Leds (void const * pvParameters)
 		switch(proc_state)
 		{
 			case PROCESSING:
+				osDelay(1200);
 				count_leds.led.blue = 0;
 				break;
 			case CALIBRATING:
